@@ -301,7 +301,7 @@ Re-verify all pairs against actual rendered values at build; these are computed 
 
 The brief is the flagship; every other surface inherits:
 
-- **Capture (recording):** follows the system mode like every surface — capture happens after breakfasts and runs as much as after late dinners, so neither room is its default. The mic button is the one large ember object in the app, in both rooms. Waveform in `ink-faint`, timer sans.
+- **Capture (recording):** follows the system mode like every surface — capture happens after breakfasts and runs as much as after late dinners, so neither room is its default. The mic button is the one large ember object in the app, in both rooms. Waveform in `ink-faint`, timer sans. The capture door also accepts **typed micro-notes** (DATA-MODEL §7.11): typed text is the transcript, everything downstream identical.
 - **Transcript review:** transcript body is Memory voice on a `paper` card; low-confidence spans dotted-ember (§9); the edit affordance is a pencil pill matching §3.5. The audio-deletion notice is a plain `note`-token card — informational sticky, not a warning banner.
 - **Proposal review:** structure ratified from the original interactive prototype (person-grouped cards, quotes lighting the transcript, settled grey lines, "Later" as the frictionless defer) and rendered in these tokens in `prototype/flow-mockup.html`. Verbatim quotes: Memory voice with left ember-wash rule. Note: the interactive behaviors (tap-quote-to-highlight, undo on settled lines, per-person accept-all) are specified in §6–7 prose and the flow mockup is static — re-verify feel during build.
 - **Home — ratified.** The three doors from ORBIT.md §18, and nothing else: an omnisearch pill whose placeholder rotates through real query shapes (a name, a company, a fragment — teaching that they're one box); the capture mic as the room's single large ember object; and **"Today"** — at most two context items, shown only when genuinely timely (a life event in its window, a thread at its expected resolution), each carrying its reason and opening the person's brief. Today collapses entirely when nothing qualifies; the near-empty state says so plainly ("Orbit only speaks here when there's a reason"). Set-asides are a footer text line, never a card. No feed, no stats, no suggestions, no "Lately"-style recents. Mockup: `prototype/home-search-mockup.html`.
@@ -341,7 +341,7 @@ These have data-model support and inventoried use cases but no designed screen y
 - **Set-aside triage** — re-entering deferred proposals at leisure; currently assumed to reuse the review screen, needs its own entry design.
 - **Export** — the whole memory out, readable (trust-tier use case).
 - **Brokering/hosting** — "who should come to dinner?" / "who should Maria meet?" A multi-person *selection* surface, not a lookup — the one genuinely new interaction pattern in the deferred set. Hold until the core loop is built and the need is felt in practice.
-- **Backfill portrait onboarding** — the guided first-run capture of long-standing relationships; blocked on the `note`-kind data-model resolution (DATA-MODEL §10).
+- **Backfill portrait onboarding** — the guided first-run capture of long-standing relationships. Fully specified at the data-model level (DATA-MODEL §7.11: subject-participants, skippable serif prompts, pausable sessions, never queued, episodic/semantic history split). Flow design proceeds once the split passes its real-memo validation gate.
 
 ### Open questions
 

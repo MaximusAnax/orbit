@@ -216,7 +216,7 @@ The center of the model.
 | Field | Notes |
 | --- | --- |
 | `id`, `occurred_at`, `date_precision` | |
-| `kind` | dinner / coffee / call / text / conference / party / meeting / introduction / encounter |
+| `kind` | dinner / coffee / call / text / conference / party / meeting / introduction / encounter / **note** / **portrait** (§7.11) |
 | `location_entity_id` | nullable |
 | `title` | short human label |
 | `raw_audio_ref` | nullable — **deleted on transcript confirmation** (§7.5) |
@@ -224,9 +224,10 @@ The center of the model.
 | `narrative` | Abdoul's confirmed prose account |
 | `emotional_context` | free text — §7 asks for it explicitly |
 | `lifecycle` | `captured \| confirmed \| discarded` |
+| `derived_from_event_id` | nullable — set on events reconstructed from a portrait (§7.11); such events have no audio/transcript and are **excluded from all contact-rhythm math** |
 | `captured_at`, `confirmed_at` | |
 
-Participants live in a join table (`event_id`, `person_id`, `attendance` = `confirmed \| probable`, `role` = e.g. introducer). **An event requires at least one participant** — see §7.6.
+Participants live in a join table (`event_id`, `person_id`, `attendance` = `confirmed \| probable \| about`, `role` = e.g. introducer). `about` marks a **subject who was not present** — the person a note concerns (§7.11). **An event requires at least one participant of any attendance kind** — see §7.6.
 
 **Immutability + amendments.** Once confirmed, the row is frozen. Corrections are **Amendment** records (`event_id`, `field`, `new_value`, `reason`, `created_at`) applied in order at read time. Effective event = original + amendments. Ledger semantics: you never erase an entry, you post a correcting one.
 
@@ -245,7 +246,7 @@ One event may have several extractions over time. The newest does not win automa
 | Field | Notes |
 | --- | --- |
 | `id`, `sync_run_id` | |
-| `op` | `ASSERT \| CLOSE \| CORRECT \| MERGE \| LINK \| CREATE_PERSON \| OPEN_LOOP \| DISAMBIGUATE` |
+| `op` | `ASSERT \| CLOSE \| CORRECT \| MERGE \| LINK \| CREATE_PERSON \| CREATE_EVENT \| OPEN_LOOP \| DISAMBIGUATE` — `CREATE_EVENT` reconstructs a past episode from a portrait (§7.11) |
 | `target_person_id` | nullable |
 | `target_assertion_id` | nullable — for CLOSE / CORRECT |
 | `payload` | the proposed assertion or operation |
@@ -537,6 +538,39 @@ Lists and network queries are only as good as entity identity. If *"Y Combinator
 
 Same two-layer pattern as §7.2: store the fine distinction, query the umbrella. The hierarchy stays one level deep (umbrella + member) until a real capture demands more — inventing deeper nesting now would be structure without evidence.
 
+### 7.11 Notes: capture without presence *(ratified 2026-07-28; one sub-decision open)*
+
+**The reframe.** An Event is not "a social occasion" — it is **a moment when information entered the system through Abdoul's attention**. A dinner is one kind of learning-moment; suddenly remembering Sarah's birthday is another; reading that James changed jobs is a third. The bitemporal split already separates when a fact became true (`valid_from`) from when Abdoul learned it (`observed_at`); notes complete it by letting the learning-moment itself carry no interaction.
+
+**Mechanism.** One new attendance value: **`about`** — subject-of, not present-at. The §7.6 invariant becomes *"≥1 participant of any attendance kind"*; the not-a-diary guard holds (a note about nobody is still forbidden). `kind: note` and `kind: portrait` exist for display and prompting, but **semantics ride on attendance, not kind** — which makes mixed captures free: *"Had coffee with Alex — oh, and I remembered Sarah's birthday"* is one event, Alex `confirmed`, Sarah `about`. All downstream machinery (transcript immutability, extraction, proposals, review, amendments, audio deletion, all ops including CLOSE) applies to notes unchanged.
+
+**Typed micro-notes.** The capture door also accepts typed text; the typed text *is* the transcript, and everything downstream is identical. Voice-first remains the identity; typing is the escape hatch for the seven-word fact.
+
+**The guards — `about` must never leak into anything that means contact:**
+
+| Consumer | Rule |
+| --- | --- |
+| Contact rhythm (§9.5) / "last seen" | **Present-only.** Writing notes about Sarah must never look like seeing Sarah — else maintenance rewards journaling over relationships. |
+| Thread decay clock (§9.2) | **Asymmetric, deliberately:** a note never *advances* `conversations_since_mention` (no conversation happened — no chance was missed), but a note mentioning a thread *does* refresh `last_mentioned_at` — remembering it is real signal that it is alive. |
+| Knows-each-other co-attendance | Present-only. Co-subjects of one note have not met. |
+| `first_met_event_id` | Never a note. |
+| Timeline | Notes appear, visually distinct from interactions. |
+| Provenance, proposals, all ops | Notes participate fully. |
+
+**Portraits — the onboarding backfill session** (describing a years-long relationship from scratch): one continuous, pausable recording with skippable serif prompts ("How did you meet?", "What's going on in their life?", "What do you always forget?"). **Never queued, never bulk-prompted** — onboarding suggests a handful of inner-orbit people; the rest seed lazily. A contact with no portrait is a valid permanent state.
+
+**Portrait history lands via the episodic/semantic split** *(ratified 2026-07-28, pending one empirical check)*:
+
+- **Episodes → reconstructed Events.** A specific occasion with a rough *when* — the roadtrip, the wedding, the night you met — becomes a real Event row via a `CREATE_EVENT` proposal: fuzzy `occurred_at` (`date_precision` carries the blur), present attendance (they genuinely were there), `narrative` = the verbatim slice of the portrait, **no audio or transcript of its own**, and `derived_from_event_id` pointing at the portrait that spawned it. `first_met_event_id` falls out naturally — it links to whichever reconstructed event you confirm as the meeting; no special case.
+- **Periods and habits → interval assertions.** "Lived together 2020–2021," "we got lunch every week senior year" — this is literally what `valid_from`/`valid_to` models. Never fake events.
+- **Traits, relations, preferences → plain assertions**, as ever.
+
+The extraction bar, same shape as the thread bar: *an episode needs a what and a when-ish; anything habitual, ongoing, or dateless is a fact.* This also bounds the flood — a portrait of even a decade-long friendship holds maybe four to eight distinct episodes.
+
+**The rhythm guard needs no "onboarding finished" signal — the marker is per-event.** Contact rhythm, its derivative, and every §9.5 comparison count **only events with `derived_from_event_id` null**. Reconstructed history is memorable-episodes-only, not all contact — it skews far below the true rate, so it is structurally excluded from rate math rather than policy-excluded from an era. Reconstructed events remain fully visible in timelines and briefs, and *may* inform "last seen" for a freshly backfilled person ("last seen around 2023, per your portrait") — honest and useful — but never rate.
+
+**Pending before build:** empirical validation of the episodic/semantic classification against a real portrait memo — the same real-data gate the review flow passed before ratification.
+
 ---
 
 ## 8. Recall ranking — why `salience` was cut
@@ -661,6 +695,8 @@ The derivative matters more than the value: *"was roughly monthly, now roughly y
 
 **Rate measures captured events, not life.** He will not record everything, and it skews toward interactions worth writing down. So rate is a *floor*, and it informs **questions, not conclusions**: *"looks like you've seen Sarah less this year — or just captured less?"* Principle 4 — uncertainty beats false memory.
 
+**Reconstructed events never enter rate math.** Events with `derived_from_event_id` set (§7.11) are memorable-episodes-only history — far sparser than real contact was — and are excluded per-event from rhythm and every derivative comparison. No "onboarding era" boundary exists or is needed.
+
 ### 9.6 Rate and orbit: observation yes, recommendation no
 
 **Rate must never propose an orbit change.**
@@ -683,7 +719,7 @@ But a fully manual orbit will rot. Abdoul will not remember to update it, the fi
 
 **The design-level model is closed.** Groups & SavedLists ratified 2026-07-27 (see Entity reference): groups as explicit social facts created only by Abdoul, time-bounded membership, lists as saved queries never curated, knows-each-other derived with evidence rather than materialized.
 
-**One gap reopened by the use-case inventory (ORBIT.md §18):** the **micro-note** ("Sarah's birthday is March 3", remembered in the shower) and the **backfill portrait** (onboarding: describing a years-old friendship from scratch) are captures with *subjects but no interaction* — §7.6's participant requirement assumes presence, and neither fits. Direction to explore: an event kind `note` whose participants carry a new attendance value `about` (subject-of, not present-at), keeping provenance intact without faking presence. Backfill is then a long note. Not yet designed; must be resolved before the capture pipeline is built, since onboarding depends on it.
+**Notes and portraits fully resolved (§7.11, ratified 2026-07-28)** — subject-participants via attendance `about`, present-only guards on everything contact-shaped, typed micro-notes, portraits never queued, and portrait history landing via the **episodic/semantic split** (episodes → reconstructed Events excluded from rate math; periods/habits → interval assertions; traits → plain assertions). One empirical gate before the onboarding flow is built: validate the episodic/semantic classification against a real portrait memo.
 
 What remains beyond that is risk that only shows up in implementation, not in argument:
 

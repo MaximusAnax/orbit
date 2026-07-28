@@ -195,7 +195,9 @@ An event should preserve:
 
 The event is a historical record. Once finalized, it should be treated as **immutable**.
 
-**An event must involve at least one person.** An event with nobody in it has no relationship to serve — that is a diary entry, and Orbit is not a diary. Things that feel like person-less events (a conference, a venue, a recurring dinner) are *contexts* that events attach to, not events themselves.
+**An event must involve at least one person** — though they need not have been *present*. An event records a moment when something entered Abdoul's memory: usually an interaction, but sometimes a fact remembered in the shower, or a sitting-down to describe an old friend from scratch. In those cases the person is the event's *subject* rather than a participant. What remains forbidden is an event about nobody — that is a diary entry, and Orbit is not a diary. Things that feel like person-less events (a conference, a venue, a recurring dinner) are *contexts* that events attach to, not events themselves.
+
+Records made *about* someone never count as *contact with* them — remembering Sarah is not seeing Sarah, and the system must never confuse the two.
 
 ### Threads
 
@@ -548,7 +550,7 @@ Nearly every use case enters through one of **three doors**:
 
 Maintenance never earns a door of its own: it arrives as context *inside* the other doors (a loop on a profile, a life event in a brief), because a dedicated "relationships to service" surface is the CRM Orbit must never become.
 
-Two inventory items — the **micro-note** and the **backfill portrait** — do not fit the event model cleanly (an event requires participants who were *present*; these captures have subjects but no interaction). The data model must resolve this rather than force fake events.
+Two inventory items — the **micro-note** and the **backfill portrait** — required extending the event model: events may now have *subjects* who were not present (§7), so a remembered fact or a portrait of an old friend is captured without faking an interaction. The history inside a portrait splits the way memory itself does: **specific episodes become events on the shared timeline; ongoing truths become facts.** A decade-old friendship gets a timeline with a real beginning, not one that starts the day Orbit was installed.
 
 ---
 
