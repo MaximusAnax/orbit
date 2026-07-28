@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orbit — Two Rooms (V3 Reference Mockup)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#141210;color:#e8e2d8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;
+  padding:34px 26px 80px;-webkit-font-smoothing:antialiased}
+.head{max-width:1400px;margin:0 auto 26px}
+.head h1{font-family:'Iowan Old Style',Palatino,Georgia,serif;font-size:25px;font-weight:600}
+.head p{color:#a89e8f;font-size:14px;margin-top:6px;max-width:76ch;line-height:1.55}
+.stage{max-width:1400px;margin:0 auto;display:flex;gap:28px;flex-wrap:wrap;justify-content:center}
+.col{width:360px}
+.col-label{margin-bottom:11px}
+.col-label b{font-size:14px;display:block}
+.col-label span{font-size:12px;color:#a89e8f;display:block;margin-top:2px;line-height:1.5}
+
+/* ═════════════════════════════════════════════════
+   ORBIT DESIGN TOKENS — "Two Rooms"
+   Canonical values. See docs/DESIGN.md §3.
+   ═════════════════════════════════════════════════ */
+.day{
+  --room:#f2efe9;            /* screen background */
+  --room-air:none;           /* atmosphere layer (stars at night) */
+  --paper:#fffdf9;           /* raised card surface */
+  --paper-edge:#e7dfd2;      /* card border */
+  --paper-shadow:0 1px 5px rgba(50,40,25,.06);
+  --note:#f8eecb;            /* the owe-sticky */
+  --note-edge:#eadcae;
+  --note-tilt:rotate(.4deg); /* day only */
+  --ink:#292520;             /* primary text */
+  --ink-muted:#6c655a;       /* secondary */
+  --ink-faint:#989083;       /* labels, footnotes */
+  --ember:#8a5f36;           /* THE accent: sepia by day */
+  --ember-wash:#ecd9b4;      /* highlight underline */
+  --ember-ink:#fffdf9;       /* text on ember fills (§3.6 buttons) */
+  --note-ink:#292520;
+  --portrait-bg:#ddd3c2;
+  --portrait-frame:0 0 0 4px #fffdf9,0 2px 8px rgba(50,40,25,.14); /* print border */
+  --pill-bg:#fffdf9; --pill-edge:#e2d9c9;
+  --radius-card:13px; --radius-portrait:12px;
+  --serif:'Iowan Old Style',Palatino,Georgia,serif;
+}
+.night{
+  --room:#101423;
+  --room-air:radial-gradient(1.4px 1.4px at 20% 5%,rgba(255,255,255,.32),transparent),
+             radial-gradient(1px 1px at 78% 7%,rgba(230,178,115,.4),transparent),
+             radial-gradient(1px 1px at 55% 3%,rgba(255,255,255,.2),transparent);
+  --paper:rgba(255,255,255,.042);
+  --paper-edge:rgba(160,175,215,.15);
+  --paper-shadow:none;
+  --note:rgba(230,178,115,.09);
+  --note-edge:rgba(230,178,115,.28);
+  --note-tilt:none;          /* nothing tilts in the sky */
+  --ink:#dee3f0;
+  --ink-muted:#8f9ab9;
+  --ink-faint:#68749a;
+  --ember:#e6b273;           /* THE accent: amber by night */
+  --ember-wash:rgba(230,178,115,.42);
+  --ember-ink:#201709;       /* text on ember fills — amber demands dark text */
+  --note-ink:#dee3f0;
+  --portrait-bg:#1e2540;
+  --portrait-frame:0 0 0 1px rgba(230,178,115,.4),0 0 18px rgba(230,178,115,.13); /* ember ring */
+  --pill-bg:rgba(255,255,255,.05); --pill-edge:rgba(160,175,215,.2);
+  --radius-card:13px; --radius-portrait:12px;
+  --serif:'Iowan Old Style',Palatino,Georgia,serif;
+}
+
+.phone{width:360px;height:780px;border-radius:38px;overflow:hidden;box-shadow:0 20px 55px rgba(0,0,0,.42);
+  border:1px solid rgba(255,255,255,.07);background:var(--room);color:var(--ink)}
+.scr{height:100%;overflow-y:auto;padding:24px 16px 36px;background-image:var(--room-air)}
+.scr::-webkit-scrollbar{width:0}
+
+.kick{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px;padding:0 4px}
+.hrow{display:flex;gap:13px;align-items:center;padding:0 4px;margin-bottom:13px}
+.av{width:58px;height:58px;flex-shrink:0;display:grid;place-items:center;font-family:var(--serif);
+  font-size:22px;font-weight:600;background:var(--portrait-bg);color:var(--ember);
+  border-radius:var(--radius-portrait);box-shadow:var(--portrait-frame)}
+.name{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:-.01em}
+.meta{font-size:12px;color:var(--ink-muted);margin-top:3px;line-height:1.5}
+.meta b{color:var(--ink);font-weight:600}
+.pill{display:inline-flex;align-items:center;gap:7px;margin:2px 4px 16px;padding:9px 15px;border-radius:22px;
+  font-size:12.5px;font-weight:600;color:var(--ember);background:var(--pill-bg);border:1px solid var(--pill-edge);cursor:pointer}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.tile{border-radius:var(--radius-card);padding:13px 14px;background:var(--paper);
+  border:1px solid var(--paper-edge);box-shadow:var(--paper-shadow)}
+.tag{font-size:9px;letter-spacing:.11em;text-transform:uppercase;font-weight:650;color:var(--ink-faint);display:block;margin-bottom:7px}
+.hero{grid-column:1/-1}
+.hero .tag{color:var(--ember)}
+.hero .big{font-family:var(--serif);font-size:17.5px;line-height:1.52;font-weight:550}
+.hero .big em{font-style:normal;color:var(--ember);border-bottom:2px solid var(--ember-wash)}
+.hero .sub{font-size:12px;color:var(--ink-muted);margin-top:8px;line-height:1.5}
+.t-item{font-size:12.5px;font-weight:600;line-height:1.4}
+.t-note{font-size:11px;color:var(--ink-muted);margin-top:3px;line-height:1.45}
+.more{font-size:11px;color:var(--ember);font-weight:600;margin-top:9px;display:block}
+.sticky{background:var(--note);border:1px solid var(--note-edge);transform:var(--note-tilt)}
+.sticky .tag{color:var(--ember)}
+.s-text{font-family:var(--serif);font-size:12.5px;line-height:1.5;color:var(--note-ink)}
+.chg{grid-column:1/-1}
+.c-text{font-size:12.5px;line-height:1.5;color:var(--ink-muted)}
+.c-text b{color:var(--ink);font-weight:600}
+.stack{grid-column:1/-1}
+.mem{font-family:var(--serif);font-size:13.5px;line-height:1.58;padding:7px 0;border-bottom:1px dashed var(--paper-edge)}
+.mem:last-of-type{border-bottom:none}
+.mem em{font-style:normal;border-bottom:2px solid var(--ember-wash);padding-bottom:1px}
+.crow{grid-column:1/-1;display:flex;align-items:center;gap:10px;border-radius:var(--radius-card);
+  padding:12px 14px;background:var(--paper);border:1px solid var(--paper-edge);box-shadow:var(--paper-shadow);cursor:pointer}
+.crow .t{font-size:12.5px;font-weight:600;flex:1}
+.crow .n{font-size:11px;color:var(--ink-faint)}
+.crow .ch{color:var(--ink-faint);font-size:12px}
+
+/* Deck mode */
+.deckP{cursor:pointer;user-select:none}
+.deck{height:100%;display:flex;flex-direction:column;padding:24px 22px 18px;background-image:var(--room-air)}
+.dots{display:flex;gap:5px;margin-bottom:22px}
+.dot{height:3px;flex:1;border-radius:2px;background:var(--paper-edge);transition:.25s}
+.dot.on{background:var(--ember)}
+.dbody{flex:1;display:flex;flex-direction:column;justify-content:center}
+.dtag{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ember);font-weight:650;margin-bottom:18px}
+.dmain{font-family:var(--serif);font-size:24px;line-height:1.46;font-weight:550;letter-spacing:-.01em}
+.dmain em{font-style:normal;color:var(--ember);border-bottom:2px solid var(--ember-wash)}
+.dsub{font-size:14px;color:var(--ink-muted);line-height:1.6;margin-top:15px}
+.dsub b{color:var(--ink);font-weight:600}
+.dhint{text-align:center;font-size:11.5px;color:var(--ink-faint);padding:12px 0 4px}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>Orbit — "Two Rooms" reference mockup (ratified V3)</h1>
+  <p>Canonical reference for docs/DESIGN.md. Left to right: the Desk by day, the Desk by night, and Deck mode ("walk me in") at night — tap it to advance. The CSS custom properties in this file are the canonical token values.</p>
+</div>
+
+<div class="stage">
+  <div class="col">
+    <div class="col-label"><b>The Desk · Day</b><span>Photo-paper room. Print-border portrait, one tilted note.</span></div>
+    <div class="phone day"><div class="scr" id="pDay"></div></div>
+  </div>
+  <div class="col">
+    <div class="col-label"><b>The Desk · Night</b><span>Sky room. Same bones — ember ring, star dust, nothing tilts.</span></div>
+    <div class="phone night"><div class="scr" id="pNight"></div></div>
+  </div>
+  <div class="col">
+    <div class="col-label"><b>Deck mode · Night</b><span>"Walk me in" — one thing at a time. Tap to advance.</span></div>
+    <div class="phone night deckP" id="deckPhone"><div class="deck" id="deck"></div></div>
+  </div>
+</div>
+
+<script>
+const profile = `
+  <div class="kick">Before you meet</div>
+  <div class="hrow">
+    <div class="av">S</div>
+    <div>
+      <div class="name">Sarah</div>
+      <div class="meta">Met <b>March 2023</b> · through <b>Alex</b> · last seen <b>2 months ago</b></div>
+    </div>
+  </div>
+  <div class="pill">✦ Walk me in · 60-second refresher</div>
+  <div class="g">
+    <div class="tile hero">
+      <span class="tag">If you remember one thing</span>
+      <div class="big">Her brother's visit is <em>this month</em> — he lives abroad, and his visits are rare enough that they matter to her.</div>
+      <div class="sub">She told you at dinner in June, in passing. Asking about it is the whole game.</div>
+    </div>
+    <div class="tile">
+      <span class="tag">Open</span>
+      <div class="t-item">The Boston move</div>
+      <div class="t-note">"Probably, not definitely" — her partner's job decides it.</div>
+      <span class="more">1 more ›</span>
+    </div>
+    <div class="tile sticky">
+      <span class="tag">You owe</span>
+      <div class="s-text">The agent-memory paper you promised her in June.</div>
+    </div>
+    <div class="tile chg">
+      <span class="tag">Since you last saw her</span>
+      <div class="c-text"><b>Joined Stripe in November</b> — after four years at Google. You found out at the June dinner.</div>
+    </div>
+    <div class="tile stack">
+      <span class="tag">Worth having back</span>
+      <div class="mem">She wants to learn <em>videography</em> — she's brought it up twice, unprompted.</div>
+      <div class="mem">You talked about AI agents for an hour and she <em>kept the thread going</em>, not you.</div>
+      <span class="more">9 more ›</span>
+    </div>
+    <div class="crow"><span class="t">Timeline</span><span class="n">14 events since 2023</span><span class="ch">›</span></div>
+    <div class="crow"><span class="t">Reach her</span><span class="n">phone · Instagram</span><span class="ch">›</span></div>
+  </div>`;
+document.getElementById('pDay').innerHTML = profile;
+document.getElementById('pNight').innerHTML = profile;
+
+const cards = [
+  {tag:'Before you meet', main:'Sarah', sub:'Met <b>March 2023</b> through Alex · last seen two months ago. Five things to walk in with.'},
+  {tag:'If you remember one thing', main:'Her brother\'s visit is <em>this month</em>.', sub:'He lives abroad — rare enough that it matters to her. She mentioned it in passing at the June dinner.'},
+  {tag:'Still open', main:'The <em>Boston move</em> — probably, not definitely.', sub:'Her partner\'s job decides it. You never heard how it landed.'},
+  {tag:'You owe her', main:'The <em>agent-memory paper</em> you promised in June.', sub:'Send it before, or bring it up at lunch.'},
+  {tag:'Since you last saw her', main:'She joined <em>Stripe</em> in November — after four years at Google.', sub:'You learned this at the June dinner, so she may assume you know more than you do.'},
+  {tag:'That\'s everything', main:'Go be present.', sub:'Full timeline on her profile if you want depth.'}
+];
+let ci=0;
+function renderDeck(){
+  const c=cards[ci];
+  document.getElementById('deck').innerHTML=`
+    <div class="dots">${cards.map((_,i)=>`<div class="dot ${i<=ci?'on':''}"></div>`).join('')}</div>
+    <div class="dbody"><div class="dtag">${c.tag}</div><div class="dmain">${c.main}</div><div class="dsub">${c.sub}</div></div>
+    <div class="dhint">${ci<cards.length-1?`tap to continue · ${ci+1} of ${cards.length}`:'tap to start over'}</div>`;
+}
+document.getElementById('deckPhone').addEventListener('click',()=>{ci=(ci+1)%cards.length;renderDeck();});
+renderDeck();
+</script>
+</body>
+</html>

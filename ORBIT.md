@@ -117,7 +117,8 @@ A Person is connected to:
 6. Memories
 7. Tasks and Follow-ups
 8. Other People
-9. Organizations and Entities
+9. Groups — shared social units
+10. Organizations and Entities
 
 ---
 
@@ -222,9 +223,11 @@ The system should extract: the event, the people involved, new information, hist
 
 The goal is to speak naturally — not to fill out forms.
 
-Capture runs **entirely on-device**. Nothing is sent to a third party. Recordings of private conversations about other people — who never consented to being recorded — are the most sensitive thing this system can hold, and a product built on trust cannot ship them elsewhere.
+**Recording and transcription run entirely on-device, and audio never leaves the device. Ever.** The recording is the most sensitive artifact this system can hold — another person's actual voice, captured without their knowledge — and no quality argument justifies shipping it elsewhere.
 
-**Audio is deleted once its transcript is confirmed.** The transcript becomes the permanent record; the recording is not kept. This makes transcript review genuinely consequential rather than a formality — misheard names especially should be easy to catch and correct, because once confirmed, the audio is gone.
+**Audio is deleted once its transcript is confirmed.** The transcript becomes the permanent record; the recording is not kept. This makes transcript review genuinely consequential rather than a formality — the transcript is fully editable before confirmation, and misheard names especially should be easy to catch, because once confirmed, the audio is gone.
+
+**Structuring the transcript may use an AI service, under strict conditions.** Turning natural speech into structured memory is a hard language task, and doing it well currently requires models too large to run on a phone. So transcripts — never audio — may be sent for extraction, only to an endpoint with zero data retention and no training on the content, with no third-party analytics attached, and stated plainly in the product rather than buried in a policy. This is a real tradeoff, made consciously: the transcript still describes people who never consented to being described. The extraction seam is built to be swappable, so when on-device models become good enough, the API becomes an implementation detail that ages out — the promise should tighten over time, never loosen.
 
 ---
 
@@ -341,6 +344,19 @@ The orbit is not necessarily a measure of how much someone matters. A close fami
 
 Therefore, **orbit and maintenance should be modeled separately.**
 
+### Groups and Lists
+
+Orbits describe how close each person is. **Groups** describe something orthogonal: the social units people form together — the roommates, the Sunday soccer crew, the cohort that became friends.
+
+A group is a **social fact**: its members would recognize it by name. That test separates it from a **list**, which is a lens — "everyone I met through startup school," "people interested in AI." The two work completely differently:
+
+- **Groups are created by Abdoul, and only by Abdoul.** Orbit never proposes one, even when the same five people keep appearing at events together. Naming a social unit is an act of the person inside it; a system that notices friend groups before their members name them has crossed from copilot to surveillance. Membership changes over time, and past membership is history — "was part of the climbing group in 2024" is preserved, not deleted.
+- **Lists are never curated.** They are saved questions, answered fresh from the record every time — always current, requiring no maintenance. A hand-tended list rots; a question cannot.
+
+What groups are for: speaking naturally ("had dinner with the book club"), and relational context in recall ("you always see Dom around Leon"). What lists are for: everything organizational — grouping by origin, interest, place, or era costs nothing and stays true by construction.
+
+**Whether two people know each other is derived, never asserted.** Orbit answers from evidence — a stated relationship, an introduction, shared presence at a small event — and cites it: *"they were both at the Futureforce dinner."* It never silently concludes friendship from co-attendance.
+
 ---
 
 ## 14. Relationship Maintenance
@@ -450,6 +466,89 @@ Orbit should have three fundamental modes:
 3. **Discover** — "Who do I know that can help with this?" Orbit searches and reasons over the network.
 
 Together: **Capture → Remember → Discover**
+
+### The Use-Case Inventory
+
+The three modes are abstractions. These are the concrete jobs Orbit gets hired for — the inventory that surfaces, screens, and entry points must answer to. Frequency drives prominence: something done daily earns the center of a screen; something done twice a year earns a menu.
+
+#### Capturing life — daily
+
+| Use case | Example |
+| --- | --- |
+| Post-event debrief | "Had lunch with Sarah…" — spoken within hours of any interaction: breakfast, a run, a dinner, a call |
+| Group event capture | "Met Alex, Sarah, James, and Maria at the conference…" |
+| Secondhand news | "Alex told me Maria just got back from Japan" |
+| Contact details | Pasting an Instagram handle after exchanging socials; "her email is…" mid-memo |
+| Micro-note | "Sarah's birthday is March 3" — a remembered fact with no interaction attached |
+| Relationship reflection | Describing in his own words what a relationship is and where he wants it to go (§12) — occasional, not per-event |
+| Backfill portrait | Onboarding: sitting down to describe someone he's known for years, from scratch |
+
+#### Before seeing someone — weekly
+
+| Use case | Example |
+| --- | --- |
+| Scheduled prep | Reading the full brief before a lunch |
+| The 60-second walk-in | Deck mode, walking to the door |
+| Long-gap revival | "I haven't seen this person in two years" — the founding scenario |
+| Mid-conversation check | The bathroom glance: recalling something *already in their profile from past captures* — "what's her boyfriend's name again?" Nothing is captured mid-conversation; this is retrieval only, and it must be fast and fragment-searchable |
+| Incoming-name placement | A call or text from a name he can't place: "how do I know this person?" |
+
+#### Answering questions about people — weekly
+
+| Use case | Example |
+| --- | --- |
+| Direct name search | "Sarah" — including nicknames and misspellings |
+| Fragment search | Tip-of-the-tongue: "the guy from Greece at the picnic" — attributes, not names |
+| Fact lookup | "Where does James work now?" "What's Sarah's brother's situation?" |
+| Provenance check | "Did she tell me that, or did Alex? When did I learn it?" — verifying his own memory |
+| Promise check | "What have I left open — with her, or with anyone?" |
+| Timeline check | "When did I last see her? What did we do?" |
+
+#### Finding people for a need — weekly to monthly
+
+| Use case | Example |
+| --- | --- |
+| Company | "Who do I know at Google?" |
+| Warm path | "Who can connect me to someone at Anthropic?" — includes people known only secondhand |
+| Expertise | "Who knows low-latency systems?" "Who should I ask about visas?" |
+| Interest | "Who's into videography?" |
+| Place | "I'm in New York next week — who's there?" |
+| Event or origin | "Who did I meet at startup school?" "Who do I know through Alex?" |
+| Era | "Who did I know in college?" "Who haven't I seen in two years?" |
+| Brokering | "Maria wants to collaborate — who should she meet?" Introducing people to each other |
+| Hosting | "I'm planning a dinner — who should come?" Groups × interests × place |
+| Reconnection sweep | "I'm free this weekend — who do I want to see?" |
+
+#### Keeping relationships alive — weekly to monthly
+
+| Use case | Example |
+| --- | --- |
+| Context-rich reach-out | "Her interview was two weeks ago — ask how it went" (§14: threads, never frequency) |
+| Life-event timing | The brother's visit is this month; the exam is Friday |
+| Cadence reflection | "Seen Sarah less this year — or just captured less?" — observation, never recommendation |
+| Loop follow-through | "You still owe Dom that essay" |
+| Orbit gardening | An occasional deliberate session: updating relationship narratives, moving people between orbits |
+
+#### Trust and upkeep — rare
+
+| Use case | Example |
+| --- | --- |
+| Set-aside triage | Working through deferred proposals, at leisure |
+| Duplicate merge | "These two Sarahs are the same person" |
+| Correction | Fixing a wrong fact; seeing what was corrected and why |
+| Export | Taking the entire memory out, readable — the data is his |
+
+#### What the inventory implies
+
+Nearly every use case enters through one of **three doors**:
+
+1. **"What happened?"** — capture, in all its forms. The only daily-frequency door; it earns the center.
+2. **"Who…?"** — one search field that accepts a name, a company, a fragment, or a question. The name search and "who do I know at Google" are the same door — the user should never have to know which kind of query they're making.
+3. **"I'm seeing someone"** — the brief, reached through search or through whatever surfaced the person.
+
+Maintenance never earns a door of its own: it arrives as context *inside* the other doors (a loop on a profile, a life event in a brief), because a dedicated "relationships to service" surface is the CRM Orbit must never become.
+
+Two inventory items — the **micro-note** and the **backfill portrait** — do not fit the event model cleanly (an event requires participants who were *present*; these captures have subjects but no interaction). The data model must resolve this rather than force fake events.
 
 ---
 

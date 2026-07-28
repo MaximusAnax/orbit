@@ -142,6 +142,8 @@ erDiagram
     PERSON }o--o{ EVENT : "participates in"
     PERSON ||--o{ OPEN_LOOP : "owes / is owed"
     PERSON ||--o{ THREAD : "has ongoing"
+    PERSON ||--o{ GROUP_MEMBERSHIP : "belongs via"
+    GROUP ||--o{ GROUP_MEMBERSHIP : has
     EVENT ||--o| EXTRACTION : produces
     EVENT ||--o{ AMENDMENT : "corrected by"
     EXTRACTION ||--o{ SYNC_RUN : feeds
@@ -303,9 +305,30 @@ A continuing situation in someone's life that spans multiple events and has a st
 
 **Guard against over-generation.** The obvious failure mode is an extractor that promotes every passing remark to a thread, burying the real ones. The bar: **a thread must have a plausible future resolution.** *"She likes sushi"* is not a thread. *"She's deciding whether to move to Boston"* is. If you cannot imagine the sentence that closes it, it is a fact.
 
+### Group & GroupMembership — *addition to ORBIT.md, ratified*
+
+A **Group** is a social fact: a set of people who form a recognized unit in the world — the roommates, the Sunday soccer crew, the Futureforce cohort-turned-friends. Not a tag, not a folder: the test is whether the members themselves would nod at the name.
+
+**Group**: `id`, `name`, `notes`, `created_at`
+**GroupMembership**: `group_id`, `person_id`, `valid_from`, `valid_to`, `source_event_id`
+
+Membership is time-bounded and append-only like every other fact — people drift out of groups, and "was part of the climbing group 2024–2025" is history (Principle 2), not a row to delete.
+
+What groups buy, concentrated in capture and recall:
+
+- **Capture:** *"had dinner with the book club"* resolves to members in one phrase — Principle 3 at the group scale.
+- **Recall:** the brief can carry relational context — "you always see Dom around Leon."
+- **Discovery:** "who in the Futureforce crew…" as a first-class scope.
+
+**Lists are deliberately NOT a table.** A list — "everyone I met through startup school," "people interested in AI" — is a **saved query** over data the model already holds (`first_met_event_id` provenance, assertions, entities). Curated lists rot and demand maintenance (Principle 10); queries are always current and cost nothing. A **SavedList** is just `id`, `name`, `query_definition` — no membership rows to maintain.
+
+**Groups are created by Abdoul, and only by Abdoul.** Orbit never proposes one — not even when five people keep appearing at events together. Naming a social unit is an act of the person inside it; a system that notices your friend groups before you name them has crossed from copilot to surveillance, however accurate it is. If a list has quietly become a real group, Abdoul will know it long before the data does — creation is one deliberate action, and that is cheap enough.
+
+**Knows-each-other is derived, never materialized.** No N² "James knows Maria" edges per group event — a six-person dinner would emit fifteen proposals of pure noise. Mutual acquaintance is answered at query time from three stored sources, with evidence attached: explicit `relation` assertions, `introduced_by` roles, and co-attendance at small events. *"Do CJ and Grace know each other? — they were both at the Futureforce dinner."* Cites what it knows; asserts nothing it inferred (Principle 4). The `network_graph` read model projects these co-attendance edges cheaply from event participants.
+
 ### Entity & EntityAlias
 
-`Entity`: `id`, `kind` (`organization \| school \| place \| topic \| skill \| event_series`), `canonical_name`, `metadata`
+`Entity`: `id`, `kind` (`organization \| school \| place \| topic \| skill \| event_series`), `canonical_name`, `part_of` (nullable entity_id — sub-event → umbrella, one level; §7.10), `metadata`
 `EntityAlias`: `entity_id`, `alias`
 
 Canonical entities are what make §17 a graph traversal rather than a string match. "Who do I know at Anthropic?" resolves *Anthropic PBC*, *Anthropic*, and a typo to one node, then walks its inbound `employment` edges filtered to currently-valid ones.
@@ -346,7 +369,7 @@ Append-only temporal facts are ideal for *"where did Sarah used to work"* and ho
 
 1. **`current_state`** — materialized view of assertions where `valid_to IS NULL AND status = 'active' AND subject_id IS NOT NULL`. Powers profiles and network queries. Rebuilt incrementally on proposal acceptance.
 2. **`timeline`** — per-person chronological assertion history. Powers §6 questions and the "how this person changed" view.
-3. **`network_graph`** — person ↔ entity ↔ person edges projected from current_state. Powers §17.
+3. **`network_graph`** — person ↔ entity ↔ person edges projected from current_state, plus derived co-attendance and group-membership edges (people who shared small events or a group; see Group section). Powers §17 and knows-each-other queries.
 4. **`contact_rhythm`** — per-person observed contact rate over time, projected from events. Powers maintenance (§9.5). Derived, never authored — it must not be confused with the human-set `desired_cadence` it is compared against.
 
 Rebuildability is the point. When extraction improves, or a bug corrupts an index, the log is authoritative and every view regenerates. Nothing derived is ever the only copy of anything.
@@ -390,6 +413,12 @@ Other practical notes:
 - Verify current model names, sizes, and the Apple API surface at build time; this recommendation is directionally right but the specifics move.
 
 **A design consequence of discarding audio:** because the transcript becomes the only artifact, transcript review must happen *before* deletion and must be genuinely easy to correct — misheard names especially. Suggest showing low-confidence spans inline for one-tap fixing, and running a name-match pass against known contacts to catch near-misses before the audio is gone.
+
+**Empirical check (2026-07-27, three real memos, `large-v3-turbo-q5_0`):** transcription quality was high — names like *Nikos* and *Sekou* came through correctly unprompted. The biasing claim above held (*"Salesforce Future Force"* → *"Futureforce"* with a primed prompt) but with a real cost found in testing: **on disfluent, stuttery speech the primed run fell into repetition loops** (*"it was Lucas, Lucas was there, it was Lucas was there…"*), a known Whisper failure mode. Disabling context carryover (`-mc 0`) eliminated the loops and recovered detail both other runs missed, but weakened the prompt's influence. Consequences:
+
+- The production pipeline needs decode-parameter tuning (entropy threshold, context carryover) as a first-class concern, not a default.
+- The **name-match post-pass against contacts is the primary correctness mechanism**, with prompt biasing as an assist — the reverse of what §6 originally assumed.
+- Real speech also surfaced a case worth designing for: a companion sharing the user's own name ("Abdul" at dinner, user Abdoul). Attribution ambiguity between *the user* and *a namesake* must route through DISAMBIGUATE like any other.
 
 ---
 
@@ -454,6 +483,59 @@ Two cases that *resemble* the singleton event are real, and neither needs one:
 That second case exposed a gap in the original model, which had no way to distinguish *Sarah told me she's engaged* from *Alex told me Sarah's engaged*. Principle 4 cares about that difference — one is testimony, the other is hearsay, and treating them identically manufactures false confidence.
 
 Hence `source_kind` and `attributed_to_person_id` on Assertion. This also makes assertion subjects formally independent of event participants, which is what lets `known_of` people (§7.3) accumulate facts at all.
+
+### 7.7 Identity resolution: names are never keys
+
+Real capture surfaced the namesake problem immediately (a dinner guest named "Abdul"; the user is Abdoul). The resolution procedure for mapping a spoken name onto a Person id:
+
+**No attribute is a hard identity key — the model itself forbids it.** "Different city → different person" breaks the moment Sarah moves to Boston, which is this document's own worked example. Employer, school, city, and interests are all mutable by design; hard-keying identity on any of them makes the model's own account of change spawn phantom duplicates. Instead:
+
+- **Near-immutable evidence (strong):** the `first_met_event_id` provenance chain ("Dom-via-Leon" and "Dom from the gym" are different people almost by construction); *completed* education history; family relations; origin ("Nikos is from Greece").
+- **Mutable attributes (corroborating only):** current employer, city, school, interests.
+- **The rule:** a bare name never merges and never auto-links. Name + strong corroboration → propose LINK to the existing person. Name + conflicting near-immutable evidence → propose CREATE, with the conflict stated in the rationale. Anything murky → DISAMBIGUATE. No branch guesses silently.
+
+**Spelling is confirmed where the name is born.** Every new person already passes through review via their CREATE_PERSON proposal, so the name is inline-editable on that card rather than raised as a separate question — zero added steps in the common case, and the edit propagates to the person's other proposals. Blocking questions are reserved for collisions with existing people (including the user's own name) and low transcription confidence.
+
+### 7.8 Contact points: how they enter
+
+The ContactPoint schema existed from the start; what real usage exposed was the missing *entry routes*, in build order:
+
+1. **Link to OS Contacts — live-read, never copy, never write back.** New-person review fuzzy-matches the address book and proposes a link. Phone/email render from the linked contact at display time, so nothing drifts. Orbit stores the link plus Orbit-native points (socials).
+2. **Profile quick-add** — paste a handle onto the profile, no form.
+3. **Voice capture** — "her Instagram is sarah dot k dot films" becomes a ContactPoint proposal. Handles are transcription-hostile, so voice-derived points render as unverified until first successfully used.
+4. **Share-sheet import** — deferred.
+
+Schema addition: `source` on ContactPoint (`linked_contact | manual | voice | import`), powering the unverified rendering for voice-derived points.
+
+### 7.9 Extraction runs via API; audio never does
+
+Ratified 2026-07-27, with ORBIT.md §8 amended to match. The promise splits in two:
+
+- **Audio never leaves the device** — absolute, no exceptions. Recording and transcription (whisper.cpp) stay local.
+- **Transcripts may go to an LLM API for extraction**, under strict conditions: zero-retention/no-training endpoint, no third-party analytics, disclosed plainly in the product.
+
+The reasoning: extraction quality is where hedges, hearsay, and attribution live — exactly the nuance Principles 4 and 7 depend on — and current on-device models are not good enough at it. The transcript is still sensitive (it describes people who didn't consent to being described), so this is a conscious cost, not a free move.
+
+**Architectural requirement:** the extraction seam is swappable. `model_id` on Extraction already supports this; nothing outside the extraction boundary may know or care whether the model is local or remote. When on-device models suffice, the API ages out and the privacy promise tightens. It must never loosen.
+
+### 7.10 Entity resolution at capture: strings never carry identity
+
+Lists and network queries are only as good as entity identity. If *"Y Combinator Startup School Picnic"*, *"Y Combinator Startup School"*, and a typo each spawn their own entity, the "met through startup school" list silently fragments — and nobody notices, because each fragment looks internally consistent.
+
+**The rule: strings never carry identity — entity IDs do.** Four guarantees:
+
+1. **Queries never match strings.** Events link context through entity references (`location_entity_id`, assertion `object_entity_id`); the spoken phrasing lives only in the verbatim layer and is never consulted at query time. A list is a traversal over IDs.
+2. **Fuzzy matching happens once, at sync — and it is a reviewed proposal.** The extractor matches the spoken phrase against existing entities and their aliases, then proposes LINK-to-existing or CREATE-new. The link/create decision goes through review like any other proposal; it is never a silent string comparison at query time.
+3. **Each confirmed variant becomes an `EntityAlias`**, so resolution converges: the more ways Abdoul says it, the better the matcher gets. Same mechanism as topic canonicalization (§7.2).
+4. **Duplicate entities merge by pointer**, exactly like people (Decision 6) — so a fragmentation mistake heals retroactively across every past event the moment it is noticed, and unmerge remains one field.
+
+**Sub-events are distinct entities, never flattened.** Real usage surfaced this immediately: the picnic was a genuine kickoff event the day before the two-day startup school — a different day, a different thing. Merging it into the parent would erase a distinction Abdoul actually holds in memory, which Principle 7 forbids. Instead:
+
+- The picnic and the program are **separate entities joined by a `part_of` edge**, proposed at sync and confirmed at review.
+- **Recall renders the precise context** — "met at the picnic," which is how the memory actually works.
+- **List and network queries expand through `part_of`** — "met through startup school" includes picnic people, because the umbrella subsumes its parts.
+
+Same two-layer pattern as §7.2: store the fine distinction, query the umbrella. The hierarchy stays one level deep (umbrella + member) until a real capture demands more — inventing deeper nesting now would be structure without evidence.
 
 ---
 
@@ -599,7 +681,11 @@ But a fully manual orbit will rot. Abdoul will not remember to update it, the fi
 
 ## 10. Status
 
-**The design-level model is closed.** Every question raised in this document has been resolved. What remains is risk that only shows up in implementation, not in argument:
+**The design-level model is closed.** Groups & SavedLists ratified 2026-07-27 (see Entity reference): groups as explicit social facts created only by Abdoul, time-bounded membership, lists as saved queries never curated, knows-each-other derived with evidence rather than materialized.
+
+**One gap reopened by the use-case inventory (ORBIT.md §18):** the **micro-note** ("Sarah's birthday is March 3", remembered in the shower) and the **backfill portrait** (onboarding: describing a years-old friendship from scratch) are captures with *subjects but no interaction* — §7.6's participant requirement assumes presence, and neither fits. Direction to explore: an event kind `note` whose participants carry a new attendance value `about` (subject-of, not present-at), keeping provenance intact without faking presence. Backfill is then a long note. Not yet designed; must be resolved before the capture pipeline is built, since onboarding depends on it.
+
+What remains beyond that is risk that only shows up in implementation, not in argument:
 
 - **Group-event review has never been walked through end to end.** The model handles ambiguous attribution correctly (Decision 5), but a six-person conference producing thirty proposals is a review-flow problem, and Principle 10 is easiest to violate right there. This is the highest-risk untested path.
 - **Whether `project` threads need milestones.** A novel or a degree resolves in stages rather than at a moment, and a single `open → resolved` transition may be too blunt. Deferred until there is real usage to look at — inventing the shape now would be guessing.

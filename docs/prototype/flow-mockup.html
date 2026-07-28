@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orbit — The Capture Flow in Two Rooms</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#141210;color:#e8e2d8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;
+  padding:34px 26px 80px;-webkit-font-smoothing:antialiased}
+.head{max-width:1420px;margin:0 auto 8px}
+.head h1{font-family:'Iowan Old Style',Palatino,Georgia,serif;font-size:25px;font-weight:600}
+.head p{color:#a89e8f;font-size:14px;margin-top:6px;max-width:78ch;line-height:1.55}
+.row{max-width:1420px;margin:38px auto 0}
+.row-label{margin-bottom:12px;max-width:78ch}
+.row-label b{font-size:15px;display:block}
+.row-label span{font-size:12.5px;color:#a89e8f;display:block;margin-top:3px;line-height:1.5}
+.pair{display:flex;gap:26px;flex-wrap:wrap}
+
+/* ── Two Rooms tokens (canonical: v3-mockup.html) ── */
+.day{
+  --room:#f2efe9;--room-air:none;
+  --paper:#fffdf9;--paper-edge:#e7dfd2;--paper-shadow:0 1px 5px rgba(50,40,25,.06);
+  --note:#f8eecb;--note-edge:#eadcae;--note-tilt:rotate(.4deg);
+  --ink:#292520;--ink-muted:#6c655a;--ink-faint:#989083;
+  --ember:#8a5f36;--ember-wash:#ecd9b4;--ember-ink:#fffdf9;
+  --portrait-bg:#ddd3c2;--portrait-frame:0 0 0 3px #fffdf9,0 2px 6px rgba(50,40,25,.14);
+  --pill-bg:#fffdf9;--pill-edge:#e2d9c9;
+  --radius-card:13px;--radius-portrait:12px;
+  --serif:'Iowan Old Style',Palatino,Georgia,serif}
+.night{
+  --room:#101423;
+  --room-air:radial-gradient(1.4px 1.4px at 20% 4%,rgba(255,255,255,.32),transparent),
+             radial-gradient(1px 1px at 78% 6%,rgba(230,178,115,.4),transparent),
+             radial-gradient(1px 1px at 55% 2%,rgba(255,255,255,.2),transparent);
+  --paper:rgba(255,255,255,.042);--paper-edge:rgba(160,175,215,.15);--paper-shadow:none;
+  --note:rgba(230,178,115,.09);--note-edge:rgba(230,178,115,.28);--note-tilt:none;
+  --ink:#dee3f0;--ink-muted:#8f9ab9;--ink-faint:#68749a;
+  --ember:#e6b273;--ember-wash:rgba(230,178,115,.42);--ember-ink:#201709;
+  --portrait-bg:#1e2540;--portrait-frame:0 0 0 1px rgba(230,178,115,.4),0 0 14px rgba(230,178,115,.13);
+  --pill-bg:rgba(255,255,255,.05);--pill-edge:rgba(160,175,215,.2);
+  --radius-card:13px;--radius-portrait:12px;
+  --serif:'Iowan Old Style',Palatino,Georgia,serif}
+
+.phone{width:340px;height:760px;border-radius:36px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.42);
+  border:1px solid rgba(255,255,255,.07);background:var(--room);color:var(--ink);flex-shrink:0}
+.scr{height:100%;overflow-y:auto;padding:24px 18px 34px;background-image:var(--room-air)}
+.scr::-webkit-scrollbar{width:0}
+
+.kick{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px}
+.title{font-size:20px;font-weight:650;letter-spacing:-.015em;margin-bottom:5px}
+.sub{font-size:12.5px;color:var(--ink-muted);line-height:1.55;margin-bottom:16px}
+
+.btn{display:block;width:100%;text-align:center;font-size:14px;font-weight:600;border-radius:12px;
+  padding:13px 16px;cursor:pointer;border:1px solid transparent;font-family:inherit}
+.btn-fill{background:var(--ember);color:var(--ember-ink)}
+.btn-ghost{background:none;border-color:var(--pill-edge);color:var(--ink-muted)}
+.gap8{height:8px}
+
+/* home */
+.home-cap{display:flex;flex-direction:column;align-items:center;padding:34px 0 26px}
+.mic{width:92px;height:92px;border-radius:50%;background:var(--ember);border:none;cursor:pointer;
+  display:grid;place-items:center;box-shadow:0 0 0 10px var(--note),0 6px 22px rgba(0,0,0,.18)}
+.mic svg{width:34px;height:34px;fill:var(--ember-ink)}
+.home-cap .lbl{font-size:13px;font-weight:600;margin-top:16px;color:var(--ink)}
+.home-cap .hint{font-size:11.5px;color:var(--ink-faint);margin-top:3px}
+.searchpill{display:flex;align-items:center;gap:9px;background:var(--paper);border:1px solid var(--paper-edge);
+  box-shadow:var(--paper-shadow);border-radius:22px;padding:12px 16px;font-size:13px;color:var(--ink-faint);margin-bottom:18px}
+.softcard{background:var(--paper);border:1px solid var(--paper-edge);box-shadow:var(--paper-shadow);
+  border-radius:var(--radius-card);padding:13px 15px;margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.softcard .t{font-size:12.5px;font-weight:600;flex:1;line-height:1.4}
+.softcard .n{font-size:11px;color:var(--ink-faint)}
+.sect-lbl{font-size:9px;letter-spacing:.11em;text-transform:uppercase;font-weight:650;color:var(--ink-faint);margin:16px 0 9px}
+.people{display:flex;gap:12px}
+.pchip{display:flex;flex-direction:column;align-items:center;gap:6px;width:56px}
+.pav{width:46px;height:46px;border-radius:var(--radius-portrait);background:var(--portrait-bg);color:var(--ember);
+  display:grid;place-items:center;font-family:var(--serif);font-size:17px;font-weight:600;box-shadow:var(--portrait-frame)}
+.pchip span{font-size:10.5px;color:var(--ink-muted)}
+
+/* capture */
+.cap-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;height:86%}
+.wave{display:flex;gap:3px;align-items:center;height:40px;margin:24px 0 8px}
+.wave i{width:3px;border-radius:2px;background:var(--ink-faint)}
+.timer{font-variant-numeric:tabular-nums;font-size:15px;color:var(--ink-muted)}
+.mic-stop{width:96px;height:96px;border-radius:50%;background:var(--ember);border:none;cursor:pointer;
+  display:grid;place-items:center;margin-top:28px;box-shadow:0 0 0 12px var(--note)}
+.mic-stop div{width:30px;height:30px;border-radius:8px;background:var(--ember-ink)}
+.cap-hint{font-size:12px;color:var(--ink-muted);margin-top:20px;text-align:center;line-height:1.6}
+.cap-priv{font-size:11px;color:var(--ink-faint);margin-top:5px}
+
+/* transcript */
+.tr-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.tr-lbl{font-size:11px;color:var(--ink-faint)}
+.pencil{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ink-muted);
+  background:none;border:1px solid var(--pill-edge);border-radius:16px;padding:6px 12px;cursor:pointer}
+.transcript{font-family:var(--serif);font-size:15px;line-height:1.7;color:var(--ink);
+  background:var(--paper);border:1px solid var(--paper-edge);box-shadow:var(--paper-shadow);
+  border-radius:var(--radius-card);padding:15px 16px;margin-bottom:12px}
+.unc{border-bottom:2px dotted var(--ember);cursor:pointer}
+.notecard{display:flex;gap:9px;background:var(--note);border:1px solid var(--note-edge);transform:var(--note-tilt);
+  border-radius:11px;padding:11px 13px;font-size:11.5px;color:var(--ink-muted);line-height:1.5;margin-bottom:14px}
+.notecard b{color:var(--ink);font-weight:600}
+.tr-note{font-size:11.5px;color:var(--ink-faint);margin-bottom:13px;line-height:1.5}
+
+/* review */
+.phead{display:flex;align-items:center;gap:9px;margin:18px 0 9px}
+.phead .pav{width:26px;height:26px;font-size:11px;border-radius:8px}
+.phead b{font-size:13.5px;flex:1}
+.chip-new{font-size:9px;letter-spacing:.06em;text-transform:uppercase;background:var(--paper);
+  border:1px solid var(--paper-edge);color:var(--ink-faint);padding:3px 7px;border-radius:12px}
+.allbtn{font-size:11px;font-weight:600;color:var(--ink-muted);background:none;border:1px solid var(--pill-edge);
+  border-radius:14px;padding:5px 10px;cursor:pointer}
+.pcard{background:var(--paper);border:1px solid var(--paper-edge);box-shadow:var(--paper-shadow);
+  border-radius:var(--radius-card);padding:12px 14px;margin-bottom:8px}
+.pcard .tag{font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:650;color:var(--ink-faint);margin-bottom:6px;display:block}
+.pcard .claim{font-size:13.5px;font-weight:600;line-height:1.4;margin-bottom:8px}
+.pcard .claim .ne{border-bottom:2px dotted var(--ember);cursor:text}
+.pcard .quote{font-family:var(--serif);font-size:13px;color:var(--ink-muted);line-height:1.55;
+  border-left:2px solid var(--ember-wash);padding-left:10px;margin-bottom:9px}
+.pcard .why{font-size:11px;color:var(--ink-faint);line-height:1.5;margin-bottom:9px}
+.acts{display:flex;gap:6px;align-items:center}
+.acts .a{font-size:12px;font-weight:600;border-radius:9px;padding:7px 12px;cursor:pointer;border:1px solid transparent}
+.a-yes{background:var(--ember);color:var(--ember-ink)}
+.a-gh{background:none;border-color:var(--pill-edge);color:var(--ink-muted)}
+.a-later{margin-left:auto;font-size:11.5px;color:var(--ink-faint);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.settled{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-muted);
+  padding:9px 13px;border:1px solid var(--paper-edge);border-radius:var(--radius-card);margin-bottom:8px}
+.settled .ck{color:var(--ember);font-size:13px}
+.settled .u{margin-left:auto;font-size:10.5px;color:var(--ink-faint);text-decoration:underline;cursor:pointer}
+.ask{border-color:var(--ember);background:var(--note)}
+.ask .tag{color:var(--ember)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips .c{font-size:11.5px;background:var(--paper);border:1px solid var(--pill-edge);border-radius:14px;
+  padding:6px 11px;cursor:pointer;color:var(--ink)}
+
+/* saved */
+.tally{background:var(--paper);border:1px solid var(--paper-edge);box-shadow:var(--paper-shadow);
+  border-radius:var(--radius-card);padding:14px 16px;margin-bottom:14px}
+.tally div{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:var(--ink-muted)}
+.tally b{color:var(--ink);font-weight:600}
+.reassure{font-size:12.5px;color:var(--ink-muted);line-height:1.65;border-left:2px solid var(--ember-wash);
+  padding-left:12px;margin-bottom:18px}
+
+.verdicts{max-width:1420px;margin:44px auto 0;display:flex;gap:24px;flex-wrap:wrap}
+.v{width:440px;background:#1d1a17;border:1px solid #2c2822;border-radius:14px;padding:16px 18px}
+.v b{font-size:13px;display:block;margin-bottom:7px}
+.v p{font-size:12.5px;color:#a89e8f;line-height:1.6;margin-bottom:8px}
+.v p:last-child{margin-bottom:0}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>Orbit — the capture flow, in both rooms</h1>
+  <p>The daily loop in the ratified language: Home → Capture → Transcript → Review → Saved, every screen shown by day and by night. Capture follows life, not the clock — a breakfast, a run, a late dinner — so neither room is the flow's default; the app simply follows the system setting. Day content is the real Nikos picnic memo; night content is the real Futureforce dinner memo. New decisions the flow forced are flagged at the bottom.</p>
+</div>
+
+<div id="rows"></div>
+
+<div class="verdicts">
+  <div class="v"><b>New decisions this flow forced (to fold into DESIGN.md on ratification)</b>
+    <p><b>Buttons.</b> Primary = ember fill with a new token <code>ember-ink</code> (near-white by day, deep umber by night — amber needs dark text). Secondary = ghost outline on <code>pill-edge</code>. Tertiary = underlined text in <code>ink-faint</code> ("Later"). Three tiers, no more.</p>
+    <p><b>The two-voices law bites on screen titles.</b> "Does this look right?" is the system talking, so titles are sans/650 — the serif headers in the old Warm Archive prototype violated the law we later ratified. Serif appears in this flow only where life does: transcripts, quotes, names.</p>
+    <p><b>Uncertainty inherits the note material.</b> Ask-cards use the sticky-note tokens plus an ember border — questions sit on the same material as the owe-sticky: things to handle by hand, in both rooms.</p></div>
+  <div class="v"><b>Home: capture-first, three quiet zones</b>
+    <p>Search ("Who…?") on top as a pill; the mic as the room's single large ember object with its halo doubling as the tap target; below, only two quiet things — set-aside captures (count + "no rush", never a badge) and "Lately", a row of recent portraits as pure navigation. No feed, no stats, no suggestions: Principle 8 says better relationships, not more activity, and a home screen is where engagement mechanics usually creep in.</p>
+    <p><b>The privacy line lives on the capture screen</b> ("Recorded and transcribed on this device") — quiet, permanent, load-bearing for trust.</p></div>
+</div>
+
+<script>
+/* ── Screen templates. {K} placeholders swap per room so day shows the
+     morning capture (Nikos picnic) and night the dinner (Futureforce). ── */
+
+const home = (v) => `
+  <div class="kick">Orbit · ${v.date}</div>
+  <div class="searchpill">⌕&nbsp; Who…?</div>
+  <div class="home-cap">
+    <button class="mic"><svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4zm6-4a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-3.06A8 8 0 0 0 20 11h-2z"/></svg></button>
+    <div class="lbl">What happened?</div>
+    <div class="hint">Hold nothing back — you'll review everything.</div>
+  </div>
+  <div class="softcard"><span class="t">Two captures set aside</span><span class="n">no rush ›</span></div>
+  <div class="sect-lbl">Lately</div>
+  <div class="people">
+    <div class="pchip"><div class="pav">S</div><span>Sarah</span></div>
+    <div class="pchip"><div class="pav">D</div><span>Dom</span></div>
+    <div class="pchip"><div class="pav">N</div><span>Nikos</span></div>
+    <div class="pchip"><div class="pav">L</div><span>Lucas</span></div>
+  </div>`;
+
+const capture = (v) => `
+  <div class="kick">Capture</div>
+  <div class="cap-wrap">
+    <div class="title">Listening</div>
+    <div class="wave">
+      <i style="height:9px"></i><i style="height:22px"></i><i style="height:14px"></i><i style="height:30px"></i>
+      <i style="height:18px"></i><i style="height:26px"></i><i style="height:11px"></i><i style="height:24px"></i>
+      <i style="height:16px"></i><i style="height:28px"></i><i style="height:12px"></i><i style="height:20px"></i><i style="height:8px"></i>
+    </div>
+    <div class="timer">${v.timer}</div>
+    <button class="mic-stop"><div></div></button>
+    <div class="cap-hint">Just talk. Orbit does the structuring.</div>
+    <div class="cap-priv">Recorded and transcribed on this device.</div>
+  </div>`;
+
+const transcript = (v) => `
+  <div class="kick">${v.when}</div>
+  <div class="title">Does this look right?</div>
+  <div class="sub">Fix anything Orbit misheard before the recording is discarded.</div>
+  <div class="tr-head"><span class="tr-lbl">Transcript</span><button class="pencil">✎ Edit</button></div>
+  <div class="transcript">${v.transcript}</div>
+  <div class="tr-note">${v.trNote}</div>
+  <div class="notecard"><span>🔒</span><div><b>The recording is deleted when you confirm.</b> The transcript becomes the permanent record — nothing leaves this device either way.</div></div>
+  <button class="btn btn-fill">Looks right — save this</button>
+  <div class="gap8"></div>
+  <button class="btn btn-ghost">Re-record</button>`;
+
+const reviewNight = `
+  <div class="kick">Futureforce dinner · saved</div>
+  <div class="title">Here's what I heard</div>
+  <div class="sub">Grouped by person — four short lists, not one long one.</div>
+  <div class="phead"><div class="pav">C</div><b>CJ</b><span class="chip-new">new</span><button class="allbtn">All 2</button></div>
+  <div class="pcard">
+    <span class="tag">New person</span>
+    <div class="claim">Add <span class="ne">CJ</span> — met at the Futureforce dinner</div>
+    <div class="quote">"it was CJ, Grace, Abdul, and Lake"</div>
+    <div class="acts"><button class="a a-yes">Yes</button><button class="a a-gh">Edit</button><button class="a a-gh">No</button><span class="a-later">Later</span></div>
+  </div>
+  <div class="pcard">
+    <span class="tag">Context · likely</span>
+    <div class="claim">CJ is in the Futureforce accelerator</div>
+    <div class="quote">"a few people from the program and then one more outside"</div>
+    <div class="why">You said most were from the program, without saying who wasn't. Saved as likely, not certain.</div>
+    <div class="acts"><button class="a a-yes">Yes</button><button class="a a-gh">Edit</button><button class="a a-gh">No</button><span class="a-later">Later</span></div>
+  </div>
+  <div class="phead"><div class="pav">G</div><b>Grace</b><span class="chip-new">new</span></div>
+  <div class="settled"><span class="ck">✓</span><span>Add Grace — met at the Futureforce dinner</span><span class="u">undo</span></div>
+  <div class="phead"><b style="color:var(--ember)">One thing I'm not sure about</b></div>
+  <div class="pcard ask">
+    <span class="tag">Not sure</span>
+    <div class="claim">"Abdul" was at the dinner and on the ride — but that's your name. Who is this?</div>
+    <div class="quote">"it was CJ, Grace, Abdul, and Lake … me, Abdul, Lucas, and Lake"</div>
+    <div class="chips"><span class="c">A different Abdul</span><span class="c">Misheard — let me fix it</span><span class="c">Leave it</span></div>
+  </div>
+  <button class="btn btn-fill" style="margin-top:14px">Done for now</button>`;
+
+const reviewDay = `
+  <div class="kick">YC picnic · saved</div>
+  <div class="title">Here's what I heard</div>
+  <div class="sub">One new person — a short list.</div>
+  <div class="phead"><div class="pav">N</div><b>Nikos</b><span class="chip-new">new</span><button class="allbtn">All 4</button></div>
+  <div class="pcard">
+    <span class="tag">New person</span>
+    <div class="claim">Add <span class="ne">Nikos</span> — met at the YC Startup School picnic</div>
+    <div class="quote">"I met this guy named Nikos"</div>
+    <div class="acts"><button class="a a-yes">Yes</button><button class="a a-gh">Edit</button><button class="a a-gh">No</button><span class="a-later">Later</span></div>
+  </div>
+  <div class="pcard">
+    <span class="tag">Event date · approximate</span>
+    <div class="claim">This happened Friday, July 24</div>
+    <div class="quote">"July 31st is a Friday, so this was the Friday before that"</div>
+    <div class="why">Worked out from what you said — you reasoned it out loud. Saved as approximate, not exact.</div>
+    <div class="acts"><button class="a a-yes">Yes</button><button class="a a-gh">Edit</button><button class="a a-gh">No</button><span class="a-later">Later</span></div>
+  </div>
+  <div class="settled"><span class="ck">✓</span><span>Nikos is from Greece</span><span class="u">undo</span></div>
+  <div class="pcard">
+    <span class="tag">Shared memory</span>
+    <div class="claim">Beach, the Golden Gate, and the once-a-month night market</div>
+    <div class="quote">"this night market that was only happening like once a month, so we caught it at the right time"</div>
+    <div class="why">Stays on the event as a story — this is the "how we met" that comes back in two years.</div>
+    <div class="acts"><button class="a a-yes">Yes</button><button class="a a-gh">Edit</button><button class="a a-gh">No</button><span class="a-later">Later</span></div>
+  </div>
+  <button class="btn btn-fill" style="margin-top:14px">Done for now</button>`;
+
+const saved = (v) => `
+  <div class="kick">Synced</div>
+  <div class="title">Saved.</div>
+  <div class="sub">${v.savedName} is part of the record now.</div>
+  <div class="tally">${v.tally}</div>
+  <p class="reassure">${v.reassure}</p>
+  <button class="btn btn-fill">Done</button>`;
+
+const DAY = {
+  date:'Saturday, July 25', timer:'1:33',
+  when:'Friday · 4:40pm · 1:33',
+  transcript:`So, at Y Combinator Startup School Picnic… this was like the Friday before, okay, so if July 31st is a Friday, so this was the Friday before that. This picnic, I met this guy named <span class="unc">Nikos</span>. Now, Nikos is from Greece. He was there for startup school. He was a very down-to-earth guy, super nice to talk to, very kind. We ended up going to the beach to look at the Golden Gate Bridge, this night market that was only happening like once a month, so we caught it at the right time…`,
+  trNote:`One name — <b style="color:var(--ember)">Nikos</b> — is new and not in your contacts. Check the spelling once here; it sticks everywhere.`,
+  savedName:'The YC picnic',
+  tally:`<div><span>Added to profiles</span><b>6</b></div><div><span>Set aside</span><b>1</b></div>`,
+  reassure:`The one you set aside is still here whenever you want it. There's no rush, and Orbit won't bring it up again unless you ask.`
+};
+const NIGHT = {
+  date:'Sunday, July 27', timer:'1:12',
+  when:'Thursday · 10:15pm · 1:12',
+  transcript:`Okay, so after one of the days for the Salesforce Futureforce Tech Accelerator… I ended up going to dinner with a few people from the program and then one more outside. So if I remember correctly, it was CJ, Grace, <span class="unc">Abdul</span>, and Lake… we went out to this Thai restaurant… oh, also one more person was there. It was Lucas… me, <span class="unc">Abdul</span>, Lucas, and Lake took the city bikes and we rode all the way down the pier — we were by the water, we saw the city at night…`,
+  trNote:`One name — <b style="color:var(--ember)">Abdul</b> — matches your own. Orbit will ask about it at review rather than guess.`,
+  savedName:'Futureforce dinner',
+  tally:`<div><span>Added to profiles</span><b>9</b></div><div><span>Skipped</span><b>1</b></div><div><span>Set aside</span><b>3</b></div>`,
+  reassure:`The 3 you set aside are still here whenever you want them. There's no rush, and Orbit won't bring them up again unless you ask.`
+};
+
+const SCREENS = [
+  {n:'1 · Home', d:'Capture is the room\'s one large ember object. Everything else recedes — search, set-asides, and a row of recent faces.',
+   day:home(DAY), night:home(NIGHT)},
+  {n:'2 · Capture', d:'One button, no fields. Morning debrief after the picnic; late note after the dinner. Same screen, same weight, either hour.',
+   day:capture(DAY), night:capture(NIGHT)},
+  {n:'3 · Transcript', d:'Memory voice on paper. Day flags a new name for spelling; night flags a name that collides with yours. The deletion notice is a sticky, not a warning.',
+   day:transcript(DAY), night:transcript(NIGHT)},
+  {n:'4 · Review', d:'Person-grouped. Day: the Nikos picnic — a date reasoned out loud, saved as approximate. Night: the dinner — the Abdul ask on note material.',
+   day:reviewDay, night:reviewNight},
+  {n:'5 · Saved', d:'A receipt, not a scoreboard. Set-aside items carry no debt in either room.',
+   day:saved(DAY), night:saved(NIGHT)}
+];
+
+document.getElementById('rows').innerHTML = SCREENS.map(s=>`
+  <div class="row">
+    <div class="row-label"><b>${s.n}</b><span>${s.d}</span></div>
+    <div class="pair">
+      <div class="phone day"><div class="scr">${s.day}</div></div>
+      <div class="phone night"><div class="scr">${s.night}</div></div>
+    </div>
+  </div>`).join('');
+</script>
+</body>
+</html>

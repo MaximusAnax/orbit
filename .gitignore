@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# Whisper model binaries (547MB — re-download, never commit)
+.models/
+
+# Personal voice recordings stay local; transcripts are tracked
+mock_memos/*.m4a
+
+# Local tooling
+.claude/settings.local.json

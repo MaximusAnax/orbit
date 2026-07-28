@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orbit — Home & Search, redesigned against the inventory</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#141210;color:#e8e2d8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;
+  padding:34px 26px 80px;-webkit-font-smoothing:antialiased}
+.head{max-width:1420px;margin:0 auto 8px}
+.head h1{font-family:'Iowan Old Style',Palatino,Georgia,serif;font-size:25px;font-weight:600}
+.head p{color:#a89e8f;font-size:14px;margin-top:6px;max-width:78ch;line-height:1.55}
+.row{max-width:1420px;margin:38px auto 0}
+.row-label{margin-bottom:12px;max-width:78ch}
+.row-label b{font-size:15px;display:block}
+.row-label span{font-size:12.5px;color:#a89e8f;display:block;margin-top:3px;line-height:1.5}
+.pair{display:flex;gap:26px;flex-wrap:wrap}
+
+.day{
+  --room:#f2efe9;--room-air:none;
+  --paper:#fffdf9;--paper-edge:#e7dfd2;--paper-shadow:0 1px 5px rgba(50,40,25,.06);
+  --note:#f8eecb;--note-edge:#eadcae;--note-tilt:rotate(.4deg);
+  --ink:#292520;--ink-muted:#6c655a;--ink-faint:#989083;
+  --ember:#8a5f36;--ember-wash:#ecd9b4;--ember-ink:#fffdf9;
+  --portrait-bg:#ddd3c2;--portrait-frame:0 0 0 3px #fffdf9,0 2px 6px rgba(50,40,25,.14);
+  --pill-bg:#fffdf9;--pill-edge:#e2d9c9;
+  --radius-card:13px;--radius-portrait:12px;
+  --serif:'Iowan Old Style',Palatino,Georgia,serif}
+.night{
+  --room:#101423;
+  --room-air:radial-gradient(1.4px 1.4px at 20% 4%,rgba(255,255,255,.32),transparent),
+             radial-gradient(1px 1px at 78% 6%,rgba(230,178,115,.4),transparent),
+             radial-gradient(1px 1px at 55% 2%,rgba(255,255,255,.2),transparent);
+  --paper:rgba(255,255,255,.042);--paper-edge:rgba(160,175,215,.15);--paper-shadow:none;
+  --note:rgba(230,178,115,.09);--note-edge:rgba(230,178,115,.28);--note-tilt:none;
+  --ink:#dee3f0;--ink-muted:#8f9ab9;--ink-faint:#68749a;
+  --ember:#e6b273;--ember-wash:rgba(230,178,115,.42);--ember-ink:#201709;
+  --portrait-bg:#1e2540;--portrait-frame:0 0 0 1px rgba(230,178,115,.4),0 0 14px rgba(230,178,115,.13);
+  --pill-bg:rgba(255,255,255,.05);--pill-edge:rgba(160,175,215,.2);
+  --radius-card:13px;--radius-portrait:12px;
+  --serif:'Iowan Old Style',Palatino,Georgia,serif}
+
+.phone{width:340px;height:760px;border-radius:36px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.42);
+  border:1px solid rgba(255,255,255,.07);background:var(--room);color:var(--ink);flex-shrink:0}
+.scr{height:100%;overflow-y:auto;padding:24px 18px 34px;background-image:var(--room-air)}
+.scr::-webkit-scrollbar{width:0}
+
+.kick{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px}
+.searchpill{display:flex;align-items:center;gap:9px;background:var(--paper);border:1px solid var(--paper-edge);
+  box-shadow:var(--paper-shadow);border-radius:22px;padding:12px 16px;font-size:13px;color:var(--ink-faint);margin-bottom:8px}
+.searchpill.active{color:var(--ink);border-color:var(--ember)}
+.search-hint{font-size:10.5px;color:var(--ink-faint);padding:0 6px;margin-bottom:14px;line-height:1.5}
+
+.home-cap{display:flex;flex-direction:column;align-items:center;padding:30px 0 24px}
+.mic{width:92px;height:92px;border-radius:50%;background:var(--ember);border:none;cursor:pointer;
+  display:grid;place-items:center;box-shadow:0 0 0 10px var(--note),0 6px 22px rgba(0,0,0,.18)}
+.mic svg{width:34px;height:34px;fill:var(--ember-ink)}
+.home-cap .lbl{font-size:13px;font-weight:600;margin-top:16px}
+.home-cap .hint{font-size:11.5px;color:var(--ink-faint);margin-top:3px}
+
+.sect-lbl{font-size:9px;letter-spacing:.11em;text-transform:uppercase;font-weight:650;color:var(--ink-faint);margin:14px 0 9px}
+.today{background:var(--paper);border:1px solid var(--paper-edge);box-shadow:var(--paper-shadow);
+  border-radius:var(--radius-card);padding:13px 15px;margin-bottom:9px;display:flex;gap:11px;align-items:flex-start;cursor:pointer}
+.today .pav{width:38px;height:38px;flex-shrink:0;border-radius:10px;background:var(--portrait-bg);color:var(--ember);
+  display:grid;place-items:center;font-family:var(--serif);font-size:15px;font-weight:600;box-shadow:var(--portrait-frame)}
+.today .tx{flex:1}
+.today .t1{font-family:var(--serif);font-size:13.5px;line-height:1.5}
+.today .t1 em{font-style:normal;border-bottom:2px solid var(--ember-wash)}
+.today .t2{font-size:10.5px;color:var(--ink-faint);margin-top:4px}
+.footrow{display:flex;justify-content:center;gap:6px;margin-top:22px;font-size:11px;color:var(--ink-faint)}
+.footrow span{text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+/* search results */
+.q-head{font-size:12px;color:var(--ink-muted);margin:4px 0 16px;line-height:1.5}
+.q-head b{color:var(--ink);font-weight:600}
+.res{background:var(--paper);border:1px solid var(--paper-edge);box-shadow:var(--paper-shadow);
+  border-radius:var(--radius-card);padding:13px 14px;margin-bottom:9px;display:flex;gap:12px;cursor:pointer}
+.res .pav{width:44px;height:44px;flex-shrink:0;border-radius:var(--radius-portrait);background:var(--portrait-bg);color:var(--ember);
+  display:grid;place-items:center;font-family:var(--serif);font-size:17px;font-weight:600;box-shadow:var(--portrait-frame)}
+.res .tx{flex:1;min-width:0}
+.res .nm{font-family:var(--serif);font-size:15.5px;font-weight:600}
+.res .ev{font-size:11.5px;color:var(--ink-muted);line-height:1.5;margin-top:3px}
+.res .ev em{font-style:normal;border-bottom:2px solid var(--ember-wash)}
+.res .src{font-size:10px;color:var(--ink-faint);margin-top:5px}
+.res.dim{opacity:.85}
+.badge2{display:inline-block;font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+  border:1px solid var(--note-edge);background:var(--note);color:var(--ember);border-radius:10px;padding:2px 7px;margin-left:6px;vertical-align:2px}
+.division{font-size:11px;color:var(--ink-faint);margin:16px 0 9px;line-height:1.5}
+.division b{color:var(--ember);font-weight:650}
+
+.verdicts{max-width:1420px;margin:44px auto 0;display:flex;gap:24px;flex-wrap:wrap}
+.v{width:440px;background:#1d1a17;border:1px solid #2c2822;border-radius:14px;padding:16px 18px}
+.v b{font-size:13px;display:block;margin-bottom:7px}
+.v p{font-size:12.5px;color:#a89e8f;line-height:1.6;margin-bottom:8px}
+.v p:last-child{margin-bottom:0}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>Orbit — home &amp; search, redesigned against the inventory</h1>
+  <p>Home is now literally the three doors from ORBIT.md §18: capture in the center, one omnisearch field, and timely context that opens briefs. "Lately" is gone (no inventoried job), set-asides demoted to a footer line (rare-tier). Below it: the search-results surface — door two — designed for the first time, in three query shapes.</p>
+</div>
+
+<div id="rows"></div>
+
+<div class="verdicts">
+  <div class="v"><b>Home: what changed and why</b>
+    <p><b>"Lately" is cut.</b> It served no inventoried use case — generic recent-items UI that snuck in. <b>Set-asides demoted</b> from a prime card to a footer line: triage is rare-tier, and prime position implied debt.</p>
+    <p><b>"Today" is the new zone</b> — at most two items, only when genuinely timely (a life event in its window, a thread reaching its expected resolution), each carrying its reason and opening the person's brief. It is Principle 9 as a surface: context first, person second, and never a bare "message Sarah." When nothing is timely the zone collapses entirely — no filler, no streak. This is maintenance-as-context, not a maintenance door.</p>
+    <p><b>The search placeholder teaches the door:</b> it rotates through real query shapes — a name, a company, a fragment — so the field advertises that all three are the same box.</p></div>
+  <div class="v"><b>Search: one door, three query shapes</b>
+    <p><b>Name</b> resolves people directly — with the how-you-know line as the identity anchor, because "which Sarah?" is answered by provenance, not surname.</p>
+    <p><b>Question</b> ("who do I know at Google?") returns an answer, not matches: firsthand people first with time-bounded evidence, then <b>secondhand paths</b> — known-of people clearly marked, each citing who mentioned them. The warm-path use case lives in that second band.</p>
+    <p><b>Fragment</b> ("greece picnic guy") matches on evidence, and the result shows <em>why</em> it matched with the matching facts underlined — tip-of-the-tongue resolved by showing your own memory back to you. Latency bar set by the mid-conversation check: results render as you type, no search button anywhere.</p></div>
+</div>
+
+<script>
+const homeScr = (v) => `
+  <div class="kick">Orbit · ${v.date}</div>
+  <div class="searchpill">⌕&nbsp; ${v.placeholder}</div>
+  <div class="search-hint">A name, a company, or a half-memory — same box.</div>
+  <div class="home-cap">
+    <button class="mic"><svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4zm6-4a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V22h2v-3.06A8 8 0 0 0 20 11h-2z"/></svg></button>
+    <div class="lbl">What happened?</div>
+    <div class="hint">Hold nothing back — you'll review everything.</div>
+  </div>
+  <div class="sect-lbl">Today</div>
+  ${v.today}
+  <div class="footrow"><span>2 set aside</span>·<span>settings</span></div>`;
+
+const todayDay = `
+  <div class="today"><div class="pav">S</div><div class="tx">
+    <div class="t1">Sarah's brother is visiting <em>this month</em> — his visits are rare and they matter to her.</div>
+    <div class="t2">From your June dinner · open her brief ›</div>
+  </div></div>
+  <div class="today"><div class="pav">D</div><div class="tx">
+    <div class="t1">Dom graduates <em>this spring</em> — you never heard what's next.</div>
+    <div class="t2">Open thread since startup school · open his brief ›</div>
+  </div></div>`;
+
+const todayNight = `
+  <div class="today"><div class="pav">S</div><div class="tx">
+    <div class="t1">Sarah's brother is visiting <em>this month</em> — his visits are rare and they matter to her.</div>
+    <div class="t2">From your June dinner · open her brief ›</div>
+  </div></div>
+  <div class="search-hint" style="margin-top:2px">Nothing else is timely — Orbit only speaks here when there's a reason.</div>`;
+
+const searchName = `
+  <div class="kick">Search</div>
+  <div class="searchpill active">⌕&nbsp; sarah</div>
+  <div class="res"><div class="pav">S</div><div class="tx">
+    <div class="nm">Sarah</div>
+    <div class="ev">Stripe · met <em>March 2023</em> through Alex</div>
+    <div class="src">Last seen 2 months ago · 14 events</div>
+  </div></div>
+  <div class="res dim"><div class="pav">SO</div><div class="tx">
+    <div class="nm">Sarah Okonkwo</div>
+    <div class="ev">Founding something · met at the <em>AI infra meetup</em>, through Alex</div>
+    <div class="src">Last seen 3 weeks ago · 1 event</div>
+  </div></div>`;
+
+const searchCompany = `
+  <div class="kick">Search</div>
+  <div class="searchpill active">⌕&nbsp; who do I know at Google?</div>
+  <div class="q-head"><b>Two people</b> — and one possible path.</div>
+  <div class="res"><div class="pav">J</div><div class="tx">
+    <div class="nm">James</div>
+    <div class="ev">At Google since <em>2024</em> — distributed training</div>
+    <div class="src">Met at the AI infra meetup · last seen January</div>
+  </div></div>
+  <div class="res"><div class="pav">M</div><div class="tx">
+    <div class="nm">Maya</div>
+    <div class="ev">At Google — <em>you learned this at her birthday dinner</em></div>
+    <div class="src">Close orbit · last seen 3 weeks ago</div>
+  </div></div>
+  <div class="division"><b>And maybe —</b> people you know of, not yet met:</div>
+  <div class="res dim"><div class="pav">L</div><div class="tx">
+    <div class="nm">Leon's roommate's friend<span class="badge2">via Leon</span></div>
+    <div class="ev">Leon mentioned a friend on <em>Google's infra team</em> in May</div>
+    <div class="src">Ask Leon for the introduction</div>
+  </div></div>`;
+
+const searchFragment = `
+  <div class="kick">Search</div>
+  <div class="searchpill active">⌕&nbsp; greece picnic guy</div>
+  <div class="q-head"><b>Probably Nikos</b> — here's why:</div>
+  <div class="res"><div class="pav">N</div><div class="tx">
+    <div class="nm">Nikos</div>
+    <div class="ev">From <em>Greece</em> · met at the <em>YC Startup School picnic</em>, July 2026</div>
+    <div class="src">Beach, the Golden Gate, the once-a-month night market</div>
+  </div></div>
+  <div class="division">No one else matches both. Searched across events, facts, and your own words.</div>`;
+
+const ROWS = [
+  {n:'1 · Home — the three doors', d:'Search that takes anything, capture in the center, and "Today": at most two timely context items with their reasons, opening briefs. Night shows the near-empty state — the zone shrinks rather than fills.',
+   day: homeScr({date:'Saturday, July 25', placeholder:'Who do I know at Google?', today: todayDay}),
+   night: homeScr({date:'Sunday, July 27', placeholder:'the guy from the picnic…', today: todayNight})},
+  {n:'2 · Search — name and question', d:'Left: a name resolves with provenance as the identity anchor ("which Sarah?" answered by how you know them). Right: a question gets an answer — firsthand people with evidence, then marked secondhand paths for the warm-intro case.',
+   day: searchName, night: searchCompany},
+  {n:'3 · Search — the fragment', d:'Tip-of-the-tongue: attributes in, person out, with the matched facts underlined so the answer shows its work. This is the mid-conversation check — recall of past captures only, rendered as you type.',
+   day: searchFragment, night: searchFragment}
+];
+
+document.getElementById('rows').innerHTML = ROWS.map(s=>`
+  <div class="row">
+    <div class="row-label"><b>${s.n}</b><span>${s.d}</span></div>
+    <div class="pair">
+      <div class="phone day"><div class="scr">${s.day}</div></div>
+      <div class="phone night"><div class="scr">${s.night}</div></div>
+    </div>
+  </div>`).join('');
+</script>
+</body>
+</html>
