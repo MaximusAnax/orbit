@@ -25,13 +25,18 @@ targets:
   OrbitApp:
     type: application
     platform: iOS
-    sources:
-      - Sources/OrbitApp
-      # the whisper floor model — present after scripts/build-whisper.sh runs;
-      # optional so CI (no vendored artifacts) generates and builds unchanged
-      - path: Vendor/models/ggml-base.q5_1.bin
-        optional: true
-        buildPhase: resources
+    sources: [Sources/OrbitApp]
+    # the whisper floor model bundles only when scripts/build-whisper.sh has
+    # vendored it — a copy-if-present phase, so CI (no artifacts) is unchanged
+    postBuildScripts:
+      - name: Bundle whisper floor model (if vendored)
+        basedOnDependencyAnalysis: false
+        script: |
+          MODEL="$SRCROOT/Vendor/models/ggml-base.q5_1.bin"
+          DEST="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
+          if [ -f "$MODEL" ] && [ -n "$DEST" ]; then
+            mkdir -p "$DEST" && cp "$MODEL" "$DEST/"
+          fi
     dependencies:
       - target: OrbitDesign
       - package: Orbit
