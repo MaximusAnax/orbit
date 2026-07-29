@@ -30,7 +30,7 @@
 
 - Roomed together, sophomore year (interval).
 - Same classes + habitual studying/homework together, freshman year (habit).
-- Eliah interned at **Google**, the summer after sophomore year (employment, **closed interval** — see Forbidden).
+- Eliah interned at **Google** *per the source* — see the source/world divergence case below. (Employment, **closed interval** — see Forbidden.)
 - Junior year: lived separately (singles); shared one very difficult course (count hedged in source: "maybe one"); late-night library sessions with Philly (habit).
 - Eliah played basketball at Riverbank park — high-school era, fuzzy interval.
 - Upcoming: living together again, senior year (interval, `valid_from` ≈ fall 2026) — and/or a thread; not an event.
@@ -51,6 +51,16 @@ Education: CS at Carnegie Mellon; Tartan Scholars (both). Origin: Washington Hei
 - Any second subject-person from the name variants.
 - A reconstructed event for anything future.
 - Any invented calendar date not derivable from the stated senior-year anchor.
+
+## Known source/world divergence — the internship employer
+
+Abdoul reports Eliah interned at **Uber**; the audio at ~4:37 says **"Google"** by every probe (beam-8, two temperatures, and a decode explicitly primed toward "Uber" — all agree). Presumed speaker misstatement, pending Abdoul listening to 4:34–4:44. This is the corpus's first natural instance of source-truth ≠ world-truth, and the contract grades all three layers:
+
+1. **Transcript**: "Google" — faithful to what was said. Correcting the transcript to Uber = fail (source falsification).
+2. **Extraction**: must propose Google. An extractor that outputs Uber has consulted something other than the source — silent "fixing" is the P4 nightmare. Extraction fidelity is to the source, never the world.
+3. **Expected edit-pair**: at review, Abdoul edits Google → Uber; the accepted assertion carries Uber with the edit recorded (`edited_payload`). The world enters through the human, nowhere else.
+
+*(If listening proves the audio says Uber, this section converts to a Critical PIPE-1 substitution finding and the transcript fixture is corrected — flag it and the golden updates.)*
 
 ## Ungraded regions (contract silent, pending policy — do not score either way)
 
