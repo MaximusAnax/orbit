@@ -90,3 +90,15 @@ Append-only. Each entry: date · phase · what/why · verification tier (T1 loca
 - **`orbit-evals measure --live` implemented for real** (was a stub awaiting a key): corpus memos → configured endpoint → fixtures recorded under `docs/evals/fixtures/live-<model>/` (Decision 3) → round-tripped through the real SyncEngine → graded via `measure.py --fixtures <dir>`. Works with either provider.
 - Docs updated: BUILD §1.3 (alternate provider + retention bar), PRIV-AUDIT PRIV-2, RATIFICATION PIPE-12 row. **Open item for Abdoul:** verify the OpenAI org/project data-retention posture — the ZDR-equivalent bar applies to whichever endpoint is live.
 - CI loop running in parallel: round 1 failed on an untracked-empty `Tests/OrbitCoreTests` (fixed, real OrbitCore tests landed, f322250); round 2 in flight.
+
+## 2026-07-29 · Post-ship · CI green (T2 verification landed)
+
+- **Both workflows green on `d738737`**: `core` (Linux — full build, 52/52 tests across the invariant/pipeline/recall/search/export/domain suites, replay measurement, 50-check SQL property suite, embedded-SQL rig, design lint) and `app` (macOS — full iOS-simulator build + 16/16 hosted tests: design-law, journey-model J-1..J-5/J-11/J-12, portrait flow incl. INV-22/23/24).
+- The loop from first compile to green took ~10 CI rounds (~90 min wall clock, ~2-min core cycles). The tiering claim held up: **everything T1-verified in-session passed CI unchanged**; every CI failure was in territory T1 could not reach.
+- **Three real defects found and fixed by the T2 layer** (each now pinned by a test):
+  1. `sync_entity_ref` had an FK to entity(id) but is a polymorphic ref map by design — every thread/episode acceptance through the funnel failed (fixed + T1 property pin, 50 checks).
+  2. The worked example's J-12 harvest count was global where it meant per-run (the seed decision is harvested too — correct behavior, imprecise assertion).
+  3. **Per-person accept-all could silently strand a cross-group dependency** (assertion referencing an entity whose LINK card lives in another group). Real UX defect; fixed with dependency-queue-and-retry in ReviewViewModel — accept order no longer matters.
+- Mechanical fixes along the way: missing OrbitCoreTests dir (git doesn't track empty dirs), public SQLiteError init, CFNumberIsFloatType → objCType (Linux), CaptureDraft arg order, OrbitSQLite exported as product, Swift 6 concurrency (Copy closures → funcs; @MainActor on XCUI tests), Text-extension modifier order.
+- **Workflow restructure**: the single app test step (rebuild + first simulator boot + hosted + UI suites) exceeded 30 min; now the push gate = build + hosted `OrbitAppTests` with per-test timeouts, and the **UI journey suite is a dispatch-only job** (`app.yml` → run workflow → journeys: true) with its own 60-min budget — lean and batched per BUILD.md. App workflow also triggers on `Sources/**` so package changes rebuild the app.
+- Verification-tier ledger update: everything previously marked T2-pending is now **T2 green** except the UI journey suite (compiled, dispatchable, awaiting a deliberate run) and the T3 items (device PERF, audio quality, live extraction — unchanged).
