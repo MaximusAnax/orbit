@@ -38,6 +38,8 @@ targets:
         product: OrbitWrite
       - package: Orbit
         product: OrbitPipeline
+      - package: Orbit
+        product: OrbitRecall
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

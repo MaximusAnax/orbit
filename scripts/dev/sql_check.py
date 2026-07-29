@@ -61,7 +61,46 @@ def check_schema() -> None:
         subprocess.run([sys.executable, str(props)], check=True)
 
 
+def check_embedded_sql() -> None:
+    """Every triple-quoted SQL statement embedded in Swift sources must at least
+    PREPARE against the real schema — catches phantom columns/tables at T1
+    (this class of bug already appeared once: a query against a `reconstructed`
+    column that doesn't exist). EXPLAIN compiles without executing."""
+    import re
+
+    con = sqlite3.connect(":memory:")
+    con.executescript("PRAGMA foreign_keys=ON;")
+    for f in sorted(SCHEMA_DIR.glob("*.sql")):
+        if "rebuild" not in f.name:
+            con.executescript(f.read_text())
+
+    swift_files = sorted((ROOT / "Sources").rglob("*.swift")) \
+        + sorted((ROOT / "apps").rglob("*.swift"))
+    checked = failed = 0
+    for f in swift_files:
+        for m in re.finditer(r'"""\n(.*?)"""', f.read_text(), re.S):
+            body = m.group(1).strip()
+            if not re.match(r"(SELECT|INSERT|UPDATE|DELETE|WITH)\b", body, re.I):
+                continue
+            checked += 1
+            try:
+                stmt = "EXPLAIN " + body
+                con.execute(stmt, tuple([None] * body.count("?")))
+            except sqlite3.Error as e:
+                # Swift string interpolation inside SQL can't be prepared — skip
+                # only those; everything else is a real defect
+                if "\\(" in m.group(1):
+                    checked -= 1
+                    continue
+                failed += 1
+                print(f"  EMBEDDED-SQL FAIL {f.relative_to(ROOT)}: {e}\n    {body.splitlines()[0]}…")
+    print(f"embedded sql: {checked} statement(s) prepared, {failed} failed")
+    if failed:
+        sys.exit("FATAL: embedded SQL does not prepare against the schema")
+
+
 if __name__ == "__main__":
     check_engine()
     check_schema()
+    check_embedded_sql()
     print("sql fast-loop: OK")

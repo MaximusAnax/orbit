@@ -4,6 +4,7 @@ import OrbitSQLite
 import OrbitStore
 import OrbitWrite
 import OrbitPipeline
+import OrbitRecall
 
 /// App-level composition root. Owns the single writer (INV-5 funnel) and hands
 /// read-only state to views. All heavy work happens off the main actor.
@@ -228,6 +229,13 @@ final class AppModel: ObservableObject {
     /// Resume an unsynced event later (J-11) — proposals identical to immediate sync.
     func syncLater(eventID: String) {
         startExtraction(eventID: eventID)
+    }
+
+    // MARK: recall (Desk & Deck)
+
+    func assembleBrief(personID: String) throws -> Brief {
+        try BriefAssembler(reader: store.reader).assemble(personID: personID,
+                                                          now: store.clock.now())
     }
 
     nonisolated func makeExtractor() -> Extractor {
