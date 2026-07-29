@@ -17,3 +17,10 @@ Append-only. Each entry: date · phase · what/why · verification tier (T1 loca
 
 - `docs/BUILD.md` written per the ratified outline + environment deltas. Notable deltas from the pre-ratification outline, both argued in the doc: **no GRDB** (first-party `OrbitSQLite` wrapper — GRDB has no Linux support, and zero third-party deps in the trust core is a privacy posture, §1.2); **verification tiers** formalized (§1.4).
 - README map updated to include BUILD.md. Tier: T1 (docs).
+
+## 2026-07-29 · Phase 2 (M0) · The Ledger
+
+- **SQL trust core (T1, executed green here):** full DATA-MODEL §2 DDL (`001_schema.sql`), immutability/scope triggers (`002_triggers.sql`), read models + timeline view (`003`), deterministic rebuild (`004`). `scripts/dev/sql_properties.py`: **49 checks green** — INV-1/2/3/4/8/9/10/11/12/13/14/17/21(fuzz: 40 ops × 30 probes)/22/23, proposal state machine, thread rules, §3 worked example ("where did Sarah work in 2024" → Google).
+- Two bugs caught by the rig before they shipped: `IN (NULL,…)` CHECK constraints are inert in SQLite (4 fixed); INV-9 needed a DB trigger, not just service checks.
+- **Swift layer (T2-pending; CI unreachable while the push blocker stands):** OrbitSQLite wrapper (reader/writer split, `openWriter` lint-fenced), OrbitCore domain + payload vocabulary, OrbitStore (schema-from-resources, StoreReader incl. bitemporal + audit queries, derived sync status per Decision 4), OrbitWrite (UserEditService + ProposalResolutionService — INV-7 same-source suppression, INV-24 quote gate, §7.3 promote-and-flag, J-12 harvest rows on every decision, incremental read-model maintenance). `Tests/OrbitInvariantTests`: 20 test cases covering INV-1..24 + Decision-4 partial resolution + the worked example through the funnel.
+- Design choice: reconstructed-event acceptance confirms in-transaction (the review IS the confirmation); reflected in CREATE_EVENT apply.

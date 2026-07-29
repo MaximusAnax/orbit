@@ -33,7 +33,11 @@ let package = Package(
         .target(name: "OrbitCore"),
 
         // Schema DDL + triggers + read models + all read-side queries.
-        .target(name: "OrbitStore", dependencies: ["OrbitSQLite", "OrbitCore"]),
+        .target(
+            name: "OrbitStore",
+            dependencies: ["OrbitSQLite", "OrbitCore"],
+            resources: [.copy("Resources")]
+        ),
 
         // The write funnel: ProposalResolutionService + UserEditService.
         // The only target that opens a writer connection.
