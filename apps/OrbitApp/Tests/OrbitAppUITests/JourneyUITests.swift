@@ -4,6 +4,8 @@ import XCTest
 /// rendered-absence assertions. DB end-states for the same journeys are
 /// asserted in OrbitAppTests/JourneyModelTests through the identical code path.
 /// Friction budgets are ◊ provisional — measured here, ratified by Abdoul.
+/// (XCUIAutomation is MainActor-isolated under Swift 6.)
+@MainActor
 final class JourneyUITests: XCTestCase {
 
     static let nikosTranscript =
