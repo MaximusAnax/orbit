@@ -9,3 +9,13 @@ mock_memos/*.m4a
 
 # Local tooling
 .claude/settings.local.json
+
+# Swift / SPM
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj
+
+# Local-only artifacts
+/audio-fixtures/
+.env
