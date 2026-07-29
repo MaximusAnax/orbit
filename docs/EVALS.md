@@ -82,7 +82,8 @@ Property-based tests and schema lints. Each is small, fast, and absolute. Number
 
 - **Real captures** (`mock_memos/`): the three ratified memos + confirmed transcripts, plus every future real capture Abdoul reviews. Real memos are the *validity* anchor — messy, disfluent, true.
 - **Synthetic captures**: authored to cover cases too rare or too important to wait for — and some cases we *hope* never to capture live. Required synthetic coverage: hardship disclosure (grief, illness — tests INV-20 and extraction tone), a correction memo ("actually, I was wrong — she never worked at Google" → CORRECT not CLOSE), homonym collisions, deep secondhand chains ("Alex said that Leon's roommate thinks…"), a maximally rambling group event (8+ people), a memo that contains nothing extractable (silence test: zero proposals is the correct output), a memo contradicting established facts (must propose CLOSE/CORRECT, never silently overwrite). **Grief-handling is validated on synthetic data before launch, never discovered on real grief.**
-- **Golden format**: each corpus item = audio (or text) + verified transcript + expected proposal set (op, subject, claim-essence, flags) + expected *non*-proposals (things that must NOT be extracted or asserted).
+- **Golden format**: each corpus item = audio (or text) + verified transcript + expected proposal set (op, subject, claim-essence, flags) + expected *non*-proposals (things that must NOT be extracted or asserted) + **ungraded regions** — content classes with no ratified policy yet (e.g., speaker-self facts, explicit relationship-state declarations), scored neither way and each carrying a pointer to the policy question it awaits. An ungraded region is a flag, not a shrug: two goldens sharing an ungraded class escalate it to a policy decision.
+- **First portrait-class golden**: `docs/evals/goldens/eliah-portrait.md` (10:28 of real portrait speech; drafted 2026-07-28, ground truth upon Abdoul's review).
 
 ### 3.2 The review flow is a labeling machine — with correctly scoped labels
 
@@ -103,7 +104,8 @@ Thresholds are **provisional until first measured** (marked ◊), then become ra
 
 | ID | Metric | Threshold | Notes |
 | --- | --- | --- | --- |
-| PIPE-1 | Transcription proper-noun recall (primed) | ◊ ≥ 95% | Names are the product; measured on names/orgs only, not general WER |
+| PIPE-1 | Transcription proper-noun recall, **measured after the name-match pass** | ◊ ≥ 95% | Names are the product. Rescoped 2026-07-28: prompt priming is inert beyond the first decode window on long audio (`-mc 0`, required for stability, confines it) — the name-match pass is the correctness mechanism, so it is measured post-pass |
+| PIPE-1b | Within-transcript name-form consistency | **1 rendering per referent** | Found via the Eliah portrait: one person rendered four ways in one transcript. Post name-match pass, a single referent resolves to a single form; violations are identity-fragmentation risks |
 | PIPE-2 | Transcription WER, conversational | ◊ ≤ 12% | Secondary to PIPE-1 |
 | PIPE-3 | Extraction fact recall | ◊ ≥ 90% | Missed facts are recoverable later (re-extraction); recall matters but is not critical |
 | PIPE-4 | Extraction precision (no invented facts) | ◊ ≥ 97% | **Asymmetric by design (P4): inventing is far worse than missing.** A hallucinated fact that survives to a proposal is a Critical failure regardless of aggregate score |
@@ -114,7 +116,7 @@ Thresholds are **provisional until first measured** (marked ◊), then become ra
 | PIPE-9 | DISAMBIGUATE recall on planted ambiguities | ◊ ≥ 90% | Synthetic memos plant known ambiguities; the extractor must ask |
 | PIPE-10 | Thread-bar precision | ◊ ≥ 85% | No thread proposed without a plausible resolution ("she likes sushi" must not thread) |
 | PIPE-11 | Archetype classification vs. Abdoul's review decisions | ◊ ≥ 85% | Ambiguous cases must default to the slower archetype (tie-break rule is itself asserted) |
-| PIPE-12 | Episodic/semantic split accuracy | ◊ pending portrait memo | Gate for the onboarding build |
+| PIPE-12 | Episodic/semantic split accuracy | ◊ vs. `eliah-portrait` golden | Gate for the onboarding build. The bar, refined against real portrait speech (2026-07-28): **episodes are past occurrences only** (future arrangements → threads/intervals); **when-ish may be era-relative**, resolved only against anchors stated in the source, never invented calendar dates; **sub-episodes stay inside their parent** (one level, mirroring §7.10 entities) |
 | PIPE-13 | Entity resolution: fragmentation rate | ◊ ≤ 5% | Same real-world context spawning duplicate entities across the corpus |
 | PIPE-14 | Recall-ranking sanity (brief assembly) | rule-based, 100% | Open threads present; hero slot = top unsurfaced item; `muted` absent; `pinned` wins; hardship threads render as context, never as suggested openers |
 
@@ -270,7 +272,8 @@ The line, stated once: **metrics may inform the owner's judgment; they may never
 ## 9. Open items
 
 - All ◊ thresholds: provisional until first measurement on the built system, then ratified and ratcheted.
-- PIPE-12 blocked on the portrait memo (in progress).
+- PIPE-12: golden exists (`eliah-portrait`); the accuracy number awaits the production extractor. Workshop borderline-flags are an authoring proxy for flicker, not a PIPE-15 measurement.
+- Policy questions escalated from the Eliah golden's ungraded regions, owned by the flow/design track: speaker-self facts; a proposal path for explicit relationship-state declarations.
 - PIPE-15's k (consistency runs) and the 70% flicker boundary: provisional; calibrate against the real-memo corpus.
 - Judge-model selection, panel composition, and prompt versioning scheme for LLM-judged metrics.
 - Friction-budget numbers: set after first implementation pass, not before.
