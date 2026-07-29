@@ -328,8 +328,6 @@ The brief is the flagship; every other surface inherits:
 
 ## 14. Open items
 
-*(The capture-flow decisions, home, and search were ratified 2026-07-28 and folded into §3.3, §3.6, §4.2–4.3, §9, and §12.)*
-
 ### Deferred surfaces — designed later, deliberately, not forgotten
 
 These have data-model support and inventoried use cases but no designed screen yet. Each is profile-reached or rare-tier, so deferral costs little now — but every one must eventually exist:
@@ -341,7 +339,7 @@ These have data-model support and inventoried use cases but no designed screen y
 - **Set-aside triage** — re-entering deferred proposals at leisure; currently assumed to reuse the review screen, needs its own entry design.
 - **Export** — the whole memory out, readable (trust-tier use case).
 - **Brokering/hosting** — "who should come to dinner?" / "who should Maria meet?" A multi-person *selection* surface, not a lookup — the one genuinely new interaction pattern in the deferred set. Hold until the core loop is built and the need is felt in practice.
-- **Backfill portrait onboarding** — the guided first-run capture of long-standing relationships. Fully specified at the data-model level (DATA-MODEL §7.11: subject-participants, skippable serif prompts, pausable sessions, never queued, episodic/semantic history split). Flow design proceeds once the split passes its real-memo validation gate.
+- **Backfill portrait onboarding** — the guided first-run capture of long-standing relationships. Fully specified at the data-model level (DATA-MODEL §7.11: subject-participants, skippable serif prompts, pausable sessions, never queued, episodic/semantic history split); golden exists and is ground truth. Flow design proceeds alongside the build; PIPE-12's accuracy number against the production extractor is the remaining gate.
 - **Usage journal** — the owner's private reflection surface (EVALS.md §8): local-only, feature-level never person-level, questions never goals. Periodic, quiet, probably a mini-page under settings — never a dashboard.
 
 ### Open questions

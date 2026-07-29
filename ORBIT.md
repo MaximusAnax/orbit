@@ -2,7 +2,7 @@
 
 **Personal Relationship Memory System**
 
-- **Status:** Concept ratified — data model designed, see [docs/DATA-MODEL.md](docs/DATA-MODEL.md)
+- **Status:** Planning complete — data model ([docs/DATA-MODEL.md](docs/DATA-MODEL.md)), design language ([docs/DESIGN.md](docs/DESIGN.md)), and evaluation framework ([docs/EVALS.md](docs/EVALS.md)) all ratified. Next phase: build.
 - **Primary user:** Abdoul
 - **Core idea:** An AI-powered external memory for the people in Abdoul's life.
 

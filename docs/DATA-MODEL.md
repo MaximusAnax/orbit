@@ -1,7 +1,7 @@
 # Orbit — Data Model Design
 
-**Status:** Proposed. No code written. Decisions here are meant to be argued with before anything is built.
-**Governs:** [ORBIT.md](../ORBIT.md), particularly §4–§14 and the Product Constitution.
+**Status:** Ratified (through 2026-07-28). Governed by the EVALS ratchet — changes require ratification here first, never a quiet test edit.
+**Derives from:** [ORBIT.md](../ORBIT.md), particularly §4–§14 and the Product Constitution.
 
 ---
 
@@ -210,7 +210,7 @@ The center of the model.
 
 `employment` · `education` · `location` · `interest` · `skill` · `goal` · `concern` · `relation` (person↔person: sibling, colleague, introduced_by) · `life_event` · `preference` · `trait`
 
-`concern` deserves note — it is inherently time-bound and high-salience-decaying-to-poignant. "Nervous about her interview" is Principle 9's entire worked example.
+`concern` deserves note — it is inherently time-bound, urgent-then-poignant. "Nervous about her interview" is Principle 9's entire worked example.
 
 ### Event
 
@@ -376,7 +376,7 @@ Append-only temporal facts are ideal for *"where did Sarah used to work"* and ho
 
 Rebuildability is the point. When extraction improves, or a bug corrupts an index, the log is authoritative and every view regenerates. Nothing derived is ever the only copy of anything.
 
-**Recall (§15) is not a search problem.** It is assembly: gather everything for one person, then rank by open threads first, then unresolved loops, then recent change, then high-salience details. The ranking is where the *"oh right, I remember everything"* feeling is won or lost — and it is a product problem, not a retrieval one.
+**Recall (§15) is not a search problem.** It is assembly: gather everything for one person, then rank by open threads first, then unresolved loops, then recent change, then details ranked by time-since-surfaced (§8). The ranking is where the *"oh right, I remember everything"* feeling is won or lost — and it is a product problem, not a retrieval one.
 
 **Discovery (§17) is a search problem**, and needs all three: graph traversal for "who's at X," semantic search over `verbatim` for "who mentioned videography," structured filters for "who haven't I seen in two years."
 
@@ -411,7 +411,7 @@ Practical notes:
 Other practical notes:
 
 - Apple's on-device `SpeechTranscriber` (iOS 26+) is the fallback worth keeping: free, native, zero bundle cost, no model download. Weaker on rare proper nouns and without equivalent prompt biasing, but a reasonable low-storage path.
-- Cloud APIs (Deepgram, AssemblyAI, OpenAI Whisper API) have usable free tiers and are **not recommended** — sending every personal conversation about every person in your life to a third party contradicts the trust premise the product depends on.
+- Cloud *transcription* APIs (Deepgram, AssemblyAI, OpenAI Whisper API) are **rejected** regardless of price: audio never leaves the device (§7.5, §7.9). The single ratified extraction endpoint (§7.9) is the only content-carrying egress, and it receives transcripts, never audio.
 - Verify current model names, sizes, and the Apple API surface at build time; this recommendation is directionally right but the specifics move.
 
 **A design consequence of discarding audio:** because the transcript becomes the only artifact, transcript review must happen *before* deletion and must be genuinely easy to correct — misheard names especially. Suggest showing low-confidence spans inline for one-tap fixing, and running a name-match pass against known contacts to catch near-misses before the audio is gone.
@@ -539,7 +539,7 @@ Lists and network queries are only as good as entity identity. If *"Y Combinator
 
 Same two-layer pattern as §7.2: store the fine distinction, query the umbrella. The hierarchy stays one level deep (umbrella + member) until a real capture demands more — inventing deeper nesting now would be structure without evidence.
 
-### 7.11 Notes: capture without presence *(ratified 2026-07-28; one sub-decision open)*
+### 7.11 Notes: capture without presence *(fully ratified 2026-07-28)*
 
 **The reframe.** An Event is not "a social occasion" — it is **a moment when information entered the system through Abdoul's attention**. A dinner is one kind of learning-moment; suddenly remembering Sarah's birthday is another; reading that James changed jobs is a third. The bitemporal split already separates when a fact became true (`valid_from`) from when Abdoul learned it (`observed_at`); notes complete it by letting the learning-moment itself carry no interaction.
 
@@ -743,11 +743,7 @@ But a fully manual orbit will rot. Abdoul will not remember to update it, the fi
 
 ## 10. Status
 
-**The design-level model is closed.** Groups & SavedLists ratified 2026-07-27 (see Entity reference): groups as explicit social facts created only by Abdoul, time-bounded membership, lists as saved queries never curated, knows-each-other derived with evidence rather than materialized.
-
-**Notes and portraits fully resolved (§7.11, ratified 2026-07-28)** — subject-participants via attendance `about`, present-only guards on everything contact-shaped, typed micro-notes, portraits never queued, and portrait history landing via the **episodic/semantic split** (episodes → reconstructed Events excluded from rate math; periods/habits → interval assertions; traits → plain assertions). One empirical gate before the onboarding flow is built: validate the episodic/semantic classification against a real portrait memo.
-
-What remains beyond that is risk that only shows up in implementation, not in argument:
+**The model is closed and fully ratified** (through 2026-07-28) — every section above records its own decisions and dates; git history records how they were reached. What remains is risk that only shows up in implementation, not in argument:
 
 - **Group-event review has never been walked through end to end.** The model handles ambiguous attribution correctly (Decision 5), but a six-person conference producing thirty proposals is a review-flow problem, and Principle 10 is easiest to violate right there. This is the highest-risk untested path.
 - **Whether `project` threads need milestones.** A novel or a degree resolves in stages rather than at a moment, and a single `open → resolved` transition may be too blunt. Deferred until there is real usage to look at — inventing the shape now would be guessing.
