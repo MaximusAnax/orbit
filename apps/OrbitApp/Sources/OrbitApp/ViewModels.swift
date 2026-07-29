@@ -60,6 +60,8 @@ final class ReviewViewModel: ObservableObject, Identifiable {
         let hearsayTeller: String?   // hearsay chip when secondhand (§9)
         let question: String?        // DISAMBIGUATE ask-cards
         let candidates: [(id: String, name: String)]
+        let stateSuggestion: String? // PROPOSE_STATE: mapped orbit/intent, shown AS a suggestion
+        let isEpisode: Bool          // CREATE_EVENT reconstructed episode (§7.11)
         var settled: String?         // "Saved" / "Skipped" / "Set aside"
     }
 
@@ -99,6 +101,8 @@ final class ReviewViewModel: ObservableObject, Identifiable {
                 hearsayTeller: Self.tellerOf(payload: payload, app: app),
                 question: Self.questionOf(op: op, payload: payload),
                 candidates: Self.candidatesOf(op: op, payload: payload, app: app),
+                stateSuggestion: Self.stateSuggestionOf(op: op, payload: payload),
+                isEpisode: op == .createEvent,
                 settled: nil)
             if byPerson[personKey] == nil {
                 byPerson[personKey] = PersonGroup(id: personKey, name: personName, cards: [])
@@ -133,6 +137,35 @@ final class ReviewViewModel: ObservableObject, Identifiable {
 
     func keepUnresolved(_ card: Card) {
         settle(card) { try self.service.resolve(proposal: card.id, .acceptUnresolved) }
+    }
+
+    /// Accept a reconstructed episode AND mark it as the first meeting —
+    /// `first_met_event_id` links to whichever episode the user confirms as
+    /// the meeting; no special case in the data model (§7.11).
+    func acceptAsFirstMet(_ card: Card) {
+        guard card.op == .createEvent, let app else { return }
+        accept(card)
+        do {
+            // the freshly created reconstructed event: derived from this sync
+            // run's source event
+            guard let source = try app.store.db.scalar(
+                "SELECT event_id FROM sync_run WHERE id=?", [.text(syncRunID)]).stringValue,
+                  let event = try app.store.db.scalar(
+                    """
+                    SELECT id FROM event WHERE derived_from_event_id=?
+                    ORDER BY confirmed_at DESC LIMIT 1
+                    """, [.text(source)]).stringValue,
+                  let person = try app.store.db.query(
+                    """
+                    SELECT ep.person_id FROM event_participant ep
+                    JOIN person p ON p.id = ep.person_id
+                    WHERE ep.event_id=? AND p.is_self=0 LIMIT 1
+                    """, [.text(event)]).first?.text("person_id")
+            else { return }
+            try app.edits.setFirstMet(person: person, event: event)
+        } catch {
+            // the episode is saved either way; first-met stays settable from the Desk
+        }
     }
 
     /// Per-person accept-all (ratified interactive behavior).
@@ -236,6 +269,17 @@ final class ReviewViewModel: ObservableObject, Identifiable {
     static func questionOf(op: ProposalOp, payload: String) -> String? {
         guard op == .disambiguate else { return nil }
         return decode(payload)["question"] as? String
+    }
+
+    /// §7.13: the orbit/intent slots are mapped suggestions SHOWN AS SUCH —
+    /// the narrative quote is authoritative, the mapping is editable.
+    static func stateSuggestionOf(op: ProposalOp, payload: String) -> String? {
+        guard op == .proposeState else { return nil }
+        let dict = decode(payload)
+        let parts = [dict["suggested_orbit"] as? String,
+                     dict["suggested_intent"] as? String].compactMap { $0 }
+        guard !parts.isEmpty else { return nil }
+        return Copy.suggestedPrefix + parts.joined(separator: " · ")
     }
 
     static func candidatesOf(op: ProposalOp, payload: String, app: AppModel) -> [(String, String)] {

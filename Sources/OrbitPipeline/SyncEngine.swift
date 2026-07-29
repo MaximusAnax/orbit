@@ -268,15 +268,22 @@ public struct SyncEngine {
 
         // 9. Relationship-state transport (§7.13; INV-24 enforced at the funnel).
         for decl in result.payload.stateDeclarations {
-            try emit(.init(
-                op: .proposeState,
-                payloadJSON: try PayloadCoding.encode(ProposeStatePayload(
-                    person: try personRef(decl.subjectRef),
-                    narrativeQuote: decl.quote,
-                    suggestedOrbit: decl.suggestedOrbit,
-                    suggestedIntent: decl.suggestedIntent,
-                    mappingRationale: decl.mappingRationale)),
-                rationale: "your words, carried over for review: \u{201C}\(decl.quote)\u{201D}"))
+            do {
+                try emit(.init(
+                    op: .proposeState,
+                    payloadJSON: try PayloadCoding.encode(ProposeStatePayload(
+                        person: try personRef(decl.subjectRef),
+                        narrativeQuote: decl.quote,
+                        suggestedOrbit: decl.suggestedOrbit,
+                        suggestedIntent: decl.suggestedIntent,
+                        mappingRationale: decl.mappingRationale)),
+                    rationale: "your words, carried over for review: \u{201C}\(decl.quote)\u{201D}"))
+            } catch WriteError.constitutionViolation {
+                // INV-24 held: no verbatim quote, no proposal — the model tried
+                // to infer state and the funnel refused. The rest of the memo's
+                // sync proceeds; losing the whole review over one refused op
+                // would punish the user for the model's overreach.
+            }
         }
 
         // 10. Ambiguities → DISAMBIGUATE cards ("Was this James?" — §11).

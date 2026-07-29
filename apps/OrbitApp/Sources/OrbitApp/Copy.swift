@@ -57,6 +57,28 @@ enum Copy {
     static let notYetConfirmed = { (name: String) in "\(name) told you this — not yet confirmed firsthand" }
     static let unverifiedContact = "unverified until first used"
 
+    // Portraits (§7.11) — skippable serif prompts, never queued, never bulk
+    static let portraitTitle = "Paint a portrait"
+    static let portraitHint = "Talk about them like you'd tell a friend. Pause anytime; skip any prompt."
+    static let portraitPrompts = [
+        "How did you meet?",
+        "What's going on in their life right now?",
+        "What do you always forget about them?",
+        "What's a moment you two shared that stuck with you?",
+    ]
+    static let skipPrompt = "Skip"
+    static let firstMetAction = "This is when we met"
+    static let firstMetSet = "Marked as your first meeting"
+
+    // PROPOSE_STATE review (§7.13) — his words, transported; mapping shown as suggestion
+    static let stateCardTag = "In your words"
+    static let suggestedPrefix = "suggested: "
+
+    // Onboarding (§7.12) — quiet; one name, then the room
+    static let onboardingNamePrompt = "What should Orbit call you?"
+    static let onboardingBegin = "Begin"
+    static let onboardingPortraitInvite = "A few people worth painting first — whenever you like."
+
     // Errors speak plain sans ink — no red exists (D-1/§9)
     static let extractionFailed = "Couldn't structure this one yet. The memo is safe — try again when you're back online."
     static let transcriptionFallback = "Quick model for now — the full one will re-listen before the recording is deleted."
@@ -75,5 +97,8 @@ enum Copy {
             worthHavingBack, timeline, reach("him"), goBePresent, deckEndTag,
             toldYou("Sana"), notYetConfirmed("Sana"), unverifiedContact,
             extractionFailed, transcriptionFallback,
-        ]
+            portraitTitle, portraitHint, skipPrompt, firstMetAction, firstMetSet,
+            stateCardTag, suggestedPrefix, onboardingNamePrompt, onboardingBegin,
+            onboardingPortraitInvite,
+        ] + portraitPrompts
 }

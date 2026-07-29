@@ -309,11 +309,20 @@ struct ProposalCardView: View {
                     if let teller = card.hearsayTeller {
                         HearsayChip(teller: teller)
                     }
+                    if card.op == .proposeState {
+                        // §7.13: his words transported — quote authoritative,
+                        // mapping shown as a suggestion, never as fact
+                        SectionTag(Copy.stateCardTag, ember: true)
+                    }
                     // verbatim quote: memory voice with left ember-wash rule (§12)
                     HStack(alignment: .top, spacing: 8) {
                         Rectangle().fill(Tokens.emberWash(room)).frame(width: 2)
                         Text(card.quote).memoryVoice(size: 13.5)
                             .foregroundStyle(Tokens.ink(room))
+                    }
+                    if let suggestion = card.stateSuggestion {
+                        Text(suggestion).interfaceVoice(size: 11.5)
+                            .foregroundStyle(Tokens.inkMuted(room))
                     }
                     Text(card.rationale).interfaceVoice(size: 11.5)
                         .foregroundStyle(Tokens.inkMuted(room))
@@ -322,6 +331,11 @@ struct ProposalCardView: View {
                         SecondaryButton(Copy.no) { vm.reject(card, reason: nil) }
                         Spacer()
                         TertiaryButton(Copy.later) { vm.setAside(card) }
+                    }
+                    if card.isEpisode {
+                        // first_met falls out of confirming an episode AS the
+                        // meeting — no special case in the model (§7.11)
+                        TertiaryButton(Copy.firstMetAction) { vm.acceptAsFirstMet(card) }
                     }
                 }
             }
@@ -367,7 +381,11 @@ struct OrbitAppMain: App {
     var body: some Scene {
         WindowGroup {
             RoomBackground { _ in
-                NavigationStack { HomeView() }
+                if model.selfID == nil {
+                    OnboardingView()          // §7.12: one name, then the room
+                } else {
+                    NavigationStack { HomeView() }
+                }
             }
             .environmentObject(model)
         }

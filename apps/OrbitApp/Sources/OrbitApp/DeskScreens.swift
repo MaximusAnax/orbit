@@ -14,6 +14,7 @@ struct BriefScreen: View {
     @Environment(\.room) var room
     @State private var brief: Brief?
     @State private var showDeck = false
+    @State private var showPortrait = false
 
     var body: some View {
         ScrollView {
@@ -124,6 +125,10 @@ struct BriefScreen: View {
                                         detail: brief.reach.map(\.kind).joined(separator: " · "))
                         }
                     }
+
+                    // portrait entry: an invitation, never a queue (§7.11)
+                    TertiaryButton(Copy.portraitTitle) { showPortrait = true }
+                        .padding(.top, 6)
                 }
                 .padding(.top, Tokens.screenPaddingTop)
                 .padding(.horizontal, Tokens.screenPaddingSide)
@@ -132,6 +137,9 @@ struct BriefScreen: View {
         .onAppear { brief = try? app.assembleBrief(personID: personID) }
         .fullScreenCover(isPresented: $showDeck) {
             if let brief { DeckScreen(brief: brief) }
+        }
+        .fullScreenCover(isPresented: $showPortrait) {
+            PortraitCaptureView(personName: brief?.header.name)
         }
     }
 
