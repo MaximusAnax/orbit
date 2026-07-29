@@ -13,6 +13,9 @@ let package = Package(
     name: "Orbit",
     platforms: [.iOS(.v17), .macOS(.v14)],
     products: [
+        // exported for the app layer's read-side queries (SQLValue/Row);
+        // openWriter stays lint-fenced to OrbitWrite regardless (INV-5)
+        .library(name: "OrbitSQLite", targets: ["OrbitSQLite"]),
         .library(name: "OrbitCore", targets: ["OrbitCore"]),
         .library(name: "OrbitStore", targets: ["OrbitStore"]),
         .library(name: "OrbitWrite", targets: ["OrbitWrite"]),
