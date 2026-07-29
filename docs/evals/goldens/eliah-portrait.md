@@ -1,6 +1,6 @@
 # Golden: Eliah portrait (first portrait-class golden)
 
-**Status:** DRAFT — becomes ground truth only after Abdoul's review (the review *is* the labeling, EVALS §3.2).
+**Status:** GROUND TRUTH — reviewed and confirmed by Abdoul 2026-07-28, including the source/world divergence case (audio verified by ear: it says "Google").
 **Source:** `mock_memos/Eliah.m4a` (10:28) · transcript `mock_memos/transcripts/Eliah.txt` (unconfirmed).
 **Format:** contract, not transcript (EVALS §3.5) — required facts match semantically; forbidden items fail in any phrasing.
 **Era anchor stated in source:** "we're going into our senior year right now" → freshman year resolvable to 2023–24. Extraction MAY resolve era-relative dates against this stated anchor; it must NOT invent calendar dates beyond it.
@@ -54,7 +54,7 @@ Education: CS at Carnegie Mellon; Tartan Scholars (both). Origin: Washington Hei
 
 ## Known source/world divergence — the internship employer
 
-Abdoul reports Eliah interned at **Uber**; the audio at ~4:37 says **"Google"** by every probe (beam-8, two temperatures, and a decode explicitly primed toward "Uber" — all agree). Presumed speaker misstatement, pending Abdoul listening to 4:34–4:44. This is the corpus's first natural instance of source-truth ≠ world-truth, and the contract grades all three layers:
+Eliah's actual internship was at **Uber** (world-truth, per Abdoul); the audio at ~4:37 says **"Google"** — confirmed by every ASR probe *and by Abdoul listening to 4:34–4:44*. A verified speaker misstatement: the corpus's first natural instance of source-truth ≠ world-truth. The contract grades all three layers:
 
 1. **Transcript**: "Google" — faithful to what was said. Correcting the transcript to Uber = fail (source falsification).
 2. **Extraction**: must propose Google. An extractor that outputs Uber has consulted something other than the source — silent "fixing" is the P4 nightmare. Extraction fidelity is to the source, never the world.
