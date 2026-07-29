@@ -504,7 +504,13 @@ final class InvariantTests: XCTestCase {
             .filter { $0.text("predicate") == "employment" }
         XCTAssertEqual(current.map { $0.text("object_value") }, ["Stripe"])
         XCTAssertEqual(try reader.syncStatus(of: dinner), "partially_resolved")
-        // J-12: five decisions, five harvest rows
-        XCTAssertEqual(try store.db.scalar("SELECT COUNT(*) FROM review_outcome").intValue, 5)
+        // J-12: five decisions in this review, five harvest rows for this run
+        // (the seed acceptance above is a decision too and is harvested — the
+        // count is per-run, not global)
+        XCTAssertEqual(try store.db.scalar(
+            """
+            SELECT COUNT(*) FROM review_outcome ro
+            JOIN proposal p ON p.id = ro.proposal_id WHERE p.sync_run_id=?
+            """, [.text(run)]).intValue, 5)
     }
 }
