@@ -31,7 +31,7 @@ jobs:
             -project OrbitApp.xcodeproj \
             -scheme OrbitApp \
             -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO | tail -40
+            CODE_SIGNING_ALLOWED=NO | tail -200
 
       - name: Unit + view-model tests
         working-directory: apps/OrbitApp
@@ -41,4 +41,4 @@ jobs:
             -project OrbitApp.xcodeproj \
             -scheme OrbitApp \
             -destination 'platform=iOS Simulator,name=iPhone 16' \
-            CODE_SIGNING_ALLOWED=NO | tail -60
+            CODE_SIGNING_ALLOWED=NO | tail -300

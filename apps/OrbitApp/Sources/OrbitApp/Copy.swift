@@ -10,7 +10,7 @@ enum Copy {
         "Sarah…", "who do I know at Google?", "the guy from Greece at the picnic",
     ]  // one box, three shapes — teaching by rotation
     static let todayEmpty = "Orbit only speaks here when there's a reason."
-    static let setAsideFooter = { (n: Int) in "\(n) set aside · whenever you want them" }
+    static func setAsideFooter(_ n: Int) -> String { "\(n) set aside · whenever you want them" }
 
     // Capture
     static let captureIdle = "What happened?"
@@ -45,16 +45,16 @@ enum Copy {
     static let openTag = "Open"
     static let oweTag = "You owe"
     static let owedToYouTag = "Owed to you"
-    static let sinceTag = { (pronoun: String) in "Since you last saw \(pronoun)" }
+    static func sinceTag(_ pronoun: String) -> String { "Since you last saw \(pronoun)" }
     static let worthHavingBack = "Worth having back"
     static let timeline = "Timeline"
-    static let reach = { (pronoun: String) in "Reach \(pronoun)" }
+    static func reach(_ pronoun: String) -> String { "Reach \(pronoun)" }
     static let goBePresent = "Go be present."   // serif — the tool's one memory-voice sentence
     static let deckEndTag = "That's everything"
 
     // Hearsay & uncertainty (§9/§10: attribution explicit, hedges survive)
-    static let toldYou = { (name: String) in "\(name) told you this" }
-    static let notYetConfirmed = { (name: String) in "\(name) told you this — not yet confirmed firsthand" }
+    static func toldYou(_ name: String) -> String { "\(name) told you this" }
+    static func notYetConfirmed(_ name: String) -> String { "\(name) told you this — not yet confirmed firsthand" }
     static let unverifiedContact = "unverified until first used"
 
     // Portraits (§7.11) — skippable serif prompts, never queued, never bulk
