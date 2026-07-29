@@ -171,3 +171,34 @@ New, registered here:
 - When a check blocks and seems wrong: **the check might be right** — escalate a doc-change proposal; never weaken a check to match behavior (EVALS §6).
 - Usage metrics are never build evidence (EVALS §8).
 - Before every push: constitution sweep — diff the changeset against ORBIT.md P1–P12 and DESIGN §13 anti-patterns.
+
+---
+
+## 8. State of the build — 2026-07-29 (end of in-session moonshot)
+
+All six milestones M0–M5 are **built and committed** on `feature/initial_build`,
+with verification tiered honestly (§1.4). One-line status per milestone; detail
+in docs/build/WORKLOG.md.
+
+| Milestone | Status | Verified |
+| --- | --- | --- |
+| M0 Ledger | Built | **T1 green** (49 SQL property checks + embedded-SQL prepare rig) + full Swift L0 suite authored (T2-pending) |
+| M1 Pipeline | Built | **T1**: provisional PIPE report, criticals 0 (fixtures in-session model, labeled); Swift harness T2-pending |
+| M2 Loop | Built | design-lint **T1 green**; J-1…J-5, J-11, J-12 model+UI suites authored; PERF-3/4/5 = T3 |
+| M3 Desk & Deck | Built | PIPE-14 ×5 + J-6/J-7 suites authored; ranking SQL T1-prepared |
+| M4 Search | Built | Goldens S-1…S-10 authored FIRST; FTS retrieval assumptions **T1-verified**; embeddings: deferred (recorded) |
+| M5 Portraits | Built | INV-22/23/24 through-the-UI suites authored; PIPE-12 machinery wired E2E (live number needs API key) |
+| PRIV | Audited | docs/build/PRIV-AUDIT.md — PRIV-5 export/restore built+tested this session; PRIV-1/3 device halves = T3 |
+
+**Standing blockers (not code):** repo push access 403 (every phase gate
+retried); no `ANTHROPIC_API_KEY` (live PIPE numbers); no Apple toolchain in
+this environment (all Swift is T2-pending until CI runs).
+
+**Deferred surfaces register (post-M5, by felt need — DESIGN §14):**
+merge/unmerge review flow UI (ledger op is built + tested), gardening session,
+export UI entry point (capability built, PRIV-5), brokering/hosting search
+recipes, groups & saved lists UI, settings surface (API key entry ships in
+keychain shim), rejection-reason picker surfacing (`RejectionReason` wired in
+the funnel), Deck reachability actions (tap-to-call/text).
+
+**Ratification queue:** docs/evals/RATIFICATION.md.

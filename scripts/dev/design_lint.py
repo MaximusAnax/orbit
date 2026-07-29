@@ -39,7 +39,13 @@ def defer(check: str, msg: str) -> None:
 
 
 def swift_files() -> list[Path]:
-    return sorted(APP_SOURCES.rglob("*.swift"))
+    # user-facing strings also live in the recall/search modules (deck tags,
+    # ranking reasons, answer bands) — the copy law follows them
+    extra = [ROOT / "Sources" / "OrbitRecall", ROOT / "Sources" / "OrbitSearch"]
+    files = sorted(APP_SOURCES.rglob("*.swift"))
+    for d in extra:
+        files += sorted(d.rglob("*.swift"))
+    return files
 
 
 def strip_comment(line: str) -> str:

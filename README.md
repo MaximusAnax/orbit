@@ -1,6 +1,6 @@
 # orbit
 
-A personal AI memory for relationships. Design ratified; build in progress on `feature/initial_build` (see [docs/BUILD.md](docs/BUILD.md)).
+A personal AI memory for relationships. Design ratified; **all six milestones (M0–M5) built** on `feature/initial_build` — see [docs/BUILD.md §8](docs/BUILD.md) for the state of the build, verification tiers, and the ratification queue ([docs/evals/RATIFICATION.md](docs/evals/RATIFICATION.md)).
 
 - [ORBIT.md](ORBIT.md) — the product: what Orbit is, its use cases, and the 12-principle constitution
 - [docs/DATA-MODEL.md](docs/DATA-MODEL.md) — the schema: bitemporal assertions, events, threads, and why

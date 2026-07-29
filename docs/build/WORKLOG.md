@@ -74,3 +74,12 @@ Append-only. Each entry: date · phase · what/why · verification tier (T1 loca
 - **SyncEngine INV-24 hardening** (found writing the M5 tests): an unquotable state declaration used to abort the entire sync run; now the funnel's refusal drops that one op and the memo's review survives — the gate stops the overreach, not the user.
 - **Tests** (`PortraitFlowTests`, through the AppModel/view-model path): full portrait E2E — episode → reconstructed event (fuzzy month, confirmed-on-acceptance, no transcript of its own, present attendance, INV-12 rhythm zero), first-met linked via the card affordance, we-split lands the same verbatim on subject AND self (INV-22 scope), PROPOSE_STATE → `authored_by: human` with provenance; INV-24 doctored-quote test (op refused, review survives); INV-23 surface test (self absent from search results and Today; zero relationship machinery on the self row).
 - **Tier honesty:** unchanged — UI/tests are T2-pending (push retried at this gate, still 403); lint + embedded SQL T1 green.
+
+## 2026-07-29 · Phase 8 · Ship
+
+- **PRIV-5 closed in code**: `Export.dump`/`Export.restore` — the archive carries the log (rm_* excluded by design), pretty-printed JSON with verbatims in the clear; `ExportTests` proves restore-into-fresh-install passes INV-4 fingerprint equivalence. Export UI entry point registered as a deferred surface.
+- **docs/build/PRIV-AUDIT.md**: PRIV-1…5, each split into enforced-by-construction / tested / open-with-runbook. The honest residue: interception runs and file-level deletion are T3.
+- **docs/evals/RATIFICATION.md**: the full ◊ queue for Abdoul — ratify-now provisional numbers (with the in-session-model caveat restated), machinery-ready checks awaiting key/device, and the five in-build decisions to ratify or veto (INV-19 enforcement point, INV-24 refusal scope, embeddings-not-yet, no-GRDB, review order).
+- **BUILD.md §8**: state-of-build table (per-milestone status × verification), standing blockers, deferred-surfaces register. README updated.
+- **Constitution sweep** (P1–P12 × DESIGN §13, final pass): no violations found; design_lint scope extended to OrbitRecall/OrbitSearch strings (the copy law follows user-facing strings out of the app layer) — still 0 violations; embedded-SQL rig now prepares 54 statements, 0 failures.
+- **Final gate:** `scripts/check.sh` fully green at T1. Push retried at this gate — still 403 (the standing access blocker); every phase is committed locally on `feature/initial_build`, and the branch is push-ready the moment access returns.
