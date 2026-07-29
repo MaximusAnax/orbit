@@ -83,3 +83,10 @@ Append-only. Each entry: date · phase · what/why · verification tier (T1 loca
 - **BUILD.md §8**: state-of-build table (per-milestone status × verification), standing blockers, deferred-surfaces register. README updated.
 - **Constitution sweep** (P1–P12 × DESIGN §13, final pass): no violations found; design_lint scope extended to OrbitRecall/OrbitSearch strings (the copy law follows user-facing strings out of the app layer) — still 0 violations; embedded-SQL rig now prepares 54 statements, 0 failures.
 - **Final gate:** `scripts/check.sh` fully green at T1. Push retried at this gate — still 403 (the standing access blocker); every phase is committed locally on `feature/initial_build`, and the branch is push-ready the moment access returns.
+
+## 2026-07-29 · Post-ship · OpenAI extraction provider (ratified: Abdoul, in chat)
+
+- **`OpenAIExtractor`** behind the unchanged §7.9 seam: same versioned prompt, same JSON schema (chat/completions structured outputs), model `OPENAI_MODEL` env (default `gpt-5.1`), key via keychain `openai-api-key` / `OPENAI_API_KEY`. The shared `ExtractionMessage.user` builder is now the single PRIV-4 audit surface for both providers. Selection: Anthropic key wins when both exist; no key → sync-later, as ever.
+- **`orbit-evals measure --live` implemented for real** (was a stub awaiting a key): corpus memos → configured endpoint → fixtures recorded under `docs/evals/fixtures/live-<model>/` (Decision 3) → round-tripped through the real SyncEngine → graded via `measure.py --fixtures <dir>`. Works with either provider.
+- Docs updated: BUILD §1.3 (alternate provider + retention bar), PRIV-AUDIT PRIV-2, RATIFICATION PIPE-12 row. **Open item for Abdoul:** verify the OpenAI org/project data-retention posture — the ZDR-equivalent bar applies to whichever endpoint is live.
+- CI loop running in parallel: round 1 failed on an untracked-empty `Tests/OrbitCoreTests` (fixed, real OrbitCore tests landed, f322250); round 2 in flight.

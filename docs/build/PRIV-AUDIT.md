@@ -20,12 +20,17 @@ requests containing audio bytes. Runbook: proxy the device, run J-1, inspect.
 
 ## PRIV-2 — Single content-carrying endpoint
 
-**Enforced:** one egress site (`RemoteExtractor.extract`, api.anthropic.com);
-no analytics, no crash reporter, no telemetry of any kind exists in the code.
-**Tested:** code audit (this session); grep-level check is trivially green —
-there is exactly one URLRequest construction in the product.
+**Enforced:** the extraction seam is the only egress (`RemoteExtractor` →
+api.anthropic.com, or `OpenAIExtractor` → api.openai.com — one provider active
+at a time, selected by which key exists); no analytics, no crash reporter, no
+telemetry of any kind exists in the code. Both extractors send the identical
+`ExtractionMessage.user` body — one audit surface.
+**Tested:** code audit (this session); the URLRequest constructions in the
+product are exactly the two provider clients behind the seam.
 **Open (T3):** same interception run as PRIV-1 confirms at runtime.
-**Standing requirement:** the API org must be zero-data-retention (BUILD §1.3).
+**Standing requirement:** the active org's data-retention posture must meet
+the ZDR bar (BUILD §1.3) — for OpenAI, verify the org/project retention
+settings before production use.
 
 ## PRIV-3 — Audio deletion at the filesystem level, full-model gate honored
 

@@ -244,10 +244,15 @@ final class AppModel: ObservableObject {
         if let json = ProcessInfo.processInfo.environment["ORBIT_UITEST_PAYLOAD"] {
             return StaticPayloadExtractor(json: json)
         }
-        // Key lives in the keychain, entered once in settings. ZDR org required
-        // (BUILD.md §1.3). Nothing outside OrbitPipeline knows local vs remote (§7.9).
-        if let key = KeychainLite.read("anthropic-api-key") {
-            return RemoteExtractor(apiKey: key)
+        // Keys live in the keychain, entered once in settings. Provider is
+        // selected by which key exists (Anthropic wins if both — the ratified
+        // default; OpenAI is the configured alternative, Abdoul 2026-07-29).
+        // Data-retention posture per BUILD.md §1.3 applies to whichever runs.
+        // Nothing outside OrbitPipeline knows which provider ran (§7.9).
+        if let extractor = ExtractionProvider.fromEnvironment(
+            anthropicKey: KeychainLite.read("anthropic-api-key"),
+            openAIKey: KeychainLite.read("openai-api-key")) {
+            return extractor
         }
         return UnavailableExtractor()
     }
@@ -309,11 +314,17 @@ struct StaticPayloadExtractor: Extractor {
     }
 }
 
-/// Minimal keychain shim (real Security.framework wiring on device).
+/// Minimal keychain shim (real Security.framework wiring on device). Off
+/// device, each keychain item maps to its conventional env var.
 enum KeychainLite {
     nonisolated(unsafe) static var overrideForTesting: [String: String] = [:]
+    static let envNames = [
+        "anthropic-api-key": "ANTHROPIC_API_KEY",
+        "openai-api-key": "OPENAI_API_KEY",
+    ]
     static func read(_ key: String) -> String? {
         if let v = overrideForTesting[key] { return v }
-        return ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"]
+        guard let env = envNames[key] else { return nil }
+        return ProcessInfo.processInfo.environment[env]
     }
 }

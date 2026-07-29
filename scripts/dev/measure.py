@@ -307,6 +307,9 @@ class Grader:
 
 
 def main():
+    global FIX
+    if "--fixtures" in sys.argv:
+        FIX = ROOT / sys.argv[sys.argv.index("--fixtures") + 1]
     goldens = load_goldens()
     rows = []
     all_criticals = []

@@ -113,9 +113,9 @@ func fixtureCases() -> [RoundTripCase] {
     ]
 }
 
-func runMeasureReplay() throws {
+func runMeasureReplay(fixturesSubdir: String = "docs/evals/fixtures") throws {
     let root = repoRoot()
-    let fixtures = root.appendingPathComponent("docs/evals/fixtures")
+    let fixtures = root.appendingPathComponent(fixturesSubdir)
     var failures: [String] = []
     var passed = 0
 
@@ -210,18 +210,79 @@ func runHarvest(dbPath: String) throws {
     }
 }
 
+
+/// Live measurement (EVALS §9): each corpus memo through the CONFIGURED
+/// production endpoint; results recorded as first-class fixtures (Decision 3)
+/// under docs/evals/fixtures/live-<model>/, then round-tripped through the
+/// real SyncEngine exactly like the replay path. Grade the PIPE table with:
+///   python3 scripts/dev/measure.py --fixtures docs/evals/fixtures/live-<model> --write-report
+func runMeasureLive() async throws {
+    let env = ProcessInfo.processInfo.environment
+    guard let extractor = ExtractionProvider.fromEnvironment(
+        anthropicKey: env["ANTHROPIC_API_KEY"], openAIKey: env["OPENAI_API_KEY"]) else {
+        throw EvalFailure(description:
+            "measure --live needs ANTHROPIC_API_KEY or OPENAI_API_KEY (data-retention posture per BUILD.md §1.3)")
+    }
+    let root = repoRoot()
+    let fixturesDir = root.appendingPathComponent("docs/evals/fixtures")
+    let files = try FileManager.default.contentsOfDirectory(at: fixturesDir,
+                                                            includingPropertiesForKeys: nil)
+        .filter { $0.pathExtension == "json" }
+        .sorted { $0.lastPathComponent < $1.lastPathComponent }
+
+    struct LiveFixture: Encodable {
+        var model_id: String
+        var prompt_version: String
+        var source: String
+        var payload: ExtractionPayload
+    }
+
+    var liveSubdir: String? = nil
+    for file in files {
+        let meta = try JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any]
+        guard let source = meta?["source"] as? String,
+              let transcript = try? String(contentsOf: root.appendingPathComponent(source),
+                                           encoding: .utf8) else {
+            print("  ! \(file.lastPathComponent): no readable source transcript — skipped")
+            continue
+        }
+        // CLI context is primer-less by design: measuring the extractor cold.
+        // On device the same call carries known-people/entity primers (§7.7).
+        let context = ExtractionContext(eventKind: "portrait",
+                                        capturedAt: "2026-07-29T12:00:00Z",
+                                        selfName: "Abdoul")
+        let result = try await extractor.extract(transcript: transcript, context: context)
+        let dirName = "live-" + result.modelID.replacingOccurrences(of: "/", with: "-")
+        liveSubdir = "docs/evals/fixtures/" + dirName
+        let outDir = fixturesDir.appendingPathComponent(dirName)
+        try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(LiveFixture(model_id: result.modelID,
+                                       prompt_version: result.promptVersion,
+                                       source: source, payload: result.payload))
+            .write(to: outDir.appendingPathComponent(file.lastPathComponent))
+        print("  ✓ \(file.lastPathComponent) → \(dirName)/ (model \(result.modelID))")
+    }
+    guard let liveSubdir else { throw EvalFailure(description: "no fixtures produced") }
+    print("\n== round-trip over live fixtures ==")
+    try runMeasureReplay(fixturesSubdir: liveSubdir)
+    print("""
+
+    Grade the PIPE table:
+      python3 scripts/dev/measure.py --fixtures \(liveSubdir) --write-report
+    """)
+}
+
 let args = Array(CommandLine.arguments.dropFirst())
 do {
     switch args.first {
     case "measure":
         if args.contains("--live") {
-            guard ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] != nil else {
-                throw EvalFailure(description: "measure --live needs ANTHROPIC_API_KEY (BUILD.md §1.3: ZDR org)")
-            }
-            print("live measurement loop lands with the first key — replay is the CI path")
-            exit(2)
+            try await runMeasureLive()
+        } else {
+            try runMeasureReplay()
         }
-        try runMeasureReplay()
     case "harvest":
         guard args.count > 1 else { throw EvalFailure(description: "usage: harvest <db-path>") }
         try runHarvest(dbPath: args[1])
@@ -229,7 +290,7 @@ do {
         print("""
         orbit-evals — Orbit evaluation harness (EVALS.md)
           measure --replay   fixtures → SyncEngine → round-trip checks (CI gate)
-          measure --live     production endpoint (ANTHROPIC_API_KEY required)
+          measure --live     production endpoint (ANTHROPIC_API_KEY or OPENAI_API_KEY)
           harvest <db>       review outcomes → JSONL eval labels (J-12)
         Payload-level contract grading (the PIPE table): scripts/dev/measure.py (T1 twin).
         """)

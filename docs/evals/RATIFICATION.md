@@ -24,7 +24,7 @@ on the same fixtures fails) without pretending to be production numbers.
 
 | Check | ◊ item | What produces the number |
 | --- | --- | --- |
-| PIPE-12 | Eliah-portrait episode split quality | `orbit-evals measure --live` with `ANTHROPIC_API_KEY` (ZDR org) |
+| PIPE-12 | Eliah-portrait episode split quality | `orbit-evals measure --live` with `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` (retention bar per BUILD §1.3) |
 | PIPE-1/2 | Transcription name accuracy / WER | `scripts/build-whisper.sh` on your Mac + audio fixtures on device |
 | J-1 budget | ≤ 12 taps (measured path exists) | Run JourneyUITests once on CI/device, read the tap count |
 | J-2 budget | ≤ 20 taps | same |

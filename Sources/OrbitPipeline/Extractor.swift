@@ -87,6 +87,30 @@ public struct ReplayExtractor: Extractor {
     }
 }
 
+/// The one user-message builder — PRIV-4's audit surface. Both remote
+/// extractors send exactly this and nothing more: capture context, owner +
+/// era anchors, known-name/entity primers, transcript.
+enum ExtractionMessage {
+    static func user(transcript: String, context: ExtractionContext) -> String {
+        var lines: [String] = []
+        lines.append("Capture context: kind=\(context.eventKind), captured_at=\(context.capturedAt)")
+        lines.append("Owner: \(context.selfName)")
+        if !context.selfAnchors.isEmpty {
+            lines.append("Owner era anchors:\n" + context.selfAnchors.map { "  - \($0)" }.joined(separator: "\n"))
+        }
+        if !context.knownPeople.isEmpty {
+            lines.append("Known contacts:\n" + context.knownPeople.map { "  - \($0.name) [\($0.id)]" }.joined(separator: "\n"))
+        }
+        if !context.knownEntities.isEmpty {
+            lines.append("Known entities:\n" + context.knownEntities.map {
+                "  - \($0.name) [\($0.id)] aliases: \($0.aliases.joined(separator: ", "))"
+            }.joined(separator: "\n"))
+        }
+        lines.append("Transcript:\n<<<\n\(transcript)\n>>>")
+        return lines.joined(separator: "\n\n")
+    }
+}
+
 // MARK: - Remote (the production endpoint)
 
 /// Claude API client. Requirements carried from BUILD.md §1.3: the org runs under
@@ -117,22 +141,7 @@ public struct RemoteExtractor: Extractor {
     }
 
     func userMessage(transcript: String, context: ExtractionContext) -> String {
-        var lines: [String] = []
-        lines.append("Capture context: kind=\(context.eventKind), captured_at=\(context.capturedAt)")
-        lines.append("Owner: \(context.selfName)")
-        if !context.selfAnchors.isEmpty {
-            lines.append("Owner era anchors:\n" + context.selfAnchors.map { "  - \($0)" }.joined(separator: "\n"))
-        }
-        if !context.knownPeople.isEmpty {
-            lines.append("Known contacts:\n" + context.knownPeople.map { "  - \($0.name) [\($0.id)]" }.joined(separator: "\n"))
-        }
-        if !context.knownEntities.isEmpty {
-            lines.append("Known entities:\n" + context.knownEntities.map {
-                "  - \($0.name) [\($0.id)] aliases: \($0.aliases.joined(separator: ", "))"
-            }.joined(separator: "\n"))
-        }
-        lines.append("Transcript:\n<<<\n\(transcript)\n>>>")
-        return lines.joined(separator: "\n\n")
+        ExtractionMessage.user(transcript: transcript, context: context)
     }
 
     public func extract(transcript: String, context: ExtractionContext) async throws -> ExtractionResult {
@@ -171,5 +180,81 @@ public struct RemoteExtractor: Extractor {
         }
         let payload = try JSONDecoder().decode(ExtractionPayload.self, from: Data(text.utf8))
         return ExtractionResult(payload: payload, modelID: model, promptVersion: Self.promptVersion)
+    }
+}
+
+// MARK: - OpenAI (alternate remote endpoint, §7.9)
+
+/// OpenAI-backed extractor — same versioned prompt, same JSON schema, same
+/// single-egress budget (PRIV-2 applies to whichever endpoint is configured;
+/// verify the org's data-retention posture before production use, BUILD §1.3).
+/// The rest of the system cannot tell which provider ran — that is the seam's
+/// whole point.
+public struct OpenAIExtractor: Extractor {
+    public var apiKey: String
+    public var model: String
+    public var baseURL: URL
+
+    public static let promptVersion = RemoteExtractor.promptVersion
+
+    public init(apiKey: String,
+                model: String = ProcessInfo.processInfo.environment["OPENAI_MODEL"] ?? "gpt-5.1",
+                baseURL: URL = URL(string: "https://api.openai.com")!) {
+        self.apiKey = apiKey
+        self.model = model
+        self.baseURL = baseURL
+    }
+
+    public func extract(transcript: String, context: ExtractionContext) async throws -> ExtractionResult {
+        var request = URLRequest(url: baseURL.appendingPathComponent("v1/chat/completions"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+
+        let body: [String: Any] = [
+            "model": model,
+            "messages": [
+                ["role": "system", "content": try RemoteExtractor.systemPrompt()],
+                ["role": "user",
+                 "content": ExtractionMessage.user(transcript: transcript, context: context)],
+            ],
+            "response_format": [
+                "type": "json_schema",
+                "json_schema": [
+                    "name": "orbit_extraction",
+                    "schema": ExtractionSchema.jsonSchema,
+                ],
+            ],
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+            let text = String(data: data, encoding: .utf8) ?? ""
+            throw ExtractorError.transport("extraction endpoint HTTP error: \(text.prefix(300))")
+        }
+        guard let top = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = top["choices"] as? [[String: Any]],
+              let message = choices.first?["message"] as? [String: Any],
+              let text = message["content"] as? String else {
+            throw ExtractorError.badResponse("no message content in response")
+        }
+        if let refusal = message["refusal"] as? String, !refusal.isEmpty {
+            throw ExtractorError.badResponse("endpoint refused the request")
+        }
+        let payload = try JSONDecoder().decode(ExtractionPayload.self, from: Data(text.utf8))
+        return ExtractionResult(payload: payload, modelID: model, promptVersion: Self.promptVersion)
+    }
+}
+
+/// Provider selection, in one place: the Anthropic key wins when both exist
+/// (the ratified default endpoint); the OpenAI key is the configured
+/// alternative (Abdoul, 2026-07-29). No key → nil, capture waits for
+/// sync-later.
+public enum ExtractionProvider {
+    public static func fromEnvironment(anthropicKey: String?, openAIKey: String?) -> Extractor? {
+        if let key = anthropicKey, !key.isEmpty { return RemoteExtractor(apiKey: key) }
+        if let key = openAIKey, !key.isEmpty { return OpenAIExtractor(apiKey: key) }
+        return nil
     }
 }
