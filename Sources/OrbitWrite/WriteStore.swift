@@ -66,12 +66,14 @@ public final class WriteStore {
             JOIN person p2 ON p2.id = cs.object_value
             WHERE cs.assertion_id = ? AND cs.predicate = 'relation' AND cs.object_value IS NOT NULL
             """, [.text(id)])
+        try rmSearchRebuild()
     }
 
     func rmRemoveAssertion(_ id: String) throws {
         try db.run("DELETE FROM rm_current_state WHERE assertion_id=?", [.text(id)])
         try db.run("DELETE FROM rm_network_edge WHERE edge_kind IN ('assertion','relation') AND evidence_id=?",
                    [.text(id)])
+        try rmSearchRebuild()
     }
 
     func rmEventConfirmed(_ eventID: String) throws {
@@ -112,10 +114,19 @@ public final class WriteStore {
             JOIN person po ON po.id=other.person_id
             WHERE e.id = ? AND e.lifecycle='confirmed'
             """, [.text(eventID)])
+        try rmSearchRebuild()
     }
 
     /// Structural change → full rebuild (rare: merge/unmerge, group edits).
     func rmRebuild() throws {
         try ReadModels.rebuild(on: db)
+    }
+
+    /// Search index refresh — a full re-derivation (personal-scale corpora make
+    /// this milliseconds; correctness beats cleverness in the trust core).
+    /// Callers: assertion insert/remove, event confirmation, person/entity
+    /// name changes.
+    func rmSearchRebuild() throws {
+        try ReadModels.rebuildSearch(on: db)
     }
 }

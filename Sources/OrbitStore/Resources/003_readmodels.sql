@@ -74,3 +74,16 @@ SELECT
 FROM assertion a
 JOIN person p ON p.id = a.subject_id
 WHERE a.status = 'active';
+
+-- ───────────────────────── Search index (M4) ─────────────────────────
+-- One row per searchable atom; person_id is the canonical person the atom
+-- points at. Porter stemming so "visas" finds "visa clinic" and "diving"
+-- finds "free-dives". Rebuilt by 005_search_rebuild.sql (INV-4: derivable
+-- from the log like every read model).
+CREATE VIRTUAL TABLE rm_search USING fts5(
+    kind UNINDEXED,        -- assertion | person | entity | event
+    person_id UNINDEXED,
+    ref_id UNINDEXED,
+    body,
+    tokenize = 'porter unicode61'
+);

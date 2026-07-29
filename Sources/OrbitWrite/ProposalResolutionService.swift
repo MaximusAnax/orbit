@@ -383,6 +383,17 @@ public struct ProposalResolutionService {
              .text(p.verbatim), .from(p.validFrom), .from(p.validTo), .text(p.datePrecision),
              .text(try observedAt(ofSyncRun: syncRun)), .text(event), .text(p.sourceKind),
              .from(attributed), p.confidence.map { SQLValue.real($0) } ?? .null, .from(thread)])
+        // INV-19 through review: the subject of an accepted fact becomes a
+        // participant of its source event. Attendance 'about' — conservative
+        // (P4: presence is never invented; 'about' stays out of rhythm, INV-11).
+        if let subject {
+            try db.run(
+                """
+                INSERT INTO event_participant (event_id, person_id, attendance, role)
+                VALUES (?,?, 'about', NULL)
+                ON CONFLICT (event_id, person_id) DO NOTHING
+                """, [.text(event), .text(subject)])
+        }
         try store.rmInsertAssertion(id)
         return id
     }

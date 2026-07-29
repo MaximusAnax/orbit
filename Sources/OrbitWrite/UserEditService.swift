@@ -23,6 +23,7 @@ public struct UserEditService {
         try db.run(
             "INSERT INTO person (id, display_name, status, is_self, created_at) VALUES (?,?,?,?,?)",
             [.text(id), .text(displayName), .text(status.rawValue), .from(isSelf), .text(now)])
+        try store.rmSearchRebuild()
         return id
     }
 
@@ -30,6 +31,7 @@ public struct UserEditService {
         try db.run(
             "UPDATE person SET display_name=?, preferred_name=COALESCE(?, preferred_name) WHERE id=?",
             [.text(displayName), .from(preferredName), .text(id)])
+        try store.rmSearchRebuild()
     }
 
     /// Merge by pointer (Decision 6): the loser's rows are never touched.
@@ -78,9 +80,15 @@ public struct UserEditService {
     }
 
     /// INV-19: an event about nobody is a diary entry, and Orbit is not a diary.
+    /// A mic/typed capture may not KNOW its people yet — extraction finds them,
+    /// and every accepted proposal attaches its subject as a participant
+    /// (ProposalResolutionService). So: no participants AND no material to
+    /// extract from = a diary entry, refused; participants unknown-but-
+    /// discoverable = allowed, INV-19 satisfied through review.
     @discardableResult
     public func captureEvent(_ draft: CaptureDraft) throws -> String {
-        guard !draft.participants.isEmpty else {
+        guard !draft.participants.isEmpty
+                || draft.transcript?.isEmpty == false || draft.audioRef != nil else {
             throw WriteError.constitutionViolation("INV-19: an event requires ≥1 participant")
         }
         let id = OrbitID.make()

@@ -305,9 +305,29 @@ final class InvariantTests: XCTestCase {
     }
 
     func testINV19_eventRequiresParticipant() throws {
+        // no participants AND nothing to extract from = a diary entry, refused
         XCTAssertThrowsError(try edits.captureEvent(.init(
             kind: .note, occurredAt: "2026-07-01T00:00:00Z", participants: [])),
             "an event about nobody is a diary entry, and Orbit is not a diary")
+        // participants unknown-but-discoverable (a mic capture) is allowed…
+        let e = try edits.captureEvent(.init(
+            kind: .encounter, occurredAt: "2026-07-01T00:00:00Z",
+            transcript: "met Rui at the gallery", participants: []))
+        try edits.confirmEvent(e, fullModelTranscribed: true)
+        // …and INV-19 is satisfied through review: the accepted fact's subject
+        // becomes a participant of the source event ('about' — P4: presence is
+        // never invented, and 'about' stays out of rhythm math, INV-11).
+        let rui = try person("Rui")
+        _ = try accepted(op: .assert, payload: AssertPayload(
+            subject: .id(rui), predicate: "interest", objectValue: "printmaking",
+            verbatim: "met Rui at the gallery"), event: e)
+        let att = try store.db.scalar(
+            "SELECT attendance FROM event_participant WHERE event_id=? AND person_id=?",
+            [.text(e), .text(rui)]).stringValue
+        XCTAssertEqual(att, "about")
+        let rhythm = try store.db.scalar(
+            "SELECT COUNT(*) FROM rm_contact_rhythm WHERE person_id=?", [.text(rui)]).intValue
+        XCTAssertEqual(rhythm ?? 0, 0, "'about' attendance never enters rhythm (INV-11)")
     }
 
     // MARK: INV-20 — hardship never prompts (type-level)

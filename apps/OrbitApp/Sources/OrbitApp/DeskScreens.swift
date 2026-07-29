@@ -1,6 +1,7 @@
 import SwiftUI
 import OrbitCore
 import OrbitRecall
+import OrbitSearch
 import OrbitDesign
 
 /// The Desk (DESIGN §6): the permanent structure. Fixed tile order — positions
@@ -328,16 +329,149 @@ struct ReachMiniPage: View {
     }
 }
 
-/// Search lands in Phase 6 (M4, goldens-first). This placeholder keeps the
-/// navigation shell honest without pretending to search.
+/// Search & Discover (M4, DESIGN §12): one field, three query shapes, results
+/// as-you-type — no submit affordance exists (J-8). Evidence lines with
+/// remembered content speak in the memory voice; the "And maybe —" band is
+/// visually distinct (note material) and every maybe cites its source.
 struct SearchScreen: View {
-    var initialQuery: String
+    @State var query: String
+    @EnvironmentObject var app: AppModel
     @Environment(\.room) var room
+    @State private var result: Searcher.Result = .empty
+
+    init(initialQuery: String) {
+        _query = State(initialValue: initialQuery)
+    }
+
     var body: some View {
-        VStack {
-            Text("Search arrives with M4.").interfaceVoice(size: 13)
+        ScrollView {
+            VStack(alignment: .leading, spacing: Tokens.gridGap) {
+                TextField(Copy.searchPlaceholders[1], text: $query)
+                    .accessibilityIdentifier("search.field")
+                    .font(.system(size: 14))
+                    .padding(.vertical, 11).padding(.horizontal, 15)
+                    .background(Tokens.pillBg(room))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().strokeBorder(Tokens.pillEdge(room), lineWidth: 1))
+                    .onChange(of: query) { _, text in
+                        result = (try? Searcher(reader: app.store.reader).search(text)) ?? .empty
+                    }
+
+                switch result {
+                case .people(let hits):
+                    ForEach(hits, id: \.personID) { hit in
+                        NavigationLink { DeskView(personID: hit.personID) } label: {
+                            PaperTile {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(hit.name).memoryVoice(size: 15, weight: .semibold)
+                                        .foregroundStyle(Tokens.ink(room))
+                                    if !hit.anchor.isEmpty {
+                                        Text(hit.anchor).interfaceVoice(size: 11)
+                                            .foregroundStyle(Tokens.inkMuted(room))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                case .answer(let answer):
+                    answerView(answer)
+
+                case .probably(let top, let runnersUp):
+                    if let top {
+                        PaperTile {
+                            VStack(alignment: .leading, spacing: 7) {
+                                Text("Probably \(top.name) — here's why")
+                                    .interfaceVoice(size: 13, weight: .semibold)
+                                    .foregroundStyle(Tokens.ink(room))
+                                ForEach(Array(top.evidence.enumerated()), id: \.offset) { _, ev in
+                                    // matched facts underlined in ember-wash — the
+                                    // search showing its work (§12)
+                                    Text(ev.text).memoryVoice(size: 13)
+                                        .foregroundStyle(Tokens.ink(room))
+                                        .emberEmphasis()
+                                }
+                            }
+                        }
+                        ForEach(runnersUp, id: \.personID) { hit in
+                            Text("or \(hit.name)").interfaceVoice(size: 11.5)
+                                .foregroundStyle(Tokens.inkFaint(room))
+                        }
+                    }
+
+                case .empty:
+                    EmptyView()   // D-8: nothing renders, no "no results!" chrome
+                }
+            }
+            .padding(.top, Tokens.screenPaddingTop)
+            .padding(.horizontal, Tokens.screenPaddingSide)
+        }
+        .onAppear {
+            result = (try? Searcher(reader: app.store.reader).search(query)) ?? .empty
+        }
+    }
+
+    @ViewBuilder
+    func answerView(_ answer: Searcher.Answer) -> some View {
+        // an ANSWER, not matches: count first (a true count, D-9)
+        if let fact = answer.factAnswer {
+            PaperTile {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(fact).memoryVoice(size: 17, weight: .semibold)
+                        .foregroundStyle(Tokens.ink(room))
+                    ForEach(Array((answer.firsthand.first?.evidence ?? []).enumerated()),
+                            id: \.offset) { _, ev in
+                        evidenceLine(ev)
+                    }
+                }
+            }
+        } else if !answer.firsthand.isEmpty {
+            Text("\(answer.firsthand.count)")
+                .interfaceVoice(size: 12, weight: .semibold)
                 .foregroundStyle(Tokens.inkMuted(room))
         }
-        .padding(.top, Tokens.screenPaddingTop)
+        ForEach(answer.firsthand, id: \.personID) { hit in
+            NavigationLink { DeskView(personID: hit.personID) } label: {
+                PaperTile {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(hit.name).memoryVoice(size: 14.5, weight: .semibold)
+                            .foregroundStyle(Tokens.ink(room))
+                        ForEach(Array(hit.evidence.enumerated()), id: \.offset) { _, ev in
+                            evidenceLine(ev)
+                        }
+                    }
+                }
+            }
+        }
+        if !answer.maybe.isEmpty {
+            // the known-of band: visually distinct, each citing its source (§12)
+            Text("And maybe —").interfaceVoice(size: 12, weight: .semibold)
+                .foregroundStyle(Tokens.inkMuted(room))
+                .padding(.top, 6)
+            ForEach(answer.maybe, id: \.personID) { hit in
+                NoteTile(tilted: false) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(hit.name).memoryVoice(size: 14, weight: .semibold)
+                            .foregroundStyle(Tokens.ink(room))
+                        Text(hit.source).interfaceVoice(size: 11)
+                            .foregroundStyle(Tokens.inkMuted(room))
+                        ForEach(Array(hit.evidence.enumerated()), id: \.offset) { _, ev in
+                            evidenceLine(ev)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    func evidenceLine(_ ev: Searcher.Evidence) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text(ev.text).memoryVoice(size: 12.5)
+                .foregroundStyle(Tokens.inkMuted(room))
+            if let bound = ev.timeBound {
+                Text(bound).interfaceVoice(size: 10.5)
+                    .foregroundStyle(Tokens.inkFaint(room))
+            }
+        }
     }
 }

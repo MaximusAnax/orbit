@@ -1,0 +1,110 @@
+# Search goldens — authored BEFORE OrbitSearch exists (EVALS §3.4: "a capability
+# without goldens is not ready to be built").
+#
+# The corpus below is seeded through the production write funnel by
+# Tests/OrbitSearchTests (the executable form of this file); the queries and
+# expectations here are the contract. J-8's known-answer half runs against
+# exactly these. Ratified behavior (DESIGN §12 Search/Discover):
+#   name     → people anchored by provenance, nicknames/misspellings included
+#   question → an ANSWER, not matches: count first, firsthand people with
+#              time-bounded evidence, then the visually distinct "And maybe —"
+#              band of known-of people, each citing its source
+#   fragment → "Probably <name> — here's why", matched facts as evidence
+# Every answer cites evidence; knows-each-other is derived, never asserted.
+
+corpus:
+  people:
+    - {name: Nikos,  status: active}
+    - {name: James,  status: active}
+    - {name: Maya,   status: known_of}     # only ever heard about, via Alex
+    - {name: Alex,   status: active}
+    - {name: Sarah,  status: active}
+  events:
+    - {key: picnic,  kind: party, occurred: 2026-07-12, title: "Y Combinator Startup School Picnic",
+       with: [Nikos]}
+    - {key: dinner_james, kind: dinner, occurred: 2025-11-02, with: [James]}
+    - {key: intro_maya, kind: introduction, occurred: 2026-02-20,
+       with: [Alex], introducer: Alex, about: [Maya]}   # Alex told Abdoul about Maya
+    - {key: coffee_sarah, kind: coffee, occurred: 2026-03-05, with: [Sarah]}
+  facts:
+    - {person: Nikos, predicate: location,   verbatim: "Nikos is from Greece", event: picnic}
+    - {person: Nikos, predicate: interest,   verbatim: "he free-dives off Crete", event: picnic}
+    - {person: James, predicate: employment, verbatim: "James works at Google",
+       value: Google, valid_from: 2023-01, event: dinner_james}
+    - {person: James, predicate: location,   verbatim: "he's settled in New York",
+       value: "New York", event: dinner_james}
+    - {person: Maya,  predicate: employment, verbatim: "Alex's friend Maya is an engineer at Google",
+       value: Google, source: secondhand, attributed_to: Alex, event: intro_maya}
+    - {person: Sarah, predicate: skill,      verbatim: "Sarah runs the visa clinic",
+       value: "visa clinic", event: coffee_sarah}
+
+goldens:
+  # ── name shape ──────────────────────────────────────────────────────────
+  - id: S-1
+    query: "Sarah"
+    shape: name
+    expect:
+      top_person: Sarah
+      provenance_anchored: true          # result line carries met-when, not a bare name
+  - id: S-2
+    query: "Sara"                        # misspelling still lands
+    shape: name
+    expect:
+      top_person: Sarah
+  - id: S-3
+    query: "Nikos"
+    shape: name
+    expect:
+      top_person: Nikos
+
+  # ── question shape ──────────────────────────────────────────────────────
+  - id: S-4
+    query: "who do I know at Google?"
+    shape: question
+    expect:
+      firsthand: [James]                 # count first, evidence time-bounded
+      maybe: [Maya]                      # the "And maybe —" band
+      maybe_cites_source: Alex           # each maybe cites who told him
+      evidence_contains: "James works at Google"
+  - id: S-5
+    query: "where does James work?"
+    shape: question
+    expect:
+      answer_person: James
+      answer_contains: Google
+      evidence_contains: "James works at Google"
+  - id: S-6
+    query: "who did I meet through Alex?"
+    shape: question
+    expect:
+      firsthand: []                      # Maya was never actually met
+      maybe: [Maya]                      # known-of via Alex's introduction event
+  - id: S-7
+    query: "who should I ask about visas?"
+    shape: question
+    expect:
+      firsthand: [Sarah]
+      evidence_contains: "Sarah runs the visa clinic"
+
+  # ── fragment shape ──────────────────────────────────────────────────────
+  - id: S-8
+    query: "the guy from Greece at the picnic"
+    shape: fragment
+    expect:
+      probably: Nikos                    # "Probably Nikos — here's why"
+      evidence_contains: "Nikos is from Greece"
+      evidence_count_min: 2              # the location fact + the picnic event
+  - id: S-9
+    query: "free diving crete"
+    shape: fragment
+    expect:
+      probably: Nikos
+      evidence_contains: "he free-dives off Crete"
+
+  # ── absence: search never invents ───────────────────────────────────────
+  - id: S-10
+    query: "who do I know at Stripe?"
+    shape: question
+    expect:
+      firsthand: []
+      maybe: []                          # empty answers render as empty (D-8), never guessed

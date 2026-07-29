@@ -34,6 +34,12 @@ public enum ReadModels {
     /// Full rebuild from the log (INV-4's reference implementation).
     public static func rebuild(on db: Database) throws {
         try db.exec(try Schema.resource("004_rebuild_readmodels"))
+        try rebuildSearch(on: db)
+    }
+
+    /// The search index is a read model too — same derivability contract.
+    public static func rebuildSearch(on db: Database) throws {
+        try db.exec(try Schema.resource("005_search_rebuild"))
     }
 
     /// Dump for INV-4 equivalence diffs (stable ordering).

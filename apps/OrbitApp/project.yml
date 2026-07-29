@@ -40,6 +40,8 @@ targets:
         product: OrbitPipeline
       - package: Orbit
         product: OrbitRecall
+      - package: Orbit
+        product: OrbitSearch
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
