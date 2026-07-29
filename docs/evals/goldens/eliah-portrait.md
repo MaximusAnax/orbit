@@ -62,7 +62,19 @@ Eliah's actual internship was at **Uber** (world-truth, per Abdoul); the audio a
 
 *(If listening proves the audio says Uber, this section converts to a Critical PIPE-1 substitution finding and the transcript fixture is corrected — flag it and the golden updates.)*
 
-## Ungraded regions (contract silent, pending policy — do not score either way)
+## Self-profile requirements (graded as of 2026-07-28 — was ungraded region 1)
 
-1. **Speaker-self facts** (Abdoul: from the Bronx / 167th & Grand Concourse, Microsoft internship, CMU CS, Tartan Scholars, energetic). Whether Orbit extracts facts about its own user is undecided policy. *Logged as a finding for the flow/design agent.*
-2. **Explicit relationship-state declarations** ("inner, inner, inner circle, right there along with my family," "like a brother," best-friend framing). RelationshipState is human-authored by design and **no proposal op exists** for it — yet the portrait contains the user declaring orbit placement verbatim. *Logged as a finding; do not extract as ordinary assertions.*
+Required, targeting the `is_self` row (DATA-MODEL §7.12) — **never a newly created person** (a new "Abdoul" person = INV-22 fail):
+
+- Origin: the Bronx — lived at 167th and Grand Concourse (verbatim-worthy).
+- CS at Carnegie Mellon; Tartan Scholars.
+- Interned at **Microsoft**, same summer (closed interval — same tense trap as Eliah's).
+- Trait: energetic, "all over the place" (his own words).
+- **"We" splits**: "we both love anime" and kin produce paired assertions — one for Eliah, one for self, same verbatim.
+- Era anchor: "going into our senior year right now" registers on the self timeline; it is what makes every era-relative date in this memo resolvable.
+
+## Relationship-state requirements (graded as of 2026-07-28 — was ungraded region 2)
+
+Required: **one `PROPOSE_STATE` proposal for Eliah** whose narrative quotes an explicit declaration verbatim — "he would be in the inner, inner, inner circle, right there along with my family" (or the best-friend declaration), with **Inner Orbit** as the mapped suggestion, mapping shown as suggestion, not fact.
+
+Forbidden: any state proposal citing anything other than a verbatim explicit declaration (INV-24) — ten minutes of warmth is not a declaration; "I'm excited for us to grow closer" is intent color, not an orbit statement, and must not independently trigger the op.

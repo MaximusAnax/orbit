@@ -150,6 +150,8 @@ Where possible, contact points should be actionable: tap to call, tap to text, o
 
 The system should also support connecting a person to an existing phone contact rather than requiring duplicate manual entry.
 
+**Orbit also keeps one quiet profile of Abdoul himself.** It is not a relationship — it has no orbit, no maintenance, and never appears in briefs, suggestions, or discovery. It exists because half of every "we" is a fact about him ("we both study CS"), and because his own timeline is the anchor that dates everyone else's ("our sophomore year"). Facts about himself pass through the same review as everything else.
+
 ---
 
 ## 6. Historical Information Must Never Be Lost
@@ -329,6 +331,8 @@ Relationship state may include:
 - How often he ideally wants to interact
 
 The AI may help organize and summarize this information. But Abdoul remains the authority.
+
+When Abdoul declares a relationship in his own words during any capture — *"he's in my inner, inner circle, right there with my family"* — Orbit may carry those exact words into a proposed relationship state for his review. It never infers state from tone, enthusiasm, or how often someone comes up. **No declaration, no proposal.**
 
 ---
 

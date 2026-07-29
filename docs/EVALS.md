@@ -74,6 +74,12 @@ Property-based tests and schema lints. Each is small, fast, and absolute. Number
 - **INV-20** `condition_hardship` threads never generate proactive prompts of any kind — no suggestion object is ever constructed from one. *(This is the "never cheerfully raise grief" rule; it gets its own invariant because its failure mode is the worst in the product.)*
 - **INV-21** Bitemporal correctness fuzz: generate random assert/close/correct/amend sequences; verify that validity-time queries and observation-time queries each reconstruct the correct view at every point. *(Property-based, the workhorse test of Decision 1.)*
 
+### The self and the state (§7.12–7.13, added 2026-07-28)
+
+- **INV-22** Exactly one `is_self` Person row exists; it never merges, and first-person facts extract to it — never to a newly created person.
+- **INV-23** The self row is absent, structurally, from everything relationship-shaped: relationship state, orbit, maintenance/cadence, threads, loops, group-membership rows, "Today," briefs, discovery/search people-results, reach-out suggestions, and co-attendance projections. *(Enforced at the query layer, tested by attempting each.)*
+- **INV-24** Every `PROPOSE_STATE` proposal payload contains a verbatim substring of its source transcript quoting an explicit self-characterization. A state proposal without a quote — from tone, enthusiasm, or frequency — is a Critical failure regardless of how apt it is.
+
 ---
 
 ## 3. L1 — Pipeline quality
@@ -274,7 +280,7 @@ The line, stated once: **metrics may inform the owner's judgment; they may never
 
 - All ◊ thresholds: provisional until first measurement on the built system, then ratified and ratcheted.
 - PIPE-12: golden exists (`eliah-portrait`); the accuracy number awaits the production extractor. Workshop borderline-flags are an authoring proxy for flicker, not a PIPE-15 measurement.
-- Policy questions escalated from the Eliah golden's ungraded regions, owned by the flow/design track: speaker-self facts; a proposal path for explicit relationship-state declarations.
+- ~~Policy questions escalated from the Eliah golden's ungraded regions~~ — both resolved 2026-07-28: the self-profile (DATA-MODEL §7.12, INV-22/23) and `PROPOSE_STATE` (§7.13, INV-24). The golden's ungraded regions are now graded contract entries — the escalation mechanism completed its first full cycle.
 - PIPE-15's k (consistency runs) and the 70% flicker boundary: provisional; calibrate against the real-memo corpus.
 - Judge-model selection, panel composition, and prompt versioning scheme for LLM-judged metrics.
 - Friction-budget numbers: set after first implementation pass, not before.

@@ -162,6 +162,7 @@ erDiagram
 | `display_name`, `preferred_name`, `name_pronunciation` | §5 identity |
 | `photo_ref` | |
 | `status` | `provisional \| active \| known_of \| merged` — see §7.3 |
+| `is_self` | boolean; **exactly one row ever** — the user's own restricted-scope profile (§7.12). Orthogonal to `status`; a self row never merges |
 | `merged_into` | nullable person_id — see Decision 6 |
 | `system_contact_ref` | link to OS contact record, not a copy (§5) |
 | `first_met_event_id` | nullable; the "how we met" anchor for §15 |
@@ -246,7 +247,7 @@ One event may have several extractions over time. The newest does not win automa
 | Field | Notes |
 | --- | --- |
 | `id`, `sync_run_id` | |
-| `op` | `ASSERT \| CLOSE \| CORRECT \| MERGE \| LINK \| CREATE_PERSON \| CREATE_EVENT \| OPEN_LOOP \| DISAMBIGUATE` — `CREATE_EVENT` reconstructs a past episode from a portrait (§7.11) |
+| `op` | `ASSERT \| CLOSE \| CORRECT \| MERGE \| LINK \| CREATE_PERSON \| CREATE_EVENT \| OPEN_LOOP \| PROPOSE_STATE \| DISAMBIGUATE` — `CREATE_EVENT` reconstructs a past episode from a portrait (§7.11); `PROPOSE_STATE` transports an explicit spoken self-characterization into a proposed RelationshipState (§7.13) |
 | `target_person_id` | nullable |
 | `target_assertion_id` | nullable — for CLOSE / CORRECT |
 | `payload` | the proposed assertion or operation |
@@ -263,7 +264,7 @@ Rejected proposals are **kept**. They record what Abdoul chose not to believe, w
 
 Append-only versions; latest is current. Never AI-written without confirmation.
 
-`id`, `person_id`, `narrative` (Abdoul's own words — **authoritative**), `orbit`, `maintenance_mode`, `desired_cadence` (nullable), `intent` (direction he wants it to move), `authored_by` (`human \| ai_suggested`), `created_at`
+`id`, `person_id`, `narrative` (Abdoul's own words — **authoritative**), `orbit`, `maintenance_mode`, `desired_cadence` (nullable), `intent` (direction he wants it to move), `authored_by` (`human \| ai_suggested`), `source_event_id` (nullable — set when the state arrived via `PROPOSE_STATE` from a capture, §7.13; provenance stays total), `created_at`
 
 Versioning means orbit *movement* is visible — Principle 11 wants change legible, not silent. "Moved from extended to close over the past year" is a real and meaningful thing to be able to see.
 
@@ -571,6 +572,29 @@ The extraction bar, same shape as the thread bar: *an episode needs a what and a
 
 **Pending before build:** empirical validation of the episodic/semantic classification against a real portrait memo — the same real-data gate the review flow passed before ratification.
 
+### 7.12 The self-profile *(ratified 2026-07-28, from the Eliah golden's escalation)*
+
+Portrait speech is full of the speaker: half of every "we" sentence is a fact about Abdoul, and discarding that half throws away the *shared-ness* that is the texture of a relationship ("we both study CS," "we're from the same place").
+
+**Mechanism: one Person row flagged `is_self`, with structurally limited scope.** Same pattern as `known_of` (§7.3) — a person class defined by its restrictions:
+
+- **In scope:** assertions (through the normal propose-review flow — extraction targets first-person facts at the self row), a timeline, contact points.
+- **Excluded by invariant, not convention:** relationship state, orbit, maintenance mode, cadence, threads, open loops, group-membership rows, "Today" appearances, pre-meeting briefs, discovery/search people-results, reach-out suggestions, co-attendance projections, and merging. The self is the implicit center of every event and group already; it gets no relationship machinery because Orbit's user does not have a relationship with himself.
+
+**The era-anchor registry — the self-profile's quiet superpower.** Era-relative dates ("sophomore spring," "our junior fall") resolve only against stated anchors (PIPE-12 rule). Self assertions — education intervals, "going into senior year" — form a durable anchor registry, so every portrait of a person who shares Abdoul's eras resolves through it without restating anchors. Resolution rule: a subject's own stated anchors first; self anchors when the era is explicitly shared ("**our** sophomore year"); otherwise the date stays fuzzy. "*Her* sophomore year" with no anchor resolves to nothing — no guessing.
+
+**"We" splits.** "We both love anime" produces two assertions — one for the subject, one for self — each with the same verbatim and provenance.
+
+### 7.13 Transported relationship state: `PROPOSE_STATE` *(ratified 2026-07-28)*
+
+Portraits contain the user declaring relationship state in his own words at exactly the moment ORBIT.md §12 wants it — *"he would be in the inner, inner, inner circle, right there along with my family."* Discarding that forces re-entry later, which is administration (P10). Auto-writing it violates the never-AI-written rule. The resolution is the op the model was missing:
+
+- **`PROPOSE_STATE` fires only on an explicit self-characterization** — a quotable declaration of what the relationship *is* or should become. The proposal's narrative is the **verbatim quote**; the orbit/intent slots are mapped suggestions shown as such, with the mapping rationale in the proposal, not the state row.
+- **Never from inference.** Tone, enthusiasm, duration of mention, frequency of appearance — none of it may trigger this op. No quote, no proposal. (This is the §9.6 rate→orbit prohibition and the salience lesson, restated as a structural bar: the proposal payload must contain a verbatim substring of the source transcript, mechanically checkable.)
+- On acceptance the RelationshipState row carries `authored_by: human` — the words were literally his; the AI only moved them — with `source_event_id` linking the capture that contained them. Review may edit the mapping like any proposal (P5).
+
+ORBIT.md §12's own language ratifies the doctrine: *"The AI may help organize and summarize this information. But Abdoul remains the authority."* Transporting is organizing.
+
 ---
 
 ## 8. Recall ranking — why `salience` was cut
@@ -712,6 +736,8 @@ But a fully manual orbit will rot. Abdoul will not remember to update it, the fi
 > Note: the leaderboard guard rail in §9.5 does not by itself rule this out — the derivative form is entirely within-relationship and needs no cross-person comparison. The decoupling argument and the harm asymmetry are what carry the decision.
 
 **Placement is part of the decision.** The observation belongs in the pre-meeting brief and on the person's profile — **never in anything that pushes.** In the brief it is context; as a notification it is a nudge, and an unprompted nudge about frequency smells like the thing this section just ruled out even with no verdict attached.
+
+**One legitimate source of state proposals exists, and it is not rate:** Abdoul's own explicit spoken declarations, transported verbatim via `PROPOSE_STATE` (§7.13). The distinction is the source — his words versus a pattern. Patterns observe; only words propose.
 
 ---
 
