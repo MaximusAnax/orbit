@@ -175,24 +175,43 @@ final class ReviewViewModel: ObservableObject, Identifiable {
         }
     }
 
+    /// Cards whose accept hit a dependency that hasn't been accepted yet
+    /// (e.g. an assertion referencing an entity whose LINK card lives in
+    /// another group). Retried automatically after every successful settle,
+    /// so accept-all converges regardless of tap order.
+    private var dependencyWaiters: [Card] = []
+
     private func settle(_ card: Card, _ op: () throws -> Void) {
         do {
             try op()
-            let label: String
-            switch card.settled {
-            default:
-                label = try labelFor(cardID: card.id)
-            }
+            let label = (try? labelFor(cardID: card.id)) ?? Copy.saved
             for gi in groups.indices {
                 if let ci = groups[gi].cards.firstIndex(where: { $0.id == card.id }) {
                     groups[gi].cards[ci].settled = label
                 }
             }
             app?.refreshAmbient()
+            retryDependencyWaiters()
         } catch {
-            // A dependency error ("accept the person first") surfaces as plain ink,
-            // never red (D-1): the card stays unsettled.
+            if case WriteError.pendingDependency(_) = error {
+                dependencyWaiters.append(card)
+            }
+            // Either way the card stays visibly unsettled — plain ink, never
+            // red (D-1); a queued card settles itself once its blocker lands.
         }
+    }
+
+    private func retryDependencyWaiters() {
+        guard !dependencyWaiters.isEmpty else { return }
+        let waiting = dependencyWaiters
+        dependencyWaiters = []
+        for card in waiting where stillPending(card) {
+            accept(card)
+        }
+    }
+
+    private func stillPending(_ card: Card) -> Bool {
+        groups.contains { $0.cards.contains { $0.id == card.id && $0.settled == nil } }
     }
 
     private func labelFor(cardID: String) throws -> String {
