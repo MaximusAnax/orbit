@@ -294,10 +294,15 @@ CREATE TABLE sync_person_ref (
     PRIMARY KEY (sync_run_id, ref)
 );
 
+-- Run-scoped ref→id map. POLYMORPHIC by design: entity refs, thread refs
+-- ("thread:<ref>"), and reconstructed-event refs ("event:reconstructed:…")
+-- share the namespace (ProposalResolutionService), so entity_id carries ids
+-- from three tables and deliberately has no FK. Rows are sync bookkeeping,
+-- not ledger content.
 CREATE TABLE sync_entity_ref (
     sync_run_id TEXT NOT NULL REFERENCES sync_run(id),
     ref         TEXT NOT NULL,
-    entity_id   TEXT NOT NULL REFERENCES entity(id),
+    entity_id   TEXT NOT NULL,
     PRIMARY KEY (sync_run_id, ref)
 );
 

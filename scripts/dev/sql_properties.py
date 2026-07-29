@@ -489,6 +489,28 @@ def test_worked_example():
     ok("worked example (§3): 'where did Sarah work in 2024' → Google; current → Stripe")
 
 
+
+def test_sync_ref_map_is_polymorphic():
+    """Regression pin (caught by CI L0, 2026-07-29): sync_entity_ref maps
+    run-scoped refs to entity, thread, AND reconstructed-event ids — an FK to
+    entity(id) here breaks thread/episode acceptance through the funnel."""
+    con = new_db()
+    p = add_person(con, "Nia")
+    e = add_event(con, participants=[(p, "confirmed")])
+    x = uid()
+    con.execute("INSERT INTO extraction (id, event_id, extraction_version, model_id, prompt_version, created_at, payload) "
+                "VALUES (?,?,1,'test','v1','2026-07-29','{}')", (x, e))
+    run = uid()
+    con.execute("INSERT INTO sync_run (id, event_id, extraction_id, created_at) "
+                "VALUES (?,?,?,'2026-07-29')", (run, e, x))
+    thread = uid()
+    con.execute("INSERT INTO thread (id, person_id, title, archetype, opened_event_id) "
+                "VALUES (?,?,'a thread','project',?)", (thread, p, e))
+    con.execute("INSERT INTO sync_entity_ref VALUES (?,?,?)", (run, "thread:t1", thread))
+    con.execute("INSERT INTO sync_entity_ref VALUES (?,?,?)", (run, "event:reconstructed:2024", e))
+    ok("sync_entity_ref maps threads and events, not just entities (polymorphic by design)")
+
+
 ALL = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
 
 if __name__ == "__main__":
