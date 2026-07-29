@@ -161,8 +161,11 @@ public struct StoreReader {
     }
 
     public func pendingProposals(syncRun: String) throws -> [Row] {
+        // rowid = insertion order: the sync engine emits dependency-first
+        // (CREATE_PERSON before its ASSERTs), so review renders in that order
+        // and per-person accept-all resolves cleanly.
         try db.query(
-            "SELECT * FROM proposal WHERE sync_run_id=? AND state IN ('pending','deferred') ORDER BY id",
+            "SELECT * FROM proposal WHERE sync_run_id=? AND state IN ('pending','deferred') ORDER BY rowid",
             [.text(syncRun)])
     }
 

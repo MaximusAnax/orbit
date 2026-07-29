@@ -3,6 +3,7 @@
 
 # Whisper model binaries (547MB — re-download, never commit)
 .models/
+apps/OrbitApp/Vendor/
 
 # Personal voice recordings stay local; transcripts are tracked
 mock_memos/*.m4a

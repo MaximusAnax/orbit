@@ -13,6 +13,9 @@ echo "== write-path lint (INV-5 / INV-15) =="
 echo "== SQL fast-loop checks =="
 python3 scripts/dev/sql_check.py
 
+echo "== design-law lint (static tier of D-1..D-11) =="
+python3 scripts/dev/design_lint.py
+
 if command -v swift >/dev/null 2>&1; then
   echo "== swift build =="
   swift build
