@@ -198,8 +198,9 @@ this environment (all Swift is T2-pending until CI runs).
 **Deferred surfaces register (post-M5, by felt need — DESIGN §14):**
 merge/unmerge review flow UI (ledger op is built + tested), gardening session,
 export UI entry point (capability built, PRIV-5), brokering/hosting search
-recipes, groups & saved lists UI, settings surface (API key entry ships in
-keychain shim), rejection-reason picker surfacing (`RejectionReason` wired in
-the funnel), Deck reachability actions (tap-to-call/text).
+recipes, groups & saved lists UI, rejection-reason picker surfacing
+(`RejectionReason` wired in the funnel), Deck reachability actions
+(tap-to-call/text). (Settings/key entry shipped post-CI-green: real keychain +
+the Keys sheet.)
 
 **Ratification queue:** docs/evals/RATIFICATION.md.

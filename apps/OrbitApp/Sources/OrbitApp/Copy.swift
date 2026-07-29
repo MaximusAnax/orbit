@@ -79,6 +79,14 @@ enum Copy {
     static let onboardingBegin = "Begin"
     static let onboardingPortraitInvite = "A few people worth painting first — whenever you like."
 
+    // Settings — the one quiet drawer; keys live in this phone's keychain only
+    static let settingsTitle = "Keys"
+    static let settingsHint = "One extraction endpoint, chosen by whichever key exists. Keys stay in this phone's keychain."
+    static let anthropicKeyLabel = "Anthropic key"
+    static let openAIKeyLabel = "OpenAI key"
+    static let saveKeys = "Save"
+    static let keySaved = "Saved to the keychain"
+
     // Errors speak plain sans ink — no red exists (D-1/§9)
     static let extractionFailed = "Couldn't structure this one yet. The memo is safe — try again when you're back online."
     static let transcriptionFallback = "Quick model for now — the full one will re-listen before the recording is deleted."
@@ -100,5 +108,7 @@ enum Copy {
             portraitTitle, portraitHint, skipPrompt, firstMetAction, firstMetSet,
             stateCardTag, suggestedPrefix, onboardingNamePrompt, onboardingBegin,
             onboardingPortraitInvite,
+            settingsTitle, settingsHint, anthropicKeyLabel, openAIKeyLabel,
+            saveKeys, keySaved,
         ] + portraitPrompts
 }

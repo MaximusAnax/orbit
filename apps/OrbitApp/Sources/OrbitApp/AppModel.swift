@@ -5,6 +5,9 @@ import OrbitStore
 import OrbitWrite
 import OrbitPipeline
 import OrbitRecall
+#if canImport(Security)
+import Security
+#endif
 
 /// App-level composition root. Owns the single writer (INV-5 funnel) and hands
 /// read-only state to views. All heavy work happens off the main actor.
@@ -231,6 +234,16 @@ final class AppModel: ObservableObject {
         startExtraction(eventID: eventID)
     }
 
+    /// The ceiling model downloads during onboarding dead time (§6); quiet,
+    /// resumed on next launch if it doesn't finish.
+    func warmModels() {
+        guard let whisper = transcription as? WhisperTranscriber else { return }
+        let models = whisper.models
+        Task.detached(priority: .utility) {
+            await models.downloadCeilingIfNeeded()
+        }
+    }
+
     // MARK: recall (Desk & Deck)
 
     func assembleBrief(personID: String) throws -> Brief {
@@ -314,17 +327,57 @@ struct StaticPayloadExtractor: Extractor {
     }
 }
 
-/// Minimal keychain shim (real Security.framework wiring on device). Off
-/// device, each keychain item maps to its conventional env var.
+/// API keys at rest: Security.framework where a keychain exists (device-only
+/// accessibility — the key never rides iCloud Keychain), env-var fallback
+/// where none does (CI, Linux harness). The keychain item is the durable
+/// store; env vars exist so `orbit-evals measure --live` works headless.
 enum KeychainLite {
     nonisolated(unsafe) static var overrideForTesting: [String: String] = [:]
+    static let service = "dev.abdoul.orbit"
     static let envNames = [
         "anthropic-api-key": "ANTHROPIC_API_KEY",
         "openai-api-key": "OPENAI_API_KEY",
     ]
+
     static func read(_ key: String) -> String? {
-        if let v = overrideForTesting[key] { return v }
+        if let v = overrideForTesting[key] { return v.isEmpty ? nil : v }
+        #if canImport(Security)
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var item: CFTypeRef?
+        if SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+           let data = item as? Data,
+           let value = String(data: data, encoding: .utf8), !value.isEmpty {
+            return value
+        }
+        #endif
         guard let env = envNames[key] else { return nil }
         return ProcessInfo.processInfo.environment[env]
+    }
+
+    /// Empty value removes the item.
+    @discardableResult
+    static func write(_ key: String, value: String) -> Bool {
+        #if canImport(Security)
+        let base: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key,
+        ]
+        SecItemDelete(base as CFDictionary)
+        guard !value.isEmpty else { return true }
+        var add = base
+        add[kSecValueData as String] = Data(value.utf8)
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        return SecItemAdd(add as CFDictionary, nil) == errSecSuccess
+        #else
+        overrideForTesting[key] = value
+        return true
+        #endif
     }
 }

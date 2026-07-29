@@ -35,12 +35,15 @@ settings before production use.
 ## PRIV-3 — Audio deletion at the filesystem level, full-model gate honored
 
 **Enforced:** `raw_audio_ref` cleared only via `confirmEvent(fullModelTranscribed:
-true)` (§7.5); DB triggers make the ref the *only* mutable column post-confirm.
-**Tested:** J-1 both branches (deleted after full model; retained after tiny
-model) through the production path.
-**Open (T3):** the file-delete half (`FileManager.removeItem` at the cleared
-ref) ships in `UserEditService.confirmEvent`'s device path and must be verified
-on device (simulator filesystems lie about little).
+true)` (§7.5); DB triggers make the ref the *only* mutable column post-confirm;
+and the file itself is removed (`UserEditService.deleteAudioFile`) on
+full-model confirm, on the upgrade pass, and on discard.
+**Tested:** J-1 both branches through the production path, plus
+`AudioDeletionTests` asserting at the FILESYSTEM level: file gone after
+full-model confirm and after discard; retained after tiny-model confirm until
+`deleteAudioAfterUpgrade`. Runs in CI.
+**Open (T3):** re-confirm once on the physical device (iOS file-protection
+interactions).
 
 ## PRIV-4 — Extraction payload contains transcript + necessary context only
 

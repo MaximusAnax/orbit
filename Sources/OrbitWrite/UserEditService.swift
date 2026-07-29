@@ -124,6 +124,8 @@ public struct UserEditService {
     /// Confirm the event. Audio is deleted here ONLY when the full model transcribed
     /// (the §6/§7.5 gate) — otherwise the ref stays until an upgrade pass clears it.
     public func confirmEvent(_ id: String, fullModelTranscribed: Bool) throws {
+        let audioRef = try db.scalar("SELECT raw_audio_ref FROM event WHERE id=?",
+                                     [.text(id)]).stringValue
         try db.transaction {
             try db.run(
                 "UPDATE event SET lifecycle='confirmed', confirmed_at=? WHERE id=? AND lifecycle='captured'",
@@ -136,16 +138,39 @@ public struct UserEditService {
             }
             try store.rmEventConfirmed(id)
         }
+        // PRIV-3: deletion is a filesystem fact, not a NULLed column. Outside
+        // the transaction — the ledger commit must not depend on disk state.
+        if fullModelTranscribed {
+            Self.deleteAudioFile(at: audioRef)
+        }
     }
 
     /// Post-confirmation audio deletion once the full model has caught up (§6 note).
     public func deleteAudioAfterUpgrade(event: String) throws {
+        let audioRef = try db.scalar("SELECT raw_audio_ref FROM event WHERE id=?",
+                                     [.text(event)]).stringValue
         try db.run("UPDATE event SET raw_audio_ref=NULL WHERE id=?", [.text(event)])
+        Self.deleteAudioFile(at: audioRef)
+    }
+
+    /// Removes the recording at a raw_audio_ref. Only real file paths are
+    /// touched (tests use mock:// refs); failure is non-fatal — the ref is
+    /// already gone from the ledger, and a re-run cleans up strays.
+    static func deleteAudioFile(at ref: String?) {
+        guard let ref, !ref.isEmpty else { return }
+        let path = ref.hasPrefix("file://") ? String(ref.dropFirst(7)) : ref
+        guard path.hasPrefix("/") else { return }
+        try? FileManager.default.removeItem(atPath: path)
     }
 
     public func discardEvent(_ id: String) throws {
+        let audioRef = try db.scalar("SELECT raw_audio_ref FROM event WHERE id=?",
+                                     [.text(id)]).stringValue
         try db.run("UPDATE event SET lifecycle='discarded', raw_audio_ref=NULL WHERE id=? AND lifecycle='captured'",
                    [.text(id)])
+        if db.changes != 0 {
+            Self.deleteAudioFile(at: audioRef)
+        }
         if db.changes == 0 {
             throw WriteError.invalidState("only captured events can be discarded")
         }

@@ -10,6 +10,7 @@ struct HomeView: View {
     @Environment(\.room) var room
     @State private var searchText = ""
     @State private var showCapture = false
+    @State private var showSettings = false
 
     var body: some View {
         VStack(spacing: 14) {
@@ -82,8 +83,76 @@ struct HomeView: View {
         }
         .padding(.top, Tokens.screenPaddingTop)
         .padding(.horizontal, Tokens.screenPaddingSide)
+        .overlay(alignment: .topTrailing) {
+            // the one quiet drawer: key entry (chrome-minimal, faint ink)
+            Button { showSettings = true } label: {
+                Image(systemName: "key")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Tokens.inkFaint(room))
+                    .padding(10)
+            }
+            .accessibilityIdentifier("home.settings")
+        }
         .sheet(isPresented: $showCapture) { CaptureView() }
+        .sheet(isPresented: $showSettings) { SettingsView() }
         .onAppear { app.refreshAmbient() }
+    }
+}
+
+/// Key entry (§7.9 seam's one visible knob): two secure fields, keychain-only
+/// storage, provider chosen by whichever key exists.
+struct SettingsView: View {
+    @Environment(\.room) var room
+    @Environment(\.dismiss) var dismiss
+    @State private var anthropicKey = KeychainLite.read("anthropic-api-key") ?? ""
+    @State private var openAIKey = KeychainLite.read("openai-api-key") ?? ""
+    @State private var saved = false
+
+    var body: some View {
+        RoomBackground { _ in
+            VStack(alignment: .leading, spacing: 14) {
+                Text(Copy.settingsTitle).interfaceVoice(size: 20, weight: .bold)
+                    .foregroundStyle(Tokens.ink(room))
+                    .padding(.top, 28)
+                Text(Copy.settingsHint).interfaceVoice(size: 12)
+                    .foregroundStyle(Tokens.inkMuted(room))
+
+                keyField(Copy.anthropicKeyLabel, text: $anthropicKey, id: "settings.anthropicKey")
+                keyField(Copy.openAIKeyLabel, text: $openAIKey, id: "settings.openAIKey")
+
+                PrimaryButton(Copy.saveKeys) {
+                    KeychainLite.write("anthropic-api-key",
+                                       value: anthropicKey.trimmingCharacters(in: .whitespaces))
+                    KeychainLite.write("openai-api-key",
+                                       value: openAIKey.trimmingCharacters(in: .whitespaces))
+                    saved = true
+                }
+                if saved {
+                    Text(Copy.keySaved).interfaceVoice(size: 11.5)
+                        .foregroundStyle(Tokens.inkMuted(room))
+                }
+                Spacer()
+            }
+            .padding(.horizontal, Tokens.screenPaddingSide)
+        }
+        .overlay(alignment: .topTrailing) {
+            TertiaryButton(Copy.notNow) { dismiss() }.padding()
+        }
+    }
+
+    func keyField(_ label: String, text: Binding<String>, id: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(label).interfaceVoice(size: 11, weight: .semibold)
+                .foregroundStyle(Tokens.inkFaint(room))
+            SecureField("", text: text)
+                .accessibilityIdentifier(id)
+                .font(.system(size: 14))
+                .padding(11)
+                .background(Tokens.paper(room))
+                .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusCard))
+                .overlay(RoundedRectangle(cornerRadius: Tokens.radiusCard)
+                    .strokeBorder(Tokens.paperEdge(room), lineWidth: 1))
+        }
     }
 }
 
@@ -388,6 +457,7 @@ struct OrbitAppMain: App {
                 }
             }
             .environmentObject(model)
+            .task { model.warmModels() }   // ceiling model rides onboarding dead time (§6)
         }
     }
 }

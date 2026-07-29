@@ -25,7 +25,13 @@ targets:
   OrbitApp:
     type: application
     platform: iOS
-    sources: [Sources/OrbitApp]
+    sources:
+      - Sources/OrbitApp
+      # the whisper floor model — present after scripts/build-whisper.sh runs;
+      # optional so CI (no vendored artifacts) generates and builds unchanged
+      - path: Vendor/models/ggml-base.q5_1.bin
+        optional: true
+        buildPhase: resources
     dependencies:
       - target: OrbitDesign
       - package: Orbit
@@ -50,6 +56,10 @@ targets:
           Orbit records your voice memos on this device. Audio never leaves
           your phone and is deleted once transcribed.
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        # device installs: ORBIT_TEAM=<your team id> xcodegen generate
+        # (CI never signs — CODE_SIGNING_ALLOWED=NO — so this stays inert there)
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ${ORBIT_TEAM}
 
   OrbitAppTests:
     type: bundle.unit-test

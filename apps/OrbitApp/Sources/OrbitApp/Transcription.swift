@@ -35,11 +35,28 @@ final class ModelManager: @unchecked Sendable {
             .appendingPathComponent("models") ?? URL(fileURLWithPath: "/tmp/models")
     }
 
-    /// Onboarding has dead time (permissions, contact import) — that's when this runs.
-    /// Resumable; failure leaves the floor model doing honest work with audio retained.
+    /// Same artifact scripts/build-whisper.sh fetches for the Mac.
+    static let ceilingDownloadURL = URL(string:
+        "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin")!
+
+    /// Onboarding has dead time (permissions, first portraits) — that's when
+    /// this runs. Failure leaves the floor model doing honest work with audio
+    /// retained (§7.5); retried on next launch. PRIV note: this is an inbound
+    /// fetch of a public artifact — no user content leaves the device (PRIV-2
+    /// governs content-carrying egress; this carries none).
     func downloadCeilingIfNeeded() async {
-        // wired to a background URLSession on device; see scripts/build-whisper.sh
-        // for producing + hosting the quantized model artifact.
+        guard ceilingURL == nil else { return }
+        do {
+            let (tmp, response) = try await URLSession.shared.download(from: Self.ceilingDownloadURL)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { return }
+            try FileManager.default.createDirectory(at: modelsDirectory,
+                                                    withIntermediateDirectories: true)
+            let dest = modelsDirectory.appendingPathComponent(Tier.ceiling.rawValue + ".bin")
+            try? FileManager.default.removeItem(at: dest)
+            try FileManager.default.moveItem(at: tmp, to: dest)
+        } catch {
+            // quiet: the floor model keeps capture working (P3); no nagging (P10)
+        }
     }
 }
 
@@ -75,14 +92,103 @@ enum TranscriptionError: Error {
     case bridgeUnavailable
 }
 
-/// Placeholder for the whisper.cpp C bridge — the xcframework is produced on a Mac
-/// by scripts/build-whisper.sh (T3: needs Apple toolchain + on-device measurement
-/// for PERF-4). The simulator/dev path uses MockTranscriber.
+#if canImport(whisper)
+import whisper
+import AVFoundation
+
+/// The whisper.cpp C bridge. Active once scripts/build-whisper.sh has produced
+/// Vendor/whisper.xcframework and it's added to project.yml (the script prints
+/// the exact lines). Decode discipline per the 2026-07-27 empirical findings:
+/// context carryover OFF, entropy threshold 2.8, greedy at temperature 0,
+/// names primed via initial_prompt (assist only — NameMatcher is the
+/// correctness mechanism, PIPE-1).
+enum WhisperBridge {
+    static func run(model: URL, audio: URL, initialPrompt: String) async throws -> String {
+        try await Task.detached(priority: .userInitiated) {
+            let samples = try decodePCM16kMono(audio)
+            let cparams = whisper_context_default_params()
+            guard let ctx = whisper_init_from_file_with_params(model.path, cparams) else {
+                throw TranscriptionError.bridgeUnavailable
+            }
+            defer { whisper_free(ctx) }
+
+            var params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY)
+            params.no_context = true          // -mc 0: primed runs loop on disfluency otherwise
+            params.entropy_thold = 2.8
+            params.temperature = 0
+            params.print_progress = false
+            params.print_realtime = false
+            params.n_threads = Int32(max(2, min(6, ProcessInfo.processInfo.processorCount - 1)))
+
+            let prompt = strdup(initialPrompt)
+            defer { free(prompt) }
+            params.initial_prompt = UnsafePointer(prompt)
+
+            let rc = samples.withUnsafeBufferPointer { buffer in
+                whisper_full(ctx, params, buffer.baseAddress, Int32(buffer.count))
+            }
+            guard rc == 0 else { throw TranscriptionError.bridgeUnavailable }
+
+            var text = ""
+            for i in 0..<whisper_full_n_segments(ctx) {
+                if let segment = whisper_full_get_segment_text(ctx, i) {
+                    text += String(cString: segment)
+                }
+            }
+            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        }.value
+    }
+
+    /// AAC m4a (DeviceRecorder's output) → 16 kHz mono Float32 PCM, whisper's
+    /// required input. AVFoundation decodes; no audio leaves the process.
+    static func decodePCM16kMono(_ url: URL) throws -> [Float] {
+        let file = try AVAudioFile(forReading: url)
+        guard let target = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000,
+                                         channels: 1, interleaved: false),
+              let converter = AVAudioConverter(from: file.processingFormat, to: target) else {
+            throw TranscriptionError.bridgeUnavailable
+        }
+        var samples: [Float] = []
+        let inCapacity: AVAudioFrameCount = 8192
+        var reachedEnd = false
+        while !reachedEnd {
+            let outCapacity = AVAudioFrameCount(
+                Double(inCapacity) * target.sampleRate / file.processingFormat.sampleRate) + 64
+            guard let outBuffer = AVAudioPCMBuffer(pcmFormat: target,
+                                                   frameCapacity: outCapacity) else { break }
+            var conversionError: NSError?
+            let status = converter.convert(to: outBuffer, error: &conversionError) { _, inputStatus in
+                guard let inBuffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat,
+                                                      frameCapacity: inCapacity),
+                      (try? file.read(into: inBuffer, frameCount: inCapacity)) != nil,
+                      inBuffer.frameLength > 0 else {
+                    inputStatus.pointee = .endOfStream
+                    return nil
+                }
+                inputStatus.pointee = .haveData
+                return inBuffer
+            }
+            if status == .error || conversionError != nil { throw TranscriptionError.bridgeUnavailable }
+            if let channel = outBuffer.floatChannelData?[0], outBuffer.frameLength > 0 {
+                samples.append(contentsOf: UnsafeBufferPointer(start: channel,
+                                                               count: Int(outBuffer.frameLength)))
+            }
+            reachedEnd = (status == .endOfStream) || outBuffer.frameLength == 0
+        }
+        guard !samples.isEmpty else { throw TranscriptionError.bridgeUnavailable }
+        return samples
+    }
+}
+#else
+/// Inactive until scripts/build-whisper.sh vendors the xcframework (T3: needs
+/// a Mac). The simulator/dev/test path uses MockTranscriber; on device without
+/// the framework, capture parks the memo honestly for sync-later (P3).
 enum WhisperBridge {
     static func run(model: URL, audio: URL, initialPrompt: String) async throws -> String {
         throw TranscriptionError.bridgeUnavailable
     }
 }
+#endif
 
 /// Dev/simulator transcriber: replays a provided transcript (used by UI tests).
 struct MockTranscriber: TranscriptionService {
