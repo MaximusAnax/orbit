@@ -365,6 +365,7 @@ public struct ProposalResolutionService {
         let subject: String? = forceUnresolved ? nil : try resolvePerson(p.subject, syncRun: syncRun)
         let entity: String? = try p.objectEntity.flatMap { try resolveEntity($0, syncRun: syncRun) }
         let attributed: String? = try p.attributedTo.flatMap { try resolvePerson($0, syncRun: syncRun) }
+        let objectValue: String? = try p.objectPerson.map { try resolvePerson($0, syncRun: syncRun) } ?? p.objectValue
         let event = try eventID(ofSyncRun: syncRun)
         let thread: String? = try p.threadRef.flatMap { ref in
             try db.scalar("SELECT entity_id FROM sync_entity_ref WHERE sync_run_id=? AND ref=?",
@@ -378,7 +379,7 @@ public struct ProposalResolutionService {
                                    source_kind, attributed_to_person_id, confidence, thread_id)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
-            [.text(id), .from(subject), .text(p.predicate), .from(entity), .from(p.objectValue),
+            [.text(id), .from(subject), .text(p.predicate), .from(entity), .from(objectValue),
              .text(p.verbatim), .from(p.validFrom), .from(p.validTo), .text(p.datePrecision),
              .text(try observedAt(ofSyncRun: syncRun)), .text(event), .text(p.sourceKind),
              .from(attributed), p.confidence.map { SQLValue.real($0) } ?? .null, .from(thread)])

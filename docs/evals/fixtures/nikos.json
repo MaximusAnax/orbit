@@ -1,0 +1,97 @@
+{
+ "model_id": "claude-fable-5(in-session)",
+ "prompt_version": "v1",
+ "source": "mock_memos/transcripts/Nikos.txt",
+ "payload": {
+  "people": [
+   {
+    "ref": "p_nikos",
+    "name_as_heard": "Nikos",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": null,
+    "status": "active"
+   }
+  ],
+  "entities": [
+   {
+    "ref": "e_ycss",
+    "name_as_heard": "Y Combinator Startup School",
+    "kind": "event_series",
+    "existing_entity_id": null,
+    "part_of_ref": null,
+    "aliases": [
+     "startup school"
+    ]
+   },
+   {
+    "ref": "e_picnic",
+    "name_as_heard": "Y Combinator Startup School Picnic",
+    "kind": "event_series",
+    "existing_entity_id": null,
+    "part_of_ref": "e_ycss",
+    "aliases": [
+     "the picnic"
+    ]
+   }
+  ],
+  "assertions": [
+   {
+    "subject_ref": "p_nikos",
+    "predicate": "location",
+    "object_entity_ref": null,
+    "object_person_ref": null,
+    "object_value": "Greece",
+    "verbatim": "Nikos is from Greece",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_nikos",
+    "predicate": "life_event",
+    "object_entity_ref": "e_ycss",
+    "object_person_ref": null,
+    "object_value": "attended Y Combinator Startup School",
+    "verbatim": "He was there for startup school",
+    "valid_from": "2026-07",
+    "valid_to": null,
+    "date_precision": "month",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_nikos",
+    "predicate": "trait",
+    "object_entity_ref": null,
+    "object_person_ref": null,
+    "object_value": "down-to-earth, kind",
+    "verbatim": "He was a very down-to-earth guy, super nice to talk to, very kind",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   }
+  ],
+  "episodes": [],
+  "threads": [],
+  "thread_closures": [],
+  "loops": [],
+  "contact_points": [],
+  "state_declarations": [],
+  "corrections": [],
+  "ambiguities": []
+ }
+}

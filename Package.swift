@@ -44,7 +44,11 @@ let package = Package(
         .target(name: "OrbitWrite", dependencies: ["OrbitStore"]),
 
         // Extraction seam (§7.9) + sync engine (extraction payload → proposals).
-        .target(name: "OrbitPipeline", dependencies: ["OrbitCore", "OrbitStore", "OrbitWrite"]),
+        .target(
+            name: "OrbitPipeline",
+            dependencies: ["OrbitCore", "OrbitStore", "OrbitWrite"],
+            resources: [.copy("Resources")]
+        ),
 
         // Brief assembly + ranking (DATA-MODEL §8). Read-only.
         .target(name: "OrbitRecall", dependencies: ["OrbitStore"]),

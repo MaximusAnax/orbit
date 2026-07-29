@@ -1,0 +1,187 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["people", "entities", "assertions", "episodes", "threads", "thread_closures", "loops", "contact_points", "state_declarations", "corrections", "ambiguities"],
+  "properties": {
+    "people": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref", "name_as_heard", "match", "status"],
+        "properties": {
+          "ref": {"type": "string"},
+          "name_as_heard": {"type": "string"},
+          "match": {"type": "string", "enum": ["new", "existing", "ambiguous", "self", "self_collision"]},
+          "existing_person_id": {"type": ["string", "null"]},
+          "match_rationale": {"type": ["string", "null"]},
+          "status": {"type": "string", "enum": ["active", "provisional", "known_of"]}
+        }
+      }
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref", "name_as_heard", "kind", "aliases"],
+        "properties": {
+          "ref": {"type": "string"},
+          "name_as_heard": {"type": "string"},
+          "kind": {"type": "string", "enum": ["organization", "school", "place", "topic", "skill", "event_series"]},
+          "existing_entity_id": {"type": ["string", "null"]},
+          "part_of_ref": {"type": ["string", "null"]},
+          "aliases": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "assertions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["subject_ref", "predicate", "verbatim", "date_precision", "source_kind", "hedged"],
+        "properties": {
+          "subject_ref": {"type": "string"},
+          "predicate": {"type": "string", "enum": ["employment", "education", "location", "interest", "skill", "goal", "concern", "relation", "life_event", "preference", "trait"]},
+          "object_entity_ref": {"type": ["string", "null"]},
+          "object_person_ref": {"type": ["string", "null"]},
+          "object_value": {"type": ["string", "null"]},
+          "verbatim": {"type": "string"},
+          "valid_from": {"type": ["string", "null"]},
+          "valid_to": {"type": ["string", "null"]},
+          "date_precision": {"type": "string", "enum": ["exact", "month", "year", "fuzzy"]},
+          "source_kind": {"type": "string", "enum": ["firsthand", "secondhand"]},
+          "attributed_to_ref": {"type": ["string", "null"]},
+          "hedged": {"type": "boolean"},
+          "confidence": {"type": ["number", "null"]},
+          "thread_ref": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "episodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["occurred_at", "date_precision", "kind", "title", "narrative", "participant_refs", "is_met_event", "hedged"],
+        "properties": {
+          "occurred_at": {"type": "string"},
+          "date_precision": {"type": "string", "enum": ["exact", "month", "year", "fuzzy"]},
+          "era_relative": {"type": ["string", "null"]},
+          "kind": {"type": "string"},
+          "title": {"type": "string"},
+          "narrative": {"type": "string"},
+          "participant_refs": {"type": "array", "items": {"type": "string"}},
+          "is_met_event": {"type": "boolean"},
+          "hedged": {"type": "boolean"}
+        }
+      }
+    },
+    "threads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref", "subject_ref", "title", "archetype", "evidence_verbatim"],
+        "properties": {
+          "ref": {"type": "string"},
+          "subject_ref": {"type": "string"},
+          "title": {"type": "string"},
+          "archetype": {"type": "string", "enum": ["event_pending", "decision", "project", "condition_process", "condition_hardship", "aspiration"]},
+          "expected_resolution_at": {"type": ["string", "null"]},
+          "expected_resolution_precision": {"type": ["string", "null"]},
+          "evidence_verbatim": {"type": "string"}
+        }
+      }
+    },
+    "thread_closures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["thread_id", "resolution_note", "evidence_verbatim"],
+        "properties": {
+          "thread_id": {"type": "string"},
+          "resolution_note": {"type": "string"},
+          "evidence_verbatim": {"type": "string"}
+        }
+      }
+    },
+    "loops": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["subject_ref", "direction", "description", "verbatim"],
+        "properties": {
+          "subject_ref": {"type": "string"},
+          "direction": {"type": "string", "enum": ["abdoul_owes", "person_owes"]},
+          "description": {"type": "string"},
+          "due_at": {"type": ["string", "null"]},
+          "due_precision": {"type": ["string", "null"]},
+          "verbatim": {"type": "string"}
+        }
+      }
+    },
+    "contact_points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["subject_ref", "kind", "value", "verbatim"],
+        "properties": {
+          "subject_ref": {"type": "string"},
+          "kind": {"type": "string", "enum": ["phone", "email", "instagram", "linkedin", "x", "website", "other"]},
+          "value": {"type": "string"},
+          "verbatim": {"type": "string"}
+        }
+      }
+    },
+    "state_declarations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["subject_ref", "quote", "mapping_rationale"],
+        "properties": {
+          "subject_ref": {"type": "string"},
+          "quote": {"type": "string"},
+          "suggested_orbit": {"type": ["string", "null"], "enum": ["inner", "close", "active", "extended", "outer", null]},
+          "suggested_intent": {"type": ["string", "null"]},
+          "mapping_rationale": {"type": "string"}
+        }
+      }
+    },
+    "corrections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["subject_ref", "predicate", "object_like", "kind", "verbatim"],
+        "properties": {
+          "subject_ref": {"type": "string"},
+          "predicate": {"type": "string"},
+          "object_like": {"type": "string"},
+          "kind": {"type": "string", "enum": ["never_true", "no_longer_true"]},
+          "verbatim": {"type": "string"},
+          "valid_to": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "ambiguities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question", "candidate_refs", "kind"],
+        "properties": {
+          "question": {"type": "string"},
+          "candidate_refs": {"type": "array", "items": {"type": "string"}},
+          "assertion": {"type": ["object", "null"]},
+          "kind": {"type": "string", "enum": ["subject", "self_collision", "attendance"]}
+        }
+      }
+    }
+  }
+}

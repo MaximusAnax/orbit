@@ -58,6 +58,7 @@ public struct AssertPayload: Codable, Sendable {
     public var subject: PersonRef
     public var predicate: String
     public var objectEntity: EntityRef?
+    public var objectPerson: PersonRef?
     public var objectValue: String?
     public var verbatim: String
     public var validFrom: String?
@@ -71,6 +72,7 @@ public struct AssertPayload: Codable, Sendable {
     enum CodingKeys: String, CodingKey {
         case subject, predicate
         case objectEntity = "object_entity"
+        case objectPerson = "object_person"
         case objectValue = "object_value"
         case verbatim
         case validFrom = "valid_from"
@@ -83,6 +85,7 @@ public struct AssertPayload: Codable, Sendable {
     }
 
     public init(subject: PersonRef, predicate: String, objectEntity: EntityRef? = nil,
+                objectPerson: PersonRef? = nil,
                 objectValue: String? = nil, verbatim: String, validFrom: String? = nil,
                 validTo: String? = nil, datePrecision: String = "fuzzy",
                 sourceKind: String = "firsthand", attributedTo: PersonRef? = nil,
@@ -90,6 +93,7 @@ public struct AssertPayload: Codable, Sendable {
         self.subject = subject
         self.predicate = predicate
         self.objectEntity = objectEntity
+        self.objectPerson = objectPerson
         self.objectValue = objectValue
         self.verbatim = verbatim
         self.validFrom = validFrom
