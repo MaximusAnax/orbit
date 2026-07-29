@@ -74,9 +74,9 @@ struct HomeView: View {
             // Set-asides: a footer text line, never a card, never a badge (D-2)
             if app.setAsideCount > 0 {
                 Text(Copy.setAsideFooter(app.setAsideCount))
-                    .accessibilityIdentifier("home.setAsideFooter")
                     .interfaceVoice(size: 11)
                     .foregroundStyle(Tokens.inkFaint(room))
+                    .accessibilityIdentifier("home.setAsideFooter")
                     .padding(.bottom, 4)
             }
         }
