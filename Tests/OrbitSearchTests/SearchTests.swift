@@ -29,7 +29,7 @@ final class SearchTests: XCTestCase {
     func event(_ kind: EventKind, _ occurred: String, title: String? = nil,
                participants: [(String, Attendance, String?)]) throws -> String {
         let id = try edits.captureEvent(.init(
-            kind: kind, occurredAt: occurred, title: title, transcript: "…",
+            kind: kind, occurredAt: occurred, transcript: "…", title: title,
             participants: participants))
         try edits.confirmEvent(id, fullModelTranscribed: true)
         return id
