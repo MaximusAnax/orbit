@@ -67,7 +67,11 @@ public enum Export {
                         }
                         return .blob(d)
                     case let n as NSNumber:
-                        return CFNumberIsFloatType(n) ? .real(n.doubleValue) : .integer(n.int64Value)
+                        // objCType is portable (Linux Foundation included);
+                        // JSONSerialization yields "d" for doubles, "q"/"i" for ints
+                        let objCType = String(cString: n.objCType)
+                        return (objCType == "d" || objCType == "f")
+                            ? .real(n.doubleValue) : .integer(n.int64Value)
                     default: return .null
                     }
                 }

@@ -4,6 +4,10 @@ import Foundation
 public struct SQLiteError: Error, CustomStringConvertible, Sendable {
     public let code: Int32
     public let message: String
+    public init(code: Int32, message: String) {
+        self.code = code
+        self.message = message
+    }
     public var description: String { "SQLite error \(code): \(message)" }
 }
 
