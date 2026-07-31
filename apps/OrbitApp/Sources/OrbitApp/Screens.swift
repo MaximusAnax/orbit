@@ -589,7 +589,8 @@ struct OrbitAppMain: App {
             return
         }
         do {
-            _model = StateObject(wrappedValue: try AppModel.production())
+            let production = try AppModel.production()
+            _model = StateObject(wrappedValue: production)
         } catch {
             // NEVER fall back to an in-memory store: the app would look normal
             // while silently writing memories to RAM. Fail visibly instead.
