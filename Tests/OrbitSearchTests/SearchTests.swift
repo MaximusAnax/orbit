@@ -92,9 +92,14 @@ final class SearchTests: XCTestCase {
         return []
     }
 
+    /// A wrong result shape is a FAILURE, not a skip — the goldens that call
+    /// this assert the answer path fired, so skipping would grade nothing.
+    struct WrongShape: Error { let got: String }
+
     func answer(_ result: Searcher.Result) throws -> Searcher.Answer {
         guard case .answer(let a) = result else {
-            throw XCTSkip("expected question shape")
+            XCTFail("expected .answer shape, got \(String(describing: result))")
+            throw WrongShape(got: String(describing: result))
         }
         return a
     }

@@ -72,13 +72,26 @@ struct HomeView: View {
             .accessibilityLabel(Copy.captureIdle)
             .accessibilityIdentifier("home.mic")
 
-            // Set-asides: a footer text line, never a card, never a badge (D-2)
+            // Waiting memos: the J-11 resume door — a plain line, never a badge (D-2)
+            if let memo = app.waitingMemos.first {
+                Button { app.resume(memo) } label: {
+                    Text(Copy.waitingFooter(app.waitingMemos.count))
+                        .interfaceVoice(size: 11)
+                        .foregroundStyle(Tokens.inkFaint(room))
+                }
+                .accessibilityIdentifier("home.waitingFooter")
+            }
+
+            // Set-asides: a footer text line, never a card, never a badge (D-2);
+            // tapping it reopens them — a footer without a door is a dead end
             if app.setAsideCount > 0 {
-                Text(Copy.setAsideFooter(app.setAsideCount))
-                    .interfaceVoice(size: 11)
-                    .foregroundStyle(Tokens.inkFaint(room))
-                    .accessibilityIdentifier("home.setAsideFooter")
-                    .padding(.bottom, 4)
+                Button { app.reopenSetAsides() } label: {
+                    Text(Copy.setAsideFooter(app.setAsideCount))
+                        .interfaceVoice(size: 11)
+                        .foregroundStyle(Tokens.inkFaint(room))
+                }
+                .accessibilityIdentifier("home.setAsideFooter")
+                .padding(.bottom, 4)
             }
         }
         .padding(.top, Tokens.screenPaddingTop)
@@ -95,7 +108,24 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showCapture) { CaptureView() }
         .sheet(isPresented: $showSettings) { SettingsView() }
+        .fullScreenCover(item: homeTranscriptBinding) { vm in TranscriptReviewView(vm: vm) }
+        .fullScreenCover(item: homeReviewBinding) { vm in ReviewView(vm: vm) }
         .onAppear { app.refreshAmbient() }
+    }
+
+    // resume flows land here when no capture sheet is open
+    var homeTranscriptBinding: Binding<TranscriptReviewViewModel?> {
+        Binding(get: {
+            guard !showCapture, case .reviewingTranscript(let vm) = app.pendingCapture else { return nil }
+            return vm
+        }, set: { _ in })
+    }
+
+    var homeReviewBinding: Binding<ReviewViewModel?> {
+        Binding(get: {
+            guard !showCapture, case .reviewingProposals(let vm) = app.pendingCapture else { return nil }
+            return vm
+        }, set: { _ in })
     }
 }
 
@@ -162,6 +192,8 @@ struct CaptureView: View {
     @Environment(\.dismiss) var dismiss
     @State private var typed = ""
     @State private var isRecording = false
+    @State private var micFailed = false
+    @State private var noteKept = false
 
     var body: some View {
         RoomBackground { _ in
@@ -176,8 +208,8 @@ struct CaptureView: View {
                         Task { await app.endRecording() }
                     } else {
                         // PERF-3 budget: mic tap → recording ≤ 300ms.
-                        app.beginRecording()
-                        isRecording = true
+                        micFailed = !app.beginRecording()
+                        isRecording = !micFailed
                     }
                 } label: {
                     Circle().fill(Tokens.ember(room))
@@ -189,6 +221,11 @@ struct CaptureView: View {
                 .accessibilityIdentifier("capture.mic")
                 if isRecording {
                     Text(Copy.captureRecording).interfaceVoice(size: 12)
+                        .foregroundStyle(Tokens.inkMuted(room))
+                }
+                if micFailed {
+                    // plain ink, never red (D-1); the typed note is right below
+                    Text(Copy.micUnavailable).interfaceVoice(size: 12)
                         .foregroundStyle(Tokens.inkMuted(room))
                 }
 
@@ -204,18 +241,26 @@ struct CaptureView: View {
                         .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusCard))
                         .overlay(RoundedRectangle(cornerRadius: Tokens.radiusCard)
                             .strokeBorder(Tokens.paperEdge(room), lineWidth: 1))
-                        .onSubmit {
-                            let text = typed.trimmingCharacters(in: .whitespacesAndNewlines)
-                            guard !text.isEmpty else { return }
-                            try? app.captureTypedNote(text: text)   // typed text IS the transcript (J-5)
-                            typed = ""
-                        }
+                        .onSubmit { keepTypedNote() }
+                    if !typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        TertiaryButton(Copy.keepNote) { keepTypedNote() }
+                    }
+                    if noteKept {
+                        Text(Copy.saved).interfaceVoice(size: 11)
+                            .foregroundStyle(Tokens.inkFaint(room))
+                    }
                 }
                 .padding(.bottom, 24)
             }
             .padding(.horizontal, Tokens.screenPaddingSide)
         }
         .presentationDetents([.large])
+        .onDisappear {
+            if isRecording {
+                isRecording = false
+                app.cancelRecording()   // an open mic after dismiss is a privacy failure
+            }
+        }
         .overlay(alignment: .topTrailing) {
             TertiaryButton(Copy.notNow) { dismiss() }.padding()
         }
@@ -224,6 +269,18 @@ struct CaptureView: View {
         }
         .fullScreenCover(item: reviewBinding) { vm in
             ReviewView(vm: vm)
+        }
+    }
+
+    func keepTypedNote() {
+        let text = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        do {
+            try app.captureTypedNote(text: text)   // typed text IS the transcript (J-5)
+            typed = ""
+            noteKept = true
+        } catch {
+            // the note text stays right where it is — nothing typed is ever lost
         }
     }
 
@@ -343,6 +400,7 @@ struct ProposalCardView: View {
     @ObservedObject var vm: ReviewViewModel
     let card: ReviewViewModel.Card
     @Environment(\.room) var room
+    @State private var editing = false
 
     var body: some View {
         if let settled = card.settled {
@@ -360,7 +418,8 @@ struct ProposalCardView: View {
             NoteTile(tilted: false) {
                 VStack(alignment: .leading, spacing: 10) {
                     SectionTag("A question", ember: true)
-                    Text(question).memoryVoice(size: 13.5)
+                    // system speech: the tool asking, not a memory — sans (§4.2)
+                    Text(question).interfaceVoice(size: 13, weight: .semibold)
                         .foregroundStyle(Tokens.ink(room))
                     ForEach(card.candidates, id: \.id) { candidate in
                         SecondaryButton(candidate.name) { vm.choose(card, candidate: candidate.id) }
@@ -398,6 +457,9 @@ struct ProposalCardView: View {
                     HStack(spacing: 10) {
                         SecondaryButton(Copy.yes) { vm.accept(card) }
                         SecondaryButton(Copy.no) { vm.reject(card, reason: nil) }
+                        if card.op == .assert || card.op == .proposeState {
+                            TertiaryButton(Copy.editAction) { editing = true }
+                        }
                         Spacer()
                         TertiaryButton(Copy.later) { vm.setAside(card) }
                     }
@@ -408,6 +470,91 @@ struct ProposalCardView: View {
                     }
                 }
             }
+            .sheet(isPresented: $editing) {
+                EditProposalSheet(vm: vm, card: card)
+            }
+        }
+    }
+}
+
+/// Accept-with-edits (P5): the verbatim quote stays untouchable — it's what
+/// was said — but the mapped value and dates are his to correct before the
+/// fact lands.
+struct EditProposalSheet: View {
+    @ObservedObject var vm: ReviewViewModel
+    let card: ReviewViewModel.Card
+    @Environment(\.room) var room
+    @Environment(\.dismiss) var dismiss
+    @State private var objectValue: String = ""
+    @State private var validFrom: String = ""
+    @State private var suggestedOrbit: String = ""
+
+    var payloadDict: [String: Any] {
+        (try? JSONSerialization.jsonObject(with: Data(card.payload.utf8))) as? [String: Any] ?? [:]
+    }
+
+    var body: some View {
+        RoomBackground { _ in
+            VStack(alignment: .leading, spacing: 14) {
+                Text(Copy.editAction).interfaceVoice(size: 20, weight: .bold)
+                    .foregroundStyle(Tokens.ink(room))
+                    .padding(.top, 28)
+                // the quote is the record — shown, never editable here
+                HStack(alignment: .top, spacing: 8) {
+                    Rectangle().fill(Tokens.emberWash(room)).frame(width: 2)
+                    Text(card.quote).memoryVoice(size: 13.5)
+                        .foregroundStyle(Tokens.ink(room))
+                }
+                if card.op == .assert {
+                    editField(Copy.editValueLabel, text: $objectValue, id: "edit.value")
+                    editField(Copy.editSinceLabel, text: $validFrom, id: "edit.validFrom")
+                } else {
+                    editField(Copy.editOrbitLabel, text: $suggestedOrbit, id: "edit.orbit")
+                }
+                PrimaryButton(Copy.saveEdited) {
+                    var dict = payloadDict
+                    func put(_ key: String, _ value: String) {
+                        if value.isEmpty { dict.removeValue(forKey: key) }
+                        else { dict[key] = value }
+                    }
+                    if card.op == .assert {
+                        put("object_value", objectValue)
+                        put("valid_from", validFrom)
+                    } else {
+                        put("suggested_orbit", suggestedOrbit)
+                    }
+                    if let data = try? JSONSerialization.data(withJSONObject: dict),
+                       let json = String(data: data, encoding: .utf8) {
+                        vm.acceptEdited(card, payloadJSON: json)
+                    }
+                    dismiss()
+                }
+                Spacer()
+            }
+            .padding(.horizontal, Tokens.screenPaddingSide)
+        }
+        .overlay(alignment: .topTrailing) {
+            TertiaryButton(Copy.notNow) { dismiss() }.padding()
+        }
+        .onAppear {
+            objectValue = payloadDict["object_value"] as? String ?? ""
+            validFrom = payloadDict["valid_from"] as? String ?? ""
+            suggestedOrbit = payloadDict["suggested_orbit"] as? String ?? ""
+        }
+    }
+
+    func editField(_ label: String, text: Binding<String>, id: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(label).interfaceVoice(size: 11, weight: .semibold)
+                .foregroundStyle(Tokens.inkFaint(room))
+            TextField("", text: text)
+                .accessibilityIdentifier(id)
+                .font(.system(size: 14))
+                .padding(11)
+                .background(Tokens.paper(room))
+                .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusCard))
+                .overlay(RoundedRectangle(cornerRadius: Tokens.radiusCard)
+                    .strokeBorder(Tokens.paperEdge(room), lineWidth: 1))
         }
     }
 }
@@ -437,27 +584,58 @@ struct OrbitAppMain: App {
 
     init() {
         let env = ProcessInfo.processInfo.environment
-        let m: AppModel
         if env["ORBIT_UITEST"] == "1" {
-            m = AppModel.uiTest(env: env)
-        } else {
-            m = (try? AppModel.production())
-                ?? (try! AppModel(store: .inMemory(), transcription: MockTranscriber(canned: "")))
+            _model = StateObject(wrappedValue: AppModel.uiTest(env: env))
+            return
         }
-        _model = StateObject(wrappedValue: m)
+        do {
+            _model = StateObject(wrappedValue: try AppModel.production())
+        } catch {
+            // NEVER fall back to an in-memory store: the app would look normal
+            // while silently writing memories to RAM. Fail visibly instead.
+            _storeFailure = State(initialValue: String(describing: error))
+            _model = StateObject(wrappedValue: try! AppModel(
+                store: .inMemory(), transcription: MockTranscriber(canned: "")))
+        }
     }
+
+    @State private var storeFailure: String?
 
     var body: some Scene {
         WindowGroup {
             RoomBackground { _ in
-                if model.selfID == nil {
+                if let storeFailure {
+                    StoreFailureView(detail: storeFailure)
+                } else if model.selfID == nil {
                     OnboardingView()          // §7.12: one name, then the room
                 } else {
                     NavigationStack { HomeView() }
                 }
             }
             .environmentObject(model)
-            .task { model.warmModels() }   // ceiling model rides onboarding dead time (§6)
+            .task { if storeFailure == nil { model.warmModels() } }   // §6 dead-time download
         }
+    }
+}
+
+/// The store failed to open. Nothing pretends to work: plain ink states the
+/// problem (no red exists, D-1) and nothing is writable until it's resolved.
+struct StoreFailureView: View {
+    let detail: String
+    @Environment(\.room) var room
+    var body: some View {
+        VStack(spacing: 14) {
+            Spacer()
+            Text(Copy.storeFailureTitle).interfaceVoice(size: 17, weight: .bold)
+                .foregroundStyle(Tokens.ink(room))
+            Text(Copy.storeFailureBody).interfaceVoice(size: 12.5)
+                .foregroundStyle(Tokens.inkMuted(room))
+                .multilineTextAlignment(.center)
+            Text(detail).interfaceVoice(size: 10.5)
+                .foregroundStyle(Tokens.inkFaint(room))
+                .multilineTextAlignment(.center)
+            Spacer()
+        }
+        .padding(.horizontal, 32)
     }
 }

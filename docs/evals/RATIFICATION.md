@@ -29,7 +29,7 @@ on the same fixtures fails) without pretending to be production numbers.
 | J-1 budget | ≤ 12 taps (measured path exists) | Run JourneyUITests once on CI/device, read the tap count |
 | J-2 budget | ≤ 20 taps | same |
 | J-3 budget | ≤ 3 taps (from review) | same |
-| D-4 | Ember pixel coverage ≤ ◊5% | Snapshot job (macOS CI) |
+| D-4 | Ember pixel coverage ≤ ◊5% | No snapshot rig exists yet — graded by eye on device (T3) until one is built |
 | PERF-1…6 | All six budgets | Device runs; harness stubs note where each is measured |
 
 ## 3. The PIPE-12 caveat, restated honestly
@@ -55,3 +55,29 @@ missing column in minutes.
    deps in the trust core. (BUILD §1.2, already in the ratified BUILD.md.)
 5. **Review order** — proposals render dependency-first (insertion order),
    person card before its facts. (WORKLOG Phase 4.)
+6. **Deployment target: iOS 17, diverging from BUILD §"iOS 26 minimum"** — a
+   registered doc conflict, not a silent one. iOS 17 lets the app build and run
+   on today's simulators/CI and any reasonably recent device; the one thing
+   iOS 26 buys (SpeechTranscriber as the ratified low-storage fallback,
+   DATA-MODEL §6) is currently unused — whisper.cpp is the only transcription
+   path wired. Ratify iOS 17 (and amend BUILD), or veto and I raise the target
+   the moment you confirm your device runs iOS 26.
+7. **UI-journey cadence** — the XCUI journey suite is a dispatch-only CI job
+   (app workflow → journeys: true), not per-push, because a cold simulator
+   boot blows the 30-minute push budget. EVALS reads as if journeys gate every
+   PR. Ratify the dispatch cadence (run before merges and after UI-touching
+   changes), or veto and journeys move back into the push gate with a longer
+   budget.
+8. **Undo on settled lines: deferred surface** — accept/reject in review is
+   final in the UI today (the ledger records everything; a wrong accept is
+   correctable via amend/reject-later paths, a wrong reject via new evidence).
+   A one-tap "take that back" surface is registered as deferred work, not
+   pretended at.
+9. **§10.5 pronouns** — the design's "Reach her" copy assumes a known pronoun.
+   The build never guesses from a name: where DESIGN §10.5 wants a pronoun and
+   none has been recorded, the person's name is used instead ("Reach Sana").
+   A pronoun field (user-entered, never inferred) is deferred surface work.
+10. **Model download integrity** — the ceiling-model download pins an exact
+   HuggingFace URL but does not yet verify a checksum after download. Registered
+   as hardening work; ratify the pinned-URL-only posture for now or ask for the
+   checksum gate before first device install.

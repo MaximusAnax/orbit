@@ -28,6 +28,16 @@ final class AppModel: ObservableObject {
     var autoExtract = true
     @Published var setAsideCount: Int = 0     // real count, never rounded (D-9)
     @Published var todayItems: [TodayItem] = []
+    /// Memos that need him to come back: captured-but-unreviewed events and
+    /// confirmed-but-unsynced ones. The home footer resumes them (J-11);
+    /// nothing nags (P10).
+    @Published var waitingMemos: [WaitingMemo] = []
+
+    struct WaitingMemo: Identifiable {
+        enum Stage { case needsTranscription, needsTranscriptReview, needsSync }
+        let id: String          // event id
+        let stage: Stage
+    }
 
     struct TodayItem: Identifiable {
         let id: String
@@ -99,6 +109,60 @@ final class AppModel: ObservableObject {
         setAsideCount = Int((try? store.db.scalar(
             "SELECT COUNT(*) FROM proposal WHERE state='deferred'").intValue) ?? 0)
         todayItems = computeToday()
+        waitingMemos = computeWaiting()
+    }
+
+    func computeWaiting() -> [WaitingMemo] {
+        var out: [WaitingMemo] = []
+        // captured, never confirmed: audio-only (transcription pending) or
+        // transcript awaiting review
+        if let rows = try? store.db.query(
+            "SELECT id, transcript FROM event WHERE lifecycle='captured' ORDER BY captured_at") {
+            for r in rows {
+                guard let id = r.text("id") else { continue }
+                out.append(WaitingMemo(
+                    id: id,
+                    stage: r.text("transcript") == nil ? .needsTranscription : .needsTranscriptReview))
+            }
+        }
+        // confirmed but never synced (J-11)
+        if let rows = try? store.db.query(
+            "SELECT e.id FROM event e WHERE e.lifecycle='confirmed' " +
+            "AND NOT EXISTS (SELECT 1 FROM sync_run s WHERE s.event_id = e.id) " +
+            "ORDER BY e.confirmed_at") {
+            for r in rows {
+                if let id = r.text("id") { out.append(WaitingMemo(id: id, stage: .needsSync)) }
+            }
+        }
+        return out
+    }
+
+    /// Resume whatever a waiting memo needs next — the J-11 door.
+    func resume(_ memo: WaitingMemo) {
+        switch memo.stage {
+        case .needsTranscription:
+            Task { await transcribeExisting(eventID: memo.id) }
+        case .needsTranscriptReview:
+            let transcript = (try? store.db.scalar(
+                "SELECT transcript FROM event WHERE id=?", [.text(memo.id)]).stringValue)
+                .flatMap { $0 } ?? ""
+            let primer = knownNamesPrimer()
+            pendingCapture = .reviewingTranscript(TranscriptReviewViewModel(
+                eventID: memo.id, text: transcript,
+                usedFullModel: false,   // conservative: audio survives until a full-model pass
+                matcher: NameMatcher(knownNames: primer), app: self))
+        case .needsSync:
+            syncLater(eventID: memo.id)
+        }
+    }
+
+    /// Reopen the set-asides: the earliest sync run still holding deferred
+    /// proposals (the footer tap-through — D-2 honest counterpart).
+    func reopenSetAsides() {
+        guard let run = try? store.db.scalar(
+            "SELECT sync_run_id FROM proposal WHERE state='deferred' ORDER BY rowid LIMIT 1"
+        ).stringValue else { return }
+        pendingCapture = .reviewingProposals(ReviewViewModel(syncRunID: run, app: self))
     }
 
     /// "Today": at most two context items, only when genuinely timely (DESIGN §12).
@@ -114,7 +178,7 @@ final class AppModel: ObservableObject {
             FROM rm_current_state cs
             JOIN person p ON p.id = cs.subject_id
             WHERE cs.predicate = 'life_event' AND cs.valid_from LIKE ? || '%'
-              AND p.is_self = 0
+              AND p.is_self = 0 AND p.status = 'active'
             LIMIT 2
             """, [.text(month)]) {
             for r in rows {
@@ -129,7 +193,8 @@ final class AppModel: ObservableObject {
             """
             SELECT t.id, t.person_id, p.display_name, t.title
             FROM thread t JOIN person p ON p.id = t.person_id
-            WHERE t.state='open' AND t.prompt_state='active'
+            WHERE p.status = 'active' AND p.is_self = 0
+              AND t.state='open' AND t.prompt_state='active'
               AND t.archetype NOT IN ('condition_hardship','aspiration')   -- INV-20
               AND t.expected_resolution_at IS NOT NULL AND t.expected_resolution_at <= ?
             LIMIT ?
@@ -166,13 +231,25 @@ final class AppModel: ObservableObject {
         startExtraction(eventID: event)
     }
 
-    func beginRecording() {
+    @discardableResult
+    func beginRecording() -> Bool {
         do {
             try recorder.begin()
             pendingCapture = .recording
+            return true
         } catch {
             pendingCapture = nil   // mic unavailable: the typed note is right there (P3)
+            return false
         }
+    }
+
+    /// The user backed out mid-recording: stop the mic NOW and leave nothing
+    /// behind — an open mic after dismiss is a privacy failure (PRIV-1 spirit).
+    func cancelRecording() {
+        if let ref = try? recorder.end() {
+            UserEditService.deleteAudioFile(at: ref)
+        }
+        pendingCapture = nil
     }
 
     func endRecording(kind: EventKind = .encounter) async {
@@ -197,7 +274,33 @@ final class AppModel: ObservableObject {
                 matcher: NameMatcher(knownNames: primer), app: self)
             pendingCapture = .reviewingTranscript(vm)
         } catch {
+            // P3: capture never hard-fails. The recording is kept as a captured
+            // event (audio only, no transcript) and resumes from the home
+            // footer once a model is available.
+            _ = try? edits.captureEvent(.init(
+                kind: kind, occurredAt: store.clock.now(),
+                audioRef: audioRef, participants: participants))
             pendingCapture = nil
+            refreshAmbient()
+        }
+    }
+
+    /// Resume a captured-but-untranscribed memo (audio kept, transcript absent).
+    func transcribeExisting(eventID: String) async {
+        guard let audioRef = try? store.db.scalar(
+            "SELECT raw_audio_ref FROM event WHERE id=? AND lifecycle='captured'",
+            [.text(eventID)]).stringValue else { return }
+        pendingCapture = .transcribing(audioRef: audioRef)
+        let primer = knownNamesPrimer()
+        do {
+            let result = try await transcription.transcribe(audioAt: audioRef, primedWith: primer)
+            try edits.editTranscript(event: eventID, transcript: result.text)
+            let vm = TranscriptReviewViewModel(
+                eventID: eventID, text: result.text, usedFullModel: result.usedFullModel,
+                matcher: NameMatcher(knownNames: primer), app: self)
+            pendingCapture = .reviewingTranscript(vm)
+        } catch {
+            pendingCapture = nil   // still waiting; still resumable (P10: no nag)
         }
     }
 
@@ -235,12 +338,39 @@ final class AppModel: ObservableObject {
     }
 
     /// The ceiling model downloads during onboarding dead time (§6); quiet,
-    /// resumed on next launch if it doesn't finish.
+    /// resumed on next launch if it doesn't finish. Once it exists, the
+    /// upgrade pass keeps the §7.5 promise: the full model re-listens to any
+    /// retained recording, the improved transcript lands as an event amendment
+    /// (the confirmed original is frozen, §7.1), and the recording is deleted.
     func warmModels() {
         guard let whisper = transcription as? WhisperTranscriber else { return }
         let models = whisper.models
-        Task.detached(priority: .utility) {
-            await models.downloadCeilingIfNeeded()
+        Task { [weak self] in
+            await Task.detached(priority: .utility) {
+                await models.downloadCeilingIfNeeded()
+            }.value
+            await self?.upgradeRetainedAudio()
+        }
+    }
+
+    func upgradeRetainedAudio() async {
+        guard let whisper = transcription as? WhisperTranscriber,
+              whisper.models.ceilingURL != nil else { return }
+        let rows = (try? store.db.query(
+            "SELECT id, raw_audio_ref FROM event WHERE lifecycle='confirmed' AND raw_audio_ref IS NOT NULL"
+        )) ?? []
+        let primer = knownNamesPrimer()
+        for row in rows {
+            guard let event = row.text("id"), let audio = row.text("raw_audio_ref") else { continue }
+            do {
+                let result = try await transcription.transcribe(audioAt: audio, primedWith: primer)
+                guard result.usedFullModel else { return }   // ceiling vanished mid-pass
+                try edits.amendEvent(event, field: "transcript", newValue: result.text,
+                                     reason: "full-model re-listen (§6) — recording deleted")
+                try edits.deleteAudioAfterUpgrade(event: event)
+            } catch {
+                continue   // that recording stays retained; retried next launch
+            }
         }
     }
 

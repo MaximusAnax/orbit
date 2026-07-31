@@ -36,9 +36,32 @@ public struct UserEditService {
 
     /// Merge by pointer (Decision 6): the loser's rows are never touched.
     public func mergePerson(loser: String, winner: String) throws {
+        // Decision 6 promises one-hop pointer resolution, so merges must keep
+        // the pointer graph flat: resolve the winner to its canonical row
+        // (chains flatten at write time), refuse self-merges and re-merges.
+        // The self row never merges in either direction (INV-22; also
+        // enforced by trigger).
+        let canonicalWinner = try store.reader.canonicalPerson(winner)
+        guard canonicalWinner != loser else {
+            throw WriteError.invalidState("cannot merge a person into themselves (directly or via a chain)")
+        }
+        let loserRow = try db.query("SELECT status, is_self FROM person WHERE id=?", [.text(loser)]).first
+        let winnerRow = try db.query("SELECT is_self FROM person WHERE id=?", [.text(canonicalWinner)]).first
+        guard let loserRow, let winnerRow else {
+            throw WriteError.notFound("merge endpoints must exist")
+        }
+        guard loserRow.text("status") != "merged" else {
+            throw WriteError.invalidState("loser is already merged; unmerge first (INV-17)")
+        }
+        guard loserRow.int("is_self") != 1, winnerRow.int("is_self") != 1 else {
+            throw WriteError.constitutionViolation("INV-22: the self row never merges")
+        }
         try db.transaction {
             try db.run("UPDATE person SET merged_into=?, status='merged' WHERE id=?",
-                       [.text(winner), .text(loser)])
+                       [.text(canonicalWinner), .text(loser)])
+            // any earlier pointers INTO the loser re-flatten to the new canonical
+            try db.run("UPDATE person SET merged_into=? WHERE merged_into=?",
+                       [.text(canonicalWinner), .text(loser)])
             try store.rmRebuild()
         }
     }
@@ -156,7 +179,7 @@ public struct UserEditService {
     /// Removes the recording at a raw_audio_ref. Only real file paths are
     /// touched (tests use mock:// refs); failure is non-fatal — the ref is
     /// already gone from the ledger, and a re-run cleans up strays.
-    static func deleteAudioFile(at ref: String?) {
+    public static func deleteAudioFile(at ref: String?) {
         guard let ref, !ref.isEmpty else { return }
         let path = ref.hasPrefix("file://") ? String(ref.dropFirst(7)) : ref
         guard path.hasPrefix("/") else { return }
@@ -188,6 +211,10 @@ public struct UserEditService {
         try db.run(
             "INSERT INTO assertion_amendment (id, assertion_id, field, new_value, reason, created_at) VALUES (?,?,?,?,?,?)",
             [.text(OrbitID.make()), .text(assertion), .text(field), .from(newValue), .from(reason), .text(now)])
+        // §7.1: readers see the amended fact — refresh this assertion's
+        // read-model rows (and the search index) in place
+        try store.rmRemoveAssertion(assertion)
+        try store.rmInsertAssertion(assertion)
     }
 
     // MARK: - Relationship state (human-authored path, §12)

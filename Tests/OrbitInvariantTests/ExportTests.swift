@@ -60,4 +60,53 @@ final class ExportTests: XCTestCase {
             XCTAssertEqual(na, nb, "\(table) rows survive the round trip")
         }
     }
+
+    /// The richer half of PRIV-5: first-met pointers, contact points, and merge
+    /// pointers survive restore — these cross-reference person↔event rows, so
+    /// they pin the restore's insertion order (person after event_participant,
+    /// defer_foreign_keys inside one transaction).
+    func testRichArchiveRoundTrip() throws {
+        let store = try WriteStore.inMemory(clock: FixedClock("2026-07-29T12:00:00Z"))
+        let edits = UserEditService(store)
+
+        let sara = try edits.createPerson(displayName: "Sara")
+        let sarah = try edits.createPerson(displayName: "Sarah Chen")
+        let met = try edits.captureEvent(.init(
+            kind: .coffee, occurredAt: "2026-05-10T09:00:00Z",
+            transcript: "first coffee with Sarah",
+            participants: [(sarah, .confirmed, nil)]))
+        try edits.confirmEvent(met, fullModelTranscribed: true)
+        try edits.setFirstMet(person: sarah, event: met)
+        _ = try edits.addContactPoint(person: sarah, kind: .email,
+                                      value: "sarah@example.com", source: .manual)
+        try edits.mergePerson(loser: sara, winner: sarah)
+
+        let archive = try Export.dump(from: store.db)
+        let fresh = try Database.openWriterInMemory()
+        try Schema.create(on: fresh)
+        try Export.restore(archive, into: fresh)
+
+        XCTAssertEqual(
+            try fresh.scalar("SELECT first_met_event_id FROM person WHERE id=?",
+                             [.text(sarah)]).stringValue,
+            met, "first-met pointer survives restore")
+        XCTAssertEqual(
+            try fresh.scalar("SELECT merged_into FROM person WHERE id=?",
+                             [.text(sara)]).stringValue,
+            sarah, "merge pointer survives restore")
+        XCTAssertEqual(
+            try fresh.scalar("SELECT COUNT(*) FROM contact_point WHERE person_id=?",
+                             [.text(sarah)]).intValue,
+            1, "contact points survive restore")
+
+        // INV-4 equivalence holds on the richer graph too
+        let a = try ReadModels.fingerprint(on: store.db)
+        let b = try ReadModels.fingerprint(on: fresh)
+        for (ta, tb) in zip(a, b) {
+            XCTAssertEqual(ta.count, tb.count)
+            for (ra, rb) in zip(ta, tb) {
+                XCTAssertEqual(ra.values, rb.values)
+            }
+        }
+    }
 }

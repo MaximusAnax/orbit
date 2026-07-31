@@ -95,21 +95,60 @@ public struct ProposalResolutionService {
         return row?.text("t") ?? ""
     }
 
-    /// INV-7 scope: a rejection is a verdict on (source-event, claim) — same event,
-    /// same op, same payload ⇒ suppressed. New evidence (another event) may re-propose.
+    /// INV-7 scope: a rejection is a verdict on (source-event, claim). The
+    /// claim is SEMANTIC identity, not payload bytes — a re-extraction that
+    /// re-words a rationale or re-orders JSON keys is the same claim, and byte
+    /// equality would resurrect rejected content (PIPE-8). New evidence
+    /// (another event) may always re-propose.
     func isSuppressedBySameSourceRejection(syncRun: String, draft: Draft) throws -> Bool {
-        let count = try db.scalar(
+        let rejected = try db.query(
             """
-            SELECT COUNT(*) FROM proposal p
+            SELECT p.payload FROM proposal p
             JOIN sync_run s1 ON s1.id = p.sync_run_id
             JOIN sync_run s2 ON s2.id = ?
             WHERE s1.event_id = s2.event_id
               AND p.state = 'rejected'
               AND p.op = ?
-              AND p.payload = ?
             """,
-            [.text(syncRun), .text(draft.op.rawValue), .text(draft.payloadJSON)])
-        return (count.intValue ?? 0) > 0
+            [.text(syncRun), .text(draft.op.rawValue)])
+        guard !rejected.isEmpty else { return false }
+        let key = Self.claimKey(op: draft.op, payloadJSON: draft.payloadJSON)
+        return rejected.contains { row in
+            guard let payload = row.text("payload") else { return false }
+            return Self.claimKey(op: draft.op, payloadJSON: payload) == key
+        }
+    }
+
+    /// The semantic core that identifies a claim for INV-7. Verbatims anchor
+    /// content ops (they're mechanically pinned to the transcript, INV-24
+    /// style); creation ops key on their canonical name.
+    static func claimKey(op: ProposalOp, payloadJSON: String) -> String {
+        guard let dict = (try? JSONSerialization.jsonObject(with: Data(payloadJSON.utf8)))
+                as? [String: Any] else {
+            return payloadJSON
+        }
+        func field(_ key: String) -> String { (dict[key] as? String) ?? "" }
+        switch op {
+        case .assert, .close, .correct:
+            let quote = field("verbatim")
+            if !quote.isEmpty { return "\(op.rawValue)|\(field("predicate"))|\(quote)" }
+        case .proposeState:
+            let quote = field("narrative_quote")
+            if !quote.isEmpty { return "\(op.rawValue)|\(quote)" }
+        case .createPerson:
+            return "\(op.rawValue)|\(field("display_name").lowercased())"
+        case .openThread:
+            return "\(op.rawValue)|\(field("title").lowercased())"
+        case .openLoop:
+            return "\(op.rawValue)|\(field("description").lowercased())"
+        case .link:
+            return "\(op.rawValue)|\(field("canonical_name").lowercased())"
+        case .contactPoint:
+            return "\(op.rawValue)|\(field("kind"))|\(field("value"))"
+        default:
+            break
+        }
+        return "\(op.rawValue)|\(payloadJSON)"
     }
 
     // MARK: - Resolution (the human decides — Principle 5)
@@ -303,15 +342,20 @@ public struct ProposalResolutionService {
 
         case .merge:
             let p = try PayloadCoding.decode(MergePayload.self, from: payloadJSON)
-            try db.run("UPDATE person SET merged_into=?, status='merged' WHERE id=?",
-                       [.text(p.winnerID), .text(p.loserID)])
-            try store.rmRebuild()
+            // same legality gate as the direct edit path (Decision 6 flatness)
+            try UserEditService(store).mergePerson(loser: p.loserID, winner: p.winnerID)
 
         case .createEvent:
             // §7.11 reconstructed episode: no transcript/audio of its own; confirmed on
             // acceptance (the review WAS the confirmation); excluded from rate math via
             // derived_from_event_id (INV-12).
             let p = try PayloadCoding.decode(CreateEventPayload.self, from: payloadJSON)
+            // INV-19 holds for reconstructed events too — the episode's people
+            // genuinely were there; an episode about nobody is a diary entry.
+            guard !p.participants.isEmpty else {
+                throw WriteError.constitutionViolation(
+                    "INV-19: a reconstructed episode requires ≥1 participant")
+            }
             let source = try eventID(ofSyncRun: syncRun)
             let id = OrbitID.make()
             try db.run(
@@ -330,8 +374,14 @@ public struct ProposalResolutionService {
             }
             try db.run("UPDATE event SET lifecycle='confirmed', confirmed_at=? WHERE id=?",
                        [.text(now), .text(id)])
+            // key includes the new event id: two same-dated episodes in one
+            // run must not collide in the ref map
             try db.run("INSERT INTO sync_entity_ref VALUES (?,?,?)",
-                       [.text(syncRun), .text("event:reconstructed:" + p.occurredAt), .text(id)])
+                       [.text(syncRun), .text("event:reconstructed:\(p.occurredAt):\(id)"), .text(id)])
+            // INV-4: the reconstructed event enters the read models exactly as
+            // the rebuild scripts would derive it (rhythm/co-attendance filter
+            // derived events internally; introduced_by and search do not)
+            try store.rmEventConfirmed(id)
 
         case .contactPoint:
             let p = try PayloadCoding.decode(ContactPointPayload.self, from: payloadJSON)
@@ -367,9 +417,19 @@ public struct ProposalResolutionService {
         let attributed: String? = try p.attributedTo.flatMap { try resolvePerson($0, syncRun: syncRun) }
         let objectValue: String? = try p.objectPerson.map { try resolvePerson($0, syncRun: syncRun) } ?? p.objectValue
         let event = try eventID(ofSyncRun: syncRun)
-        let thread: String? = try p.threadRef.flatMap { ref in
-            try db.scalar("SELECT entity_id FROM sync_entity_ref WHERE sync_run_id=? AND ref=?",
-                          [.text(syncRun), .text("thread:" + ref)]).stringValue
+        // A thread link is part of the fact (§9: facts are debris of stories) —
+        // never silently dropped. Unresolved ref = the OPEN_THREAD card hasn't
+        // been accepted yet; pendingDependency lets review retry in any order.
+        let thread: String?
+        if let ref = p.threadRef {
+            guard let resolved = try db.scalar(
+                "SELECT entity_id FROM sync_entity_ref WHERE sync_run_id=? AND ref=?",
+                [.text(syncRun), .text("thread:" + ref)]).stringValue else {
+                throw WriteError.pendingDependency("accept the thread card for '\(ref)' first")
+            }
+            thread = resolved
+        } else {
+            thread = nil
         }
         let id = OrbitID.make()
         try db.run(
@@ -401,15 +461,18 @@ public struct ProposalResolutionService {
     // MARK: - Ref resolution
 
     func resolvePerson(_ ref: PersonRef, syncRun: String) throws -> String {
+        // Always land writes on the canonical row (Decision 6): an id captured
+        // before a merge — in a stale proposal or an extraction primer — must
+        // not park threads/loops/state on the merged loser.
         switch ref {
-        case .id(let id): return id
+        case .id(let id): return try store.reader.canonicalPerson(id)
         case .ref(let r):
             guard let id = try db.scalar(
                 "SELECT person_id FROM sync_person_ref WHERE sync_run_id=? AND ref=?",
                 [.text(syncRun), .text(r)]).stringValue else {
                 throw WriteError.pendingDependency("accept the new-person card for '\(r)' first")
             }
-            return id
+            return try store.reader.canonicalPerson(id)
         }
     }
 

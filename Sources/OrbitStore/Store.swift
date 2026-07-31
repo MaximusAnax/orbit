@@ -58,10 +58,19 @@ public struct StoreReader {
     public let db: Database
     public init(_ db: Database) { self.db = db }
 
-    /// Canonical person id through the merge pointer (Decision 6: resolution at read time).
+    /// Canonical person id through the merge pointer (Decision 6: resolution at
+    /// read time). Merges flatten chains at write time, so this is one hop in
+    /// practice — but reads don't trust that: follow to fixpoint with a cycle
+    /// guard rather than silently returning a merged row.
     public func canonicalPerson(_ id: String) throws -> String {
-        let merged = try db.scalar("SELECT merged_into FROM person WHERE id=?", [.text(id)])
-        return merged.stringValue ?? id
+        var current = id
+        var seen: Set<String> = [id]
+        while let next = try db.scalar(
+            "SELECT merged_into FROM person WHERE id=?", [.text(current)]).stringValue {
+            guard seen.insert(next).inserted else { return current }   // cycle: stop, don't spin
+            current = next
+        }
+        return current
     }
 
     public func person(_ id: String) throws -> Row? {
@@ -133,7 +142,7 @@ public struct StoreReader {
               AND a.status='active' AND a.observed_at <= ?
             ORDER BY a.observed_at
             """,
-            [.text(canonicalPerson(personID)), .text(date), .text(date)])
+            [.text(canonicalPerson(personID)), .text(date)])
     }
 
     /// The audit view: everything ever believed, including retractions (INV-2).

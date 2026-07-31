@@ -180,12 +180,25 @@ public struct SyncEngine {
                 rationale: "\u{201C}\(draft.verbatim)\u{201D}\(hedgeNote)"))
 
             // Contradiction of a currently-open fact → CLOSE proposal, never overwrite.
+            // "Same object" is checked by entity id when both sides carry one
+            // (the canonical employment case links entities, not strings) and
+            // by case-insensitive value otherwise.
             if case .id(let subjectID) = subject,
                draft.validTo == nil,
                ["employment", "location", "education"].contains(draft.predicate) {
+                let draftEntityID: String? = draft.objectEntityRef.flatMap { ref in
+                    result.payload.entities.first(where: { $0.ref == ref })?.existingEntityID
+                }
+                let draftValue = draft.objectValue?.lowercased()
                 let open = try store.reader.currentState(of: subjectID)
-                    .filter { $0.text("predicate") == draft.predicate
-                           && $0.text("object_value") != draft.objectValue }
+                    .filter { fact in
+                        guard fact.text("predicate") == draft.predicate else { return false }
+                        let sameEntity = draftEntityID != nil
+                            && fact.text("object_entity_id") == draftEntityID
+                        let factValue = fact.text("object_value")?.lowercased()
+                        let sameValue = factValue != nil && factValue == draftValue
+                        return !(sameEntity || sameValue)
+                    }
                 for fact in open {
                     try emit(.init(
                         op: .close,
@@ -291,11 +304,27 @@ public struct SyncEngine {
             let candidates: [PersonRef] = try amb.candidateRefs.map { try personRef($0) }
             let held: AssertPayload
             if let a = amb.assertion {
+                // The held fact keeps EVERYTHING but its subject: dropping
+                // attribution would make a secondhand ambiguity un-acceptable
+                // (INV-10 requires the teller), and dropping objects/temporal
+                // fields would degrade the fact the user eventually accepts.
                 held = AssertPayload(
-                    subject: .ref("unresolved"), predicate: a.predicate,
-                    objectValue: a.objectValue, verbatim: a.verbatim,
-                    datePrecision: a.datePrecision, sourceKind: a.sourceKind,
-                    confidence: a.confidence ?? 0.5)
+                    subject: .ref("unresolved"),
+                    predicate: a.predicate,
+                    objectEntity: a.objectEntityRef.flatMap { ref in
+                        result.payload.entities.first(where: { $0.ref == ref })
+                            .flatMap { $0.existingEntityID.map(EntityRef.id) } ?? .ref(ref)
+                    },
+                    objectPerson: try a.objectPersonRef.map { try personRef($0) },
+                    objectValue: a.objectValue,
+                    verbatim: a.verbatim,
+                    validFrom: a.validFrom,
+                    validTo: a.validTo,
+                    datePrecision: a.datePrecision,
+                    sourceKind: a.sourceKind,
+                    attributedTo: try a.attributedToRef.map { try personRef($0) },
+                    confidence: a.confidence ?? 0.5,
+                    threadRef: a.threadRef)
             } else {
                 held = AssertPayload(subject: .ref("unresolved"), predicate: "trait",
                                      objectValue: nil, verbatim: amb.question,

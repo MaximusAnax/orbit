@@ -42,7 +42,13 @@ public final class WriteStore {
             """
             INSERT INTO rm_current_state
             SELECT a.id, COALESCE(ps.merged_into, ps.id), a.predicate,
-                   COALESCE(en.merged_into, en.id), a.object_value, a.verbatim,
+                   COALESCE(en.merged_into, en.id),
+                   COALESCE((SELECT aa.new_value FROM assertion_amendment aa
+                             WHERE aa.assertion_id = a.id AND aa.field = 'object_value'
+                             ORDER BY aa.created_at DESC, aa.id DESC LIMIT 1), a.object_value),
+                   COALESCE((SELECT aa.new_value FROM assertion_amendment aa
+                             WHERE aa.assertion_id = a.id AND aa.field = 'verbatim'
+                             ORDER BY aa.created_at DESC, aa.id DESC LIMIT 1), a.verbatim),
                    a.valid_from, a.date_precision, a.observed_at, a.source_event_id,
                    a.source_kind, a.attributed_to_person_id, a.needs_reconfirmation, a.thread_id
             FROM assertion a

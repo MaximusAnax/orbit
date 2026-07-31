@@ -172,6 +172,14 @@ public final class Statement {
     }
 
     func bind(_ values: [SQLValue]) throws {
+        // Over-binding returns SQLITE_RANGE deep in a query; under-binding
+        // silently leaves parameters NULL. Both are programmer errors — fail
+        // loudly with the actual counts.
+        let expected = Int(sqlite3_bind_parameter_count(stmt))
+        guard values.count == expected else {
+            throw SQLiteError(code: 25,
+                message: "bind count mismatch: statement has \(expected) parameter(s), got \(values.count)")
+        }
         let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
         for (i, v) in values.enumerated() {
             let idx = Int32(i + 1)

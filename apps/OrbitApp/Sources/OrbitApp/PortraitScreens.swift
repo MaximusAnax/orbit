@@ -14,6 +14,7 @@ struct PortraitCaptureView: View {
     @Environment(\.room) var room
     @Environment(\.dismiss) var dismiss
     @State private var isRecording = false
+    @State private var isPaused = false
     @State private var promptIndex = 0
 
     var body: some View {
@@ -46,29 +47,47 @@ struct PortraitCaptureView: View {
 
                 Spacer()
 
+                // pause genuinely pauses — one continuous, pausable session (§7.11)
                 Button {
-                    if isRecording {
-                        isRecording = false
-                        Task { await app.endRecording(kind: .portrait) }
+                    if !isRecording {
+                        isRecording = app.beginRecording()
+                    } else if isPaused {
+                        app.recorder.resume()
+                        isPaused = false
                     } else {
-                        app.beginRecording()
-                        isRecording = true
+                        app.recorder.pause()
+                        isPaused = true
                     }
                 } label: {
                     Circle().fill(Tokens.ember(room))
                         .frame(width: 96, height: 96)
-                        .overlay(Image(systemName: isRecording ? "pause.fill" : "mic.fill")
+                        .overlay(Image(systemName: !isRecording ? "mic.fill"
+                                        : (isPaused ? "mic.fill" : "pause.fill"))
                             .font(.system(size: 34))
                             .foregroundStyle(Tokens.emberInk(room)))
                 }
                 .accessibilityIdentifier("portrait.mic")
                 if isRecording {
-                    Text(Copy.captureRecording).interfaceVoice(size: 12)
+                    Text(isPaused ? Copy.portraitPaused : Copy.captureRecording)
+                        .interfaceVoice(size: 12)
                         .foregroundStyle(Tokens.inkMuted(room))
+                }
+                if isRecording {
+                    PrimaryButton(Copy.portraitDone) {
+                        isRecording = false
+                        isPaused = false
+                        Task { await app.endRecording(kind: .portrait) }
+                    }
                 }
                 Spacer().frame(height: 24)
             }
             .padding(.horizontal, Tokens.screenPaddingSide)
+        }
+        .onDisappear {
+            if isRecording {
+                isRecording = false
+                app.cancelRecording()
+            }
         }
         .overlay(alignment: .topTrailing) {
             TertiaryButton(Copy.notNow) { dismiss() }.padding()
@@ -108,7 +127,7 @@ struct OnboardingView: View {
         VStack(spacing: 24) {
             Spacer()
             Text(Copy.onboardingNamePrompt)
-                .memoryVoice(size: 20)
+                .interfaceVoice(size: 19, weight: .semibold)
                 .foregroundStyle(Tokens.ink(room))
             TextField("", text: $name)
                 .accessibilityIdentifier("onboarding.name")

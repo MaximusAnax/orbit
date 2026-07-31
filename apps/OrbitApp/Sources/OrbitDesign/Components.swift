@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 // The Two-Rooms component library (DESIGN.md §2–§5). Law of the file:
 // every component defines BOTH room forms — if a component's night form would be
@@ -20,13 +23,26 @@ public extension EnvironmentValues {
 
 public extension Text {
     /// Memory voice: this came from your life. Serif, never bold/italic for emphasis.
+    /// Scales with Dynamic Type relative to body (§11.2).
     func memoryVoice(size: CGFloat = 13.5, weight: Font.Weight = .regular) -> Text {
-        font(.custom(Tokens.serifFamily, size: size).weight(weight))
+        font(.custom(Tokens.serifFamily, size: size, relativeTo: .body).weight(weight))
     }
-    /// Interface voice: the tool talking. System sans.
+    /// Interface voice: the tool talking. System sans — scaled through the
+    /// body text style so Dynamic Type reaches every interface string (§11.2).
     func interfaceVoice(size: CGFloat = 12, weight: Font.Weight = .regular) -> Text {
-        font(.system(size: size, weight: weight))
+        font(.system(size: scaledForType(size), weight: weight))
     }
+}
+
+/// Dynamic Type scaling for system-font point sizes. `Font.system(size:)` has no
+/// `relativeTo:` form, so the point size runs through UIFontMetrics(.body); the
+/// view re-evaluates on a content-size change, picking up the new category.
+func scaledForType(_ size: CGFloat) -> CGFloat {
+    #if canImport(UIKit)
+    return UIFontMetrics(forTextStyle: .body).scaledValue(for: size)
+    #else
+    return size
+    #endif
 }
 
 /// §5.5: emphasis inside memory text is a 2px ember-wash underline — never bold,

@@ -222,6 +222,7 @@ public struct OpenAIExtractor: Extractor {
                 "type": "json_schema",
                 "json_schema": [
                     "name": "orbit_extraction",
+                    "strict": true,   // the schema is strict-compatible: every object closed + fully required, nullables typed
                     "schema": ExtractionSchema.jsonSchema,
                 ],
             ],

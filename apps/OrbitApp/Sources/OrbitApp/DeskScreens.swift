@@ -22,6 +22,11 @@ struct BriefScreen: View {
                 VStack(alignment: .leading, spacing: Tokens.gridGap) {
                     header(brief)
 
+                    if brief.header.isKnownOf {
+                        Text(Copy.knownOfBanner).interfaceVoice(size: 11.5)
+                            .foregroundStyle(Tokens.inkMuted(room))
+                    }
+
                     // tile 1 — Deck entry; hides on near-empty profiles
                     if brief.deckAvailable {
                         ModePill(Copy.walkMeIn) { showDeck = true }
@@ -35,6 +40,9 @@ struct BriefScreen: View {
                                 SectionTag(Copy.heroTag, ember: true)
                                 Text(hero.claim).memoryVoice(size: 17, weight: .semibold)
                                     .foregroundStyle(Tokens.ink(room))
+                                if let teller = hero.teller {
+                                    HearsayChip(teller: teller)
+                                }
                                 Text(hero.reason).interfaceVoice(size: 11.5)
                                     .foregroundStyle(Tokens.inkMuted(room))
                             }
@@ -47,7 +55,7 @@ struct BriefScreen: View {
                             PaperTile {
                                 VStack(alignment: .leading, spacing: 5) {
                                     SectionTag(Copy.openTag)
-                                    Text(thread.title).memoryVoice(size: 13.5)
+                                    Text(thread.title).interfaceVoice(size: 13, weight: .semibold)
                                         .foregroundStyle(Tokens.ink(room))
                                     Text(thread.statusLine).interfaceVoice(size: 10.5)
                                         .foregroundStyle(Tokens.inkFaint(room))
@@ -101,8 +109,14 @@ struct BriefScreen: View {
                                     }
                                 } else {
                                     ForEach(brief.forgotten, id: \.assertionID) { item in
-                                        Text(item.claim).memoryVoice(size: 13)
-                                            .foregroundStyle(Tokens.ink(room))
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(item.claim).memoryVoice(size: 13)
+                                                .foregroundStyle(Tokens.ink(room))
+                                            if let teller = item.teller {
+                                                Text(Copy.toldYou(teller)).interfaceVoice(size: 10.5)
+                                                    .foregroundStyle(Tokens.inkFaint(room))
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -327,9 +341,6 @@ struct ReachMiniPage: View {
                         }
                     }
                 }
-                Text(Copy.goBePresent).memoryVoice(size: 14)
-                    .foregroundStyle(Tokens.inkMuted(room))
-                    .padding(.top, 10)
             }
             .padding(.top, Tokens.screenPaddingTop)
             .padding(.horizontal, Tokens.screenPaddingSide)

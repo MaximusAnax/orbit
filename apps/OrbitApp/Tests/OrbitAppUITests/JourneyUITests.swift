@@ -71,8 +71,9 @@ final class JourneyUITests: XCTestCase {
 
         // back home: the ONLY ambient trace is the plain footer line — a true
         // count in words, no badge anywhere in the hierarchy (D-2/D-9)
-        XCTAssertTrue(app.staticTexts["home.setAsideFooter"].waitForExistence(timeout: 8))
-        let footer = app.staticTexts["home.setAsideFooter"].label
+        // the footer is a quiet tappable line (a Button wrapping plain text)
+        XCTAssertTrue(app.buttons["home.setAsideFooter"].waitForExistence(timeout: 8))
+        let footer = app.buttons["home.setAsideFooter"].label
         XCTAssertTrue(footer.contains("set aside"), "footer speaks plainly: \(footer)")
         XCTAssertFalse(footer.contains("+"), "counts are true counts")
     }

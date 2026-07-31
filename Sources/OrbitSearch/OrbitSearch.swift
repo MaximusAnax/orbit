@@ -161,7 +161,9 @@ public struct Searcher {
 
         // "…through <name>" — the provenance/warm-path question
         if let range = lower.range(of: "through ") {
-            let name = String(query[range.upperBound...])
+            // index into the SAME string the range came from — query and its
+            // lowercased copy can differ in length (ß→ss and friends)
+            let name = String(lower[range.upperBound...])
                 .trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
             if let via = try peopleMatching(nameQuery: name).first {
                 return try throughAnswer(via: via)
@@ -233,22 +235,52 @@ public struct Searcher {
         guard let person = found else { return nil }
         let rows = try reader.db.query(
             """
-            SELECT cs.assertion_id, cs.verbatim, cs.object_value, cs.valid_from, cs.source_event_id
+            SELECT cs.assertion_id, cs.verbatim, cs.object_value, cs.valid_from,
+                   cs.source_event_id, cs.source_kind, cs.attributed_to_person_id
             FROM rm_current_state cs JOIN assertion a ON a.id = cs.assertion_id
             WHERE cs.subject_id=? AND cs.predicate=? AND a.muted=0
             ORDER BY cs.valid_from DESC
             """, [.text(person.personID), .text(predicate)])
-        guard let top = rows.first else {
+        guard !rows.isEmpty else {
             return Answer(firsthand: [], maybe: [], factAnswer: nil)
         }
-        var hit = person
-        hit.evidence = rows.map { r in
+        // Hearsay is never presented as testimony (§9/§10): firsthand facts
+        // answer directly; secondhand ones ride the maybe band, teller cited.
+        func evidence(_ r: Row) -> Evidence {
             Evidence(text: r.text("verbatim") ?? "",
                      timeBound: r.text("valid_from").map { "since \($0)" },
                      sourceEventID: r.text("source_event_id"))
         }
-        return Answer(firsthand: [hit], maybe: [],
-                      factAnswer: top.text("object_value") ?? top.text("verbatim"))
+        let firsthandRows = rows.filter { $0.text("source_kind") == "firsthand" }
+        let secondhandRows = rows.filter { $0.text("source_kind") == "secondhand" }
+
+        var firsthand: [PersonHit] = []
+        if let top = firsthandRows.first {
+            var hit = person
+            hit.evidence = firsthandRows.map(evidence)
+            firsthand = [hit]
+            return Answer(firsthand: firsthand, maybe: secondhandMaybe(person, secondhandRows),
+                          factAnswer: top.text("object_value") ?? top.text("verbatim"))
+        }
+        // only hearsay exists: no uncited direct answer — the maybe band
+        // carries it with its teller
+        return Answer(firsthand: [], maybe: secondhandMaybe(person, secondhandRows),
+                      factAnswer: nil)
+    }
+
+    private func secondhandMaybe(_ person: PersonHit, _ rows: [Row]) -> [MaybeHit] {
+        guard !rows.isEmpty else { return [] }
+        let teller = rows.first?.text("attributed_to_person_id").flatMap {
+            try? reader.person($0)?.text("display_name")
+        }.flatMap { $0 }
+        return [MaybeHit(
+            personID: person.personID, name: person.name,
+            source: teller.map { "\($0) told you" } ?? "heard secondhand",
+            evidence: rows.map { r in
+                Evidence(text: r.text("verbatim") ?? "",
+                         timeBound: r.text("valid_from").map { "since \($0)" },
+                         sourceEventID: r.text("source_event_id"))
+            })]
     }
 
     /// Generic question: FTS retrieval + entity structure, banded by trust —
@@ -306,7 +338,7 @@ public struct Searcher {
                    p.display_name, p.status
             FROM rm_search s
             JOIN rm_current_state cs ON cs.assertion_id = s.ref_id AND s.kind='assertion'
-            JOIN person p ON p.id = cs.subject_id
+            JOIN person p ON p.id = cs.subject_id AND p.is_self = 0
             JOIN assertion a ON a.id = cs.assertion_id
             WHERE rm_search MATCH ? AND a.muted=0
             """, [.text(match)])
@@ -320,7 +352,7 @@ public struct Searcher {
                 FROM entity e
                 LEFT JOIN entity_alias al ON al.entity_id = e.id
                 JOIN rm_current_state cs ON cs.object_entity_id = e.id
-                JOIN person p ON p.id = cs.subject_id
+                JOIN person p ON p.id = cs.subject_id AND p.is_self = 0
                 JOIN assertion a ON a.id = cs.assertion_id
                 WHERE (e.canonical_name LIKE ? OR al.alias LIKE ?)
                   AND e.merged_into IS NULL AND a.muted=0

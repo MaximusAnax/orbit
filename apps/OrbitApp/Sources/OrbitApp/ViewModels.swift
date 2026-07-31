@@ -34,7 +34,26 @@ final class TranscriptReviewViewModel: ObservableObject, Identifiable {
     }
 
     func applyFix(_ suggestion: NameMatcher.Suggestion) {
-        text = text.replacingOccurrences(of: suggestion.heard, with: suggestion.candidate)
+        // Replace THE occurrence the suggestion points at, not every substring
+        // ("Ann" must never rewrite "Anniversary"). Ranges drift as earlier
+        // fixes land, so verify the token is still there before using it;
+        // otherwise fall back to the first whole-word occurrence.
+        let chars = Array(text)
+        let range = suggestion.range
+        if range.lowerBound >= 0, range.upperBound <= chars.count,
+           String(chars[range.lowerBound..<range.upperBound])
+               .trimmingCharacters(in: .punctuationCharacters) == suggestion.heard {
+            let head = String(chars[..<range.lowerBound])
+            let tokenText = String(chars[range.lowerBound..<range.upperBound])
+            let tail = String(chars[range.upperBound...])
+            let fixedToken = tokenText.replacingOccurrences(of: suggestion.heard,
+                                                            with: suggestion.candidate)
+            text = head + fixedToken + tail
+        } else if let wordRange = text.range(
+            of: "\\b\(NSRegularExpression.escapedPattern(for: suggestion.heard))\\b",
+            options: .regularExpression) {
+            text = text.replacingCharacters(in: wordRange, with: suggestion.candidate)
+        }
         nameSuggestions.removeAll { $0 == suggestion }
     }
 
@@ -62,6 +81,7 @@ final class ReviewViewModel: ObservableObject, Identifiable {
         let candidates: [(id: String, name: String)]
         let stateSuggestion: String? // PROPOSE_STATE: mapped orbit/intent, shown AS a suggestion
         let isEpisode: Bool          // CREATE_EVENT reconstructed episode (§7.11)
+        let payload: String          // raw payload JSON — the Edit sheet prefll
         var settled: String?         // "Saved" / "Skipped" / "Set aside"
     }
 
@@ -103,6 +123,7 @@ final class ReviewViewModel: ObservableObject, Identifiable {
                 candidates: Self.candidatesOf(op: op, payload: payload, app: app),
                 stateSuggestion: Self.stateSuggestionOf(op: op, payload: payload),
                 isEpisode: op == .createEvent,
+                payload: payload,
                 settled: nil)
             if byPerson[personKey] == nil {
                 byPerson[personKey] = PersonGroup(id: personKey, name: personName, cards: [])
@@ -147,14 +168,18 @@ final class ReviewViewModel: ObservableObject, Identifiable {
         accept(card)
         do {
             // the freshly created reconstructed event: derived from this sync
-            // run's source event
+            // run's source event AND matching this card's occurred_at — the
+            // fixed clock means confirmed_at can tie, so match the payload
+            let occurredAt = ((try? JSONSerialization.jsonObject(
+                with: Data(card.payload.utf8))) as? [String: Any])?["occurred_at"] as? String
             guard let source = try app.store.db.scalar(
                 "SELECT event_id FROM sync_run WHERE id=?", [.text(syncRunID)]).stringValue,
                   let event = try app.store.db.scalar(
                     """
                     SELECT id FROM event WHERE derived_from_event_id=?
-                    ORDER BY confirmed_at DESC LIMIT 1
-                    """, [.text(source)]).stringValue,
+                      AND (? IS NULL OR occurred_at = ?)
+                    ORDER BY rowid DESC LIMIT 1
+                    """, [.text(source), .from(occurredAt), .from(occurredAt)]).stringValue,
                   let person = try app.store.db.query(
                     """
                     SELECT ep.person_id FROM event_participant ep

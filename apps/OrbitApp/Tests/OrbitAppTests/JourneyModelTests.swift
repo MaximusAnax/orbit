@@ -37,19 +37,26 @@ final class JourneyModelTests: XCTestCase {
         return app
     }
 
+    /// A stalled flow is a FAILURE, not a skip — every journey depends on this
+    /// helper reaching review, so silently skipping would grade nothing.
+    struct FlowStalled: Error { let state: String }
+
     func syncedReview(_ app: AppModel) async throws -> ReviewViewModel {
         app.extractorOverride = StaticPayloadExtractor(json: Self.nikosPayload)
         await app.finishRecording(audioRef: "mock://audio", participants: [], kind: .encounter)
         guard case .reviewingTranscript(let tvm) = app.pendingCapture else {
-            throw XCTSkip("transcript review state not reached")
+            XCTFail("transcript review state not reached — pendingCapture is \(String(describing: app.pendingCapture))")
+            throw FlowStalled(state: "transcript")
         }
         tvm.confirm()
         guard case .extracting(let eventID) = app.pendingCapture else {
-            throw XCTSkip("extracting state not reached")
+            XCTFail("extracting state not reached — pendingCapture is \(String(describing: app.pendingCapture))")
+            throw FlowStalled(state: "extracting")
         }
         await app.runExtraction(eventID: eventID)
         guard case .reviewingProposals(let rvm) = app.pendingCapture else {
-            throw XCTSkip("proposal review state not reached")
+            XCTFail("proposal review state not reached — pendingCapture is \(String(describing: app.pendingCapture))")
+            throw FlowStalled(state: "review")
         }
         return rvm
     }

@@ -67,6 +67,8 @@ enum Copy {
         "What's a moment you two shared that stuck with you?",
     ]
     static let skipPrompt = "Skip"
+    static let portraitPaused = "Paused — take your time."
+    static let portraitDone = "That's the portrait"
     static let firstMetAction = "This is when we met"
     static let firstMetSet = "Marked as your first meeting"
 
@@ -87,6 +89,27 @@ enum Copy {
     static let saveKeys = "Save"
     static let keySaved = "Saved to the keychain"
 
+    // Resume doors (J-11) — plain lines, never badges
+    static func waitingFooter(_ n: Int) -> String {
+        n == 1 ? "1 memo waiting · tap to pick it up"
+               : "\(n) memos waiting · tap to pick one up"
+    }
+    static let keepNote = "Keep this"
+    static let micUnavailable = "The mic isn't available right now — the note field below still works."
+
+    // Edit sheet (P5: accept with edits; the quote itself is untouchable)
+    static let editValueLabel = "The mapped value"
+    static let editSinceLabel = "Since (YYYY-MM or YYYY-MM-DD)"
+    static let editOrbitLabel = "Orbit (inner · close · active · extended · outer)"
+    static let saveEdited = "Save with edits"
+
+    // Known-of framing (§7.3): known through others, never met
+    static let knownOfBanner = "Known through others — not yet met in person."
+
+    // Store failure — visible, plain, nothing pretends to work
+    static let storeFailureTitle = "Orbit couldn't open its memory."
+    static let storeFailureBody = "Nothing is being saved right now. Restarting usually clears this; if it persists, the database file needs attention before anything else happens."
+
     // Errors speak plain sans ink — no red exists (D-1/§9)
     static let extractionFailed = "Couldn't structure this one yet. The memo is safe — try again when you're back online."
     static let transcriptionFallback = "Quick model for now — the full one will re-listen before the recording is deleted."
@@ -106,9 +129,13 @@ enum Copy {
             toldYou("Sana"), notYetConfirmed("Sana"), unverifiedContact,
             extractionFailed, transcriptionFallback,
             portraitTitle, portraitHint, skipPrompt, firstMetAction, firstMetSet,
+            portraitPaused, portraitDone,
             stateCardTag, suggestedPrefix, onboardingNamePrompt, onboardingBegin,
             onboardingPortraitInvite,
             settingsTitle, settingsHint, anthropicKeyLabel, openAIKeyLabel,
             saveKeys, keySaved,
+            waitingFooter(1), waitingFooter(3), keepNote, micUnavailable,
+            editValueLabel, editSinceLabel, editOrbitLabel, saveEdited,
+            knownOfBanner, storeFailureTitle, storeFailureBody,
         ] + portraitPrompts
 }

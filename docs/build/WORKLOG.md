@@ -111,3 +111,64 @@ Append-only. Each entry: date · phase · what/why · verification tier (T1 loca
 - **PRIV-3's filesystem half closed**: `deleteAudioFile` removes the recording on full-model confirm, upgrade pass, and discard — outside the ledger transaction (a commit must not depend on disk). `AudioDeletionTests` (3 cases) asserts file-level behavior in CI, both gate branches.
 - **Signing knob**: `ORBIT_TEAM=<id> xcodegen generate` sets `DEVELOPMENT_TEAM`; CI unaffected (never signs).
 - Session note: the container restored from a pre-CI-loop snapshot mid-work; local history re-synced from origin (`git reset --hard origin/feature/initial_build` onto 583a9f0 — the CI-green head) before these changes. Nothing was lost; everything relevant was already pushed.
+
+## 2026-07-31 · Full-build review pass ("verify it is the best it can possibly be")
+
+An 8-dimension adversarially-verified review of the entire build (ledger, write
+funnel, pipeline, recall, search, app layer, tests/CI, docs), then a fix pass
+over every confirmed finding worth its diff. The load-bearing fixes:
+
+- **Ledger / store:** `Export.restore` now runs as ONE transaction with
+  `defer_foreign_keys` and a dependency-honest table order (event_participant
+  before person — the INV-14 trigger subqueries both); partial restores can no
+  longer strand a half-written archive. `facts(of:knownBy:)` had a bind-count
+  bug (2 placeholders, 1 binding) — fixed, and `Statement.bind` now refuses any
+  count mismatch outright instead of silently under-binding. `canonicalPerson`
+  follows merge pointers to fixpoint with a cycle guard.
+- **Write funnel:** merges flatten at write time to the canonical winner (and
+  re-point earlier losers), with legality guards (self rows, already-merged,
+  loser==winner); the proposal path's `.merge` now delegates to the same code.
+  Reconstructed episodes enforce INV-19 (≥1 participant), enter the read models
+  on acceptance, and key the ref map by event id so same-dated episodes never
+  collide. INV-7 suppression compares SEMANTIC claim keys (predicate+verbatim
+  for content ops, canonical names for creation ops) — a reworded re-extraction
+  of a rejected claim stays rejected; byte-compare would have resurrected it.
+  Unresolved thread refs surface as a "accept the thread card first" pending
+  dependency instead of a hard error. Assertion amendments now flow into
+  `rm_current_state` on write AND rebuild (INV-4 twin queries kept identical).
+- **Pipeline:** held DISAMBIGUATE assertions keep every field (entity/person
+  objects, validity window, attribution, thread ref); contradiction detection
+  matches on entity identity or case-folded value, not exact strings. The
+  extraction schema is strict-mode for both providers (additionalProperties
+  false everywhere, every DDL CHECK enum pinned); all 11 fixtures still
+  validate.
+- **Recall / search:** hearsay stays attributed end-to-end — heroes, forgotten
+  items and fact answers carry their teller; secondhand facts answer as
+  "X told you…" maybes, never as flat facts. Known-of people: banner on the
+  desk, excluded from the Deck and Today. Six recall queries made
+  merge-tolerant. `introduced_by` direction fixed (was reversed). "Changed
+  since you last saw them" now requires an actual supersession observed after
+  the last meeting.
+- **App layer:** recording is genuinely pausable (portraits §7.11); leaving a
+  capture screen cancels cleanly; a failed save keeps the typed note on screen;
+  transcription-failure persists an audio-only memo and Home shows plain
+  resume doors for every parked stage (J-11). Store-open failure gets a
+  visible plain-ink screen — nothing pretends to work. Review cards gained the
+  P5 edit affordance (mapped value/since/orbit editable; the quote untouchable).
+  applyFix is range-aware (no more first-occurrence collisions). Dynamic Type
+  reaches everything: memory voice scales via `relativeTo: .body`, interface
+  voice through UIFontMetrics.
+- **Tests/CI honesty:** `measure.py` joined `check.sh` (the T1 PIPE twin ran
+  only ad hoc before); XCTSkip in flow helpers became XCTFail (a stalled
+  journey is a failure, not a silent skip); design_lint's ELSEWHERE notes no
+  longer cite a snapshot job that doesn't exist (honest tier: device/T3, or
+  the dispatch-only journey job). New pins: rich export round-trip (first-met
+  + contact point + merge), knownBy observation-time semantics, merge-chain
+  flattening, INV-7 reworded-claim suppression, INV-19 for reconstructed
+  episodes, Today's known-of exclusion.
+- **Registered for ratification, not coded around** (RATIFICATION §4.6–4.10):
+  iOS 17 target vs BUILD's "iOS 26 minimum", journey-suite cadence, undo
+  deferral, §10.5 pronoun handling (name over guess), model-download checksum.
+- Session note: the container restored from a stale snapshot mid-pass; local
+  state was re-synced from `origin/feature/initial_build` (nothing pushed was
+  lost) before the fixes landed.

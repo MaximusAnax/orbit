@@ -16,6 +16,9 @@ python3 scripts/dev/sql_check.py
 echo "== design-law lint (static tier of D-1..D-11) =="
 python3 scripts/dev/design_lint.py
 
+echo "== provisional PIPE measurement (T1 twin of orbit-evals --replay) =="
+python3 scripts/dev/measure.py
+
 if command -v swift >/dev/null 2>&1; then
   echo "== swift build =="
   swift build

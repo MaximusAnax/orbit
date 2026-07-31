@@ -10,8 +10,13 @@ SELECT
     COALESCE(ps.merged_into, ps.id),
     a.predicate,
     COALESCE(en.merged_into, en.id),
-    a.object_value,
-    a.verbatim,
+    -- §7.1: the latest amendment wins in read models; the log keeps the original
+    COALESCE((SELECT aa.new_value FROM assertion_amendment aa
+              WHERE aa.assertion_id = a.id AND aa.field = 'object_value'
+              ORDER BY aa.created_at DESC, aa.id DESC LIMIT 1), a.object_value),
+    COALESCE((SELECT aa.new_value FROM assertion_amendment aa
+              WHERE aa.assertion_id = a.id AND aa.field = 'verbatim'
+              ORDER BY aa.created_at DESC, aa.id DESC LIMIT 1), a.verbatim),
     a.valid_from,
     a.date_precision,
     a.observed_at,

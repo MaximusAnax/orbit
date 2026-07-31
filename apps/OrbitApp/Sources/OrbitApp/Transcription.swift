@@ -205,6 +205,9 @@ struct MockTranscriber: TranscriptionService {
 /// exists or ever will (PRIV-1 — audio never leaves the device).
 protocol AudioRecording {
     func begin() throws
+    /// True pause — the session continues where it left off (§7.11 portraits).
+    func pause()
+    func resume()
     /// Stops and returns the audio file ref (a local path).
     func end() throws -> String
 }
@@ -239,6 +242,9 @@ final class DeviceRecorder: AudioRecording {
         url = file
     }
 
+    func pause() { recorder?.pause() }
+    func resume() { recorder?.record() }
+
     func end() throws -> String {
         guard let recorder, let url else { throw TranscriptionError.noModel }
         recorder.stop()
@@ -251,5 +257,7 @@ final class DeviceRecorder: AudioRecording {
 /// Simulator/UI-test recorder: no mic, a stable fake ref the MockTranscriber ignores.
 final class MockRecorder: AudioRecording {
     func begin() throws {}
+    func pause() {}
+    func resume() {}
     func end() throws -> String { "mock://audio" }
 }

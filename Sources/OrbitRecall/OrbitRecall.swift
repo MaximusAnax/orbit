@@ -18,12 +18,14 @@ public struct Brief: Sendable {
         public var personID: String
         public var name: String
         public var metLine: String          // "met-when · through-whom · last-seen"
+        public var isKnownOf: Bool          // §7.3: known through others, never met
     }
     public struct Hero: Sendable {
         public var assertionID: String
         public var claim: String            // verbatim — memory voice
         public var reason: String           // sans rationale — the explainable ranking
         public var pinned: Bool
+        public var teller: String?          // §9/§10: hearsay is never unattributed
     }
     public struct ThreadItem: Sendable {
         public var id: String
@@ -47,6 +49,7 @@ public struct Brief: Sendable {
         public var claim: String
         public var eraLabel: String         // era grouping keeps 40 items reading as a story
         public var reason: String
+        public var teller: String?          // hearsay attribution (§9/§10)
     }
     public struct TimelineSummary: Sendable {
         public var eventCount: Int
@@ -67,8 +70,10 @@ public struct Brief: Sendable {
     public var reach: [ReachItem]           // tile 8
     public var lastSeenAt: String?
 
-    /// The "Walk me in" pill hides on near-empty profiles (DESIGN §6.1 tile 1).
+    /// The "Walk me in" pill hides on near-empty profiles (DESIGN §6.1 tile 1)
+    /// and for known_of people (§7.3: not a relationship yet — no deck ritual).
     public var deckAvailable: Bool {
+        if header.isKnownOf { return false }
         var tiles = 0
         if hero != nil { tiles += 1 }
         if !openThreads.isEmpty { tiles += 1 }
@@ -101,20 +106,22 @@ public struct BriefAssembler {
             """
             SELECT MAX(e.occurred_at) FROM event e
             JOIN event_participant ep ON ep.event_id = e.id
-            WHERE ep.person_id=? AND ep.attendance IN ('confirmed','probable')
+            WHERE COALESCE((SELECT merged_into FROM person _px WHERE _px.id = ep.person_id), ep.person_id) = ?
+              AND ep.attendance IN ('confirmed','probable')
               AND e.lifecycle='confirmed' AND e.derived_from_event_id IS NULL
             """, [.text(personID)]).stringValue
 
         let header = Brief.Header(
             personID: personID, name: name,
-            metLine: try metLine(personID: personID, person: person, lastSeen: lastSeen, db: db))
+            metLine: try metLine(personID: personID, person: person, lastSeen: lastSeen, db: db),
+            isKnownOf: person.text("status") == "known_of")
 
         // ── current-state pool with the human-override columns (§8 signal 6):
         // muted rows never leave this query; everything downstream is clean of them
         let pool = try db.query(
             """
             SELECT cs.assertion_id, cs.predicate, cs.verbatim, cs.valid_from, cs.observed_at,
-                   cs.source_kind, a.last_surfaced_at, a.pinned
+                   cs.source_kind, cs.attributed_to_person_id, a.last_surfaced_at, a.pinned
             FROM rm_current_state cs
             JOIN assertion a ON a.id = cs.assertion_id
             WHERE cs.subject_id=? AND a.muted=0
@@ -124,6 +131,18 @@ public struct BriefAssembler {
                      cs.observed_at ASC,
                      cs.assertion_id ASC
             """, [.text(personID)])
+
+        // hearsay attribution travels with every item (§9/§10)
+        var tellerNames: [String: String] = [:]
+        func teller(_ row: Row) -> String? {
+            guard row.text("source_kind") == "secondhand",
+                  let id = row.text("attributed_to_person_id") else { return nil }
+            if let cached = tellerNames[id] { return cached }
+            let name = (try? reader.person(id)?.text("display_name"))
+                .flatMap { $0 } ?? "someone"
+            tellerNames[id] = name
+            return name
+        }
 
         // hero: pinned wins outright; else the top of the forgotten-ranking
         var hero: Brief.Hero?
@@ -135,7 +154,8 @@ public struct BriefAssembler {
                 reason: pinned ? "You pinned this."
                     : heroReason(lastSurfaced: top.text("last_surfaced_at"),
                                  observedAt: top.text("observed_at") ?? "", now: now),
-                pinned: pinned)
+                pinned: pinned,
+                teller: teller(top))
         }
 
         // ── open threads, staleness displayed (§9.1); hardship = context only
@@ -143,8 +163,9 @@ public struct BriefAssembler {
             """
             SELECT id, title, archetype, prompt_state, last_mentioned_at,
                    conversations_since_mention, expected_resolution_at
-            FROM thread WHERE person_id=? AND state='open'
-            ORDER BY (prompt_state='active') DESC, last_mentioned_at DESC
+            FROM thread t
+            WHERE COALESCE((SELECT merged_into FROM person _px WHERE _px.id = t.person_id), t.person_id) = ? AND t.state='open'
+            ORDER BY (t.prompt_state='active') DESC, t.last_mentioned_at DESC
             """, [.text(personID)])
         let openThreads = threadRows.map { r in
             Brief.ThreadItem(
@@ -159,7 +180,7 @@ public struct BriefAssembler {
         let loops = try db.query(
             """
             SELECT id, direction, description FROM open_loop
-            WHERE person_id=? AND state='open' ORDER BY due_at IS NULL, due_at
+            WHERE COALESCE((SELECT merged_into FROM person _px WHERE _px.id = open_loop.person_id), open_loop.person_id) = ? AND state='open' ORDER BY due_at IS NULL, due_at
             """, [.text(personID)]).map { r in
             Brief.LoopItem(id: r.text("id") ?? "",
                            description: r.text("description") ?? "",
@@ -176,9 +197,14 @@ public struct BriefAssembler {
             for r in try db.query(
                 """
                 SELECT a.id, a.verbatim FROM assertion a
-                WHERE a.subject_id=? AND a.superseded_by IS NULL AND a.muted=0
-                  AND a.valid_to IS NOT NULL AND a.observed_at > ?
-                """, [.text(personID), .text(lastSeen)]) {
+                WHERE COALESCE((SELECT merged_into FROM person _px WHERE _px.id = a.subject_id), a.subject_id) = ?
+                  AND a.status='active' AND a.muted=0
+                  AND a.valid_to IS NOT NULL
+                  AND a.observed_at <= ?
+                  AND EXISTS (SELECT 1 FROM rm_current_state cs
+                              WHERE cs.subject_id = ? AND cs.predicate = a.predicate
+                                AND cs.observed_at > ?)
+                """, [.text(personID), .text(lastSeen), .text(personID), .text(lastSeen)]) {
                 changed.append(.init(assertionID: r.text("id") ?? "",
                                      line: "no longer: \(r.text("verbatim") ?? "")", isClose: true))
             }
@@ -205,7 +231,8 @@ public struct BriefAssembler {
                     claim: r.text("verbatim") ?? "",
                     eraLabel: year == metYear ? "when you first met" : year,
                     reason: heroReason(lastSurfaced: r.text("last_surfaced_at"),
-                                       observedAt: r.text("observed_at") ?? "", now: now))
+                                       observedAt: r.text("observed_at") ?? "", now: now),
+                    teller: teller(r))
             }
 
         // ── timeline row: a real count, never rounded (D-9)
@@ -213,7 +240,7 @@ public struct BriefAssembler {
             """
             SELECT COUNT(*) AS n, MIN(occurred_at) AS first FROM event e
             JOIN event_participant ep ON ep.event_id = e.id
-            WHERE ep.person_id=? AND e.lifecycle='confirmed'
+            WHERE COALESCE((SELECT merged_into FROM person _px WHERE _px.id = ep.person_id), ep.person_id) = ? AND e.lifecycle='confirmed'
             """, [.text(personID)]).first
         let timeline = Brief.TimelineSummary(
             eventCount: Int(events?.int("n") ?? 0),
@@ -222,8 +249,9 @@ public struct BriefAssembler {
         // ── reach: current contact points
         let reach = try db.query(
             """
-            SELECT kind, value FROM contact_point
-            WHERE person_id=? AND valid_to IS NULL ORDER BY is_primary DESC, kind
+            SELECT kind, value FROM contact_point cp
+            WHERE COALESCE((SELECT merged_into FROM person _px WHERE _px.id = cp.person_id), cp.person_id) = ?
+              AND cp.valid_to IS NULL ORDER BY cp.is_primary DESC, cp.kind
             """, [.text(personID)]).map {
             Brief.ReachItem(kind: $0.text("kind") ?? "", value: $0.text("value") ?? "")
         }
@@ -245,8 +273,8 @@ public struct BriefAssembler {
         if let via = try db.query(
             """
             SELECT p.display_name FROM rm_network_edge ne
-            JOIN person p ON p.id = ne.to_person
-            WHERE ne.from_person=? AND ne.edge_kind='introduced_by' LIMIT 1
+            JOIN person p ON p.id = ne.from_person
+            WHERE ne.to_person=? AND ne.edge_kind='introduced_by' LIMIT 1
             """, [.text(personID)]).first?.text("display_name") {
             parts.append("through \(via)")
         }
@@ -266,7 +294,7 @@ public struct BriefAssembler {
             """
             SELECT MIN(e.occurred_at) FROM event e
             JOIN event_participant ep ON ep.event_id = e.id
-            WHERE ep.person_id=? AND e.lifecycle='confirmed'
+            WHERE COALESCE((SELECT merged_into FROM person _px WHERE _px.id = ep.person_id), ep.person_id) = ? AND e.lifecycle='confirmed'
             """, [.text(personID)]).stringValue
         return String((earliest ?? "").prefix(4))
     }
@@ -320,8 +348,9 @@ public struct Deck: Sendable {
     public static func build(from brief: Brief) -> Deck {
         var cards: [Card] = []
         if let hero = brief.hero {
+            let sub = hero.teller.map { "\($0) told you · \(hero.reason)" } ?? hero.reason
             cards.append(Card(tag: "If you remember one thing", main: hero.claim,
-                              sub: hero.reason, surfacedAssertionID: hero.assertionID))
+                              sub: sub, surfacedAssertionID: hero.assertionID))
         }
         // hardship threads are context, never suggested openers (PIPE-14):
         // the tag and sub-line frame what's going on, not what to ask
@@ -342,8 +371,9 @@ public struct Deck: Sendable {
                               sub: "", surfacedAssertionID: change.assertionID))
         }
         for item in brief.forgotten.prefix(2) where cards.count < 6 {
+            let sub = item.teller.map { "\($0) told you · \(item.reason)" } ?? item.reason
             cards.append(Card(tag: "Worth having back", main: item.claim,
-                              sub: item.reason, surfacedAssertionID: item.assertionID))
+                              sub: sub, surfacedAssertionID: item.assertionID))
         }
         cards.append(Card(tag: "That's everything", main: "Go be present.",
                           sub: "", surfacedAssertionID: nil, isEnd: true))

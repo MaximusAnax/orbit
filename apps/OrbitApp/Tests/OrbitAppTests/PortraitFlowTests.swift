@@ -37,19 +37,26 @@ final class PortraitFlowTests: XCTestCase {
         return app
     }
 
+    /// A stalled flow is a FAILURE, not a skip — every portrait test depends on
+    /// this helper reaching review, so silently skipping would grade nothing.
+    struct FlowStalled: Error { let state: String }
+
     func portraitReview(_ app: AppModel, payload: String = portraitPayload) async throws -> ReviewViewModel {
         app.extractorOverride = StaticPayloadExtractor(json: payload)
         await app.finishRecording(audioRef: "mock://audio", participants: [], kind: .portrait)
         guard case .reviewingTranscript(let tvm) = app.pendingCapture else {
-            throw XCTSkip("transcript review not reached")
+            XCTFail("transcript review not reached — pendingCapture is \(String(describing: app.pendingCapture))")
+            throw FlowStalled(state: "transcript")
         }
         tvm.confirm()
         guard case .extracting(let eventID) = app.pendingCapture else {
-            throw XCTSkip("extracting not reached")
+            XCTFail("extracting not reached — pendingCapture is \(String(describing: app.pendingCapture))")
+            throw FlowStalled(state: "extracting")
         }
         await app.runExtraction(eventID: eventID)
         guard case .reviewingProposals(let rvm) = app.pendingCapture else {
-            throw XCTSkip("proposal review not reached")
+            XCTFail("proposal review not reached — pendingCapture is \(String(describing: app.pendingCapture))")
+            throw FlowStalled(state: "review")
         }
         return rvm
     }

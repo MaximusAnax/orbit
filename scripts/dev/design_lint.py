@@ -115,7 +115,7 @@ def check_d1() -> None:
                 rgba = parse_color("#" + hexlit)
                 if rgba and is_forbidden_red(rgba):
                     fail("D-1", f"{f.relative_to(ROOT)}:{i} red-band hex literal #{hexlit}")
-    defer("D-1", "rendered-pixel sweep runs in the snapshot job (macOS CI)")
+    defer("D-1", "rendered-pixel sweep: no snapshot rig exists — graded by eye on device (T3)")
 
 
 # ------------------------------------------------------------- D-2 no badges
@@ -127,7 +127,7 @@ def check_d2() -> None:
                 fail("D-2", f"{f.relative_to(ROOT)}:{i} uses .badge() — badges do not exist in Orbit")
             if re.search(r"applicationIconBadgeNumber|setBadgeCount", line):
                 fail("D-2", f"{f.relative_to(ROOT)}:{i} sets an app icon badge")
-    defer("D-2", "view-hierarchy absence assertion runs in J-3 (XCUITest)")
+    defer("D-2", "view-hierarchy absence assertion runs in J-3 (XCUITest, dispatch-only journeys job)")
 
 
 # ---------------------------------------------------- D-3 two-voices (static)
@@ -143,7 +143,7 @@ def check_d3() -> None:
             m = re.search(r'\.custom\(\s*"([^"]+)"', line)
             if m:
                 fail("D-3", f"{f.relative_to(ROOT)}:{i} hard-codes font family {m.group(1)!r} — go through Tokens")
-    defer("D-3", "per-node serif census runs in the snapshot job (macOS CI)")
+    defer("D-3", "per-node serif census: no snapshot rig — the static channel check above is the automated tier; rendered census is device (T3)")
 
 
 # --------------------------------------------------------- D-9 true counts
@@ -180,7 +180,7 @@ def check_d10() -> None:
                 fail("D-10", f"{f.relative_to(ROOT)}:{i} constructs a literal Color — use Tokens")
             if re.search(r'Color\(\s*"#', line) or re.search(r'"#[0-9a-fA-F]{6}"', line):
                 fail("D-10", f"{f.relative_to(ROOT)}:{i} hex color literal — use Tokens")
-    defer("D-10", "rendered radius/font conformance runs in the snapshot job (macOS CI)")
+    defer("D-10", "rendered radius/font conformance: no snapshot rig exists — graded on device (T3)")
 
 
 # ------------------------------------------------------------ D-11 copy lint
@@ -218,7 +218,7 @@ def main() -> int:
     check_d10()
     check_d11()
     for name in ("D-4", "D-5", "D-6", "D-7"):
-        defer(name, "snapshot/pixel census — macOS CI snapshot job (T2)")
+        defer(name, "no snapshot rig exists — graded on device (T3)")
     defer("D-8", "absence-of-placeholder asserted at view-model level (DesignLawTests) + J-6")
 
     print(f"design_lint: {len(failures)} violation(s)")
