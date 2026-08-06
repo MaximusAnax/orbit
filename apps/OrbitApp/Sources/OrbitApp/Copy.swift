@@ -138,6 +138,17 @@ enum Copy {
     static let waitingStageNeedsProposalReview = "Structured — waiting on your yes or no"
     static let memoDiscardFailed = "That one couldn't be let go — it's already further along than it looked."
 
+    // Correcting something already saved (FN-13/FN-15). Until these existed,
+    // review was the only moment anything could be fixed: say yes and the fact
+    // was frozen, with re-recording the only way back.
+    static let deskRenameTitle = "What should this person be called?"
+    static let deskRenameHint = "This changes the name everywhere. Nothing else about them moves."
+    static let factFixAction = "Fix this"
+    static let factFixTitle = "What should this say?"
+    static let factFixHint = "Your words stay exactly as you said them — this corrects what Orbit filed under them."
+    static let saveCorrection = "Save the correction"
+    static let correctionSaved = "Corrected"
+
     static let keepNote = "Keep this"
     static let micUnavailable = "The mic isn't available right now — the note field below still works."
     static let micDenied = "Orbit needs microphone access: Settings › Orbit › Microphone. The note field below still works."
@@ -204,7 +215,9 @@ enum Copy {
             workingTranscribing, workingExtracting, workingHint, collapseWork,
             nothingNewInCapture, nothingToStructure,
             transcriptionUnavailable, speechDenied, transcriptionOffDeviceRefused,
-            memoAudioMissing, transcriptionNoSpeech, transcriptionAudioUnreadable,
+            memoAudioMissing,
+            deskRenameTitle, deskRenameHint, factFixAction, factFixTitle,
+            factFixHint, saveCorrection, correctionSaved, transcriptionNoSpeech, transcriptionAudioUnreadable,
             transcriptionFailed("kAFAssistantErrorDomain 1700"),
             editValueLabel, editSinceLabel, editOrbitLabel, saveEdited,
             knownOfBanner, storeFailureTitle, storeFailureBody,

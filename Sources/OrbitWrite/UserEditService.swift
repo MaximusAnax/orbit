@@ -34,6 +34,34 @@ public struct UserEditService {
         try store.rmSearchRebuild()
     }
 
+    /// Rename an entity that is already saved (FIELD-NOTES FN-13).
+    ///
+    /// Until this existed, a canonical name was frozen at first write: the
+    /// review-time rename only reached refs that *created* a row, so the second
+    /// time a shorthand came up it matched the existing entity and could never
+    /// be corrected. "Colorstack conference" stayed that forever.
+    ///
+    /// The old name is not destroyed — it becomes an alias, which is both the
+    /// audit trail and the thing that keeps resolution working: §7.10
+    /// guarantee 3 means the next voice note saying it the short way still
+    /// finds this entity. Nothing is lost, so nothing needs a retraction.
+    public func renameEntity(_ id: String, canonicalName: String) throws {
+        let trimmed = canonicalName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw WriteError.invalidState("an entity needs a name")
+        }
+        guard let previous = try db.scalar(
+            "SELECT canonical_name FROM entity WHERE id=?", [.text(id)]).stringValue else {
+            throw WriteError.notFound("entity \(id)")
+        }
+        guard previous != trimmed else { return }
+        try db.run("UPDATE entity SET canonical_name=? WHERE id=?", [.text(trimmed), .text(id)])
+        // the way he said it before still has to resolve here
+        try db.run("INSERT OR IGNORE INTO entity_alias (entity_id, alias) VALUES (?,?)",
+                   [.text(id), .text(previous)])
+        try store.rmSearchRebuild()
+    }
+
     /// Merge by pointer (Decision 6): the loser's rows are never touched.
     public func mergePerson(loser: String, winner: String) throws {
         // Decision 6 promises one-hop pointer resolution, so merges must keep

@@ -15,6 +15,15 @@ struct BriefScreen: View {
     @State private var brief: Brief?
     @State private var showDeck = false
     @State private var showPortrait = false
+    // FN-13/FN-15: correcting what is already saved
+    @State private var renaming = false
+    @State private var factEdit: FactEdit?
+
+    /// A saved fact the user is about to correct.
+    struct FactEdit: Identifiable {
+        let id: String          // assertion id
+        let claim: String
+    }
 
     var body: some View {
         ScrollView {
@@ -45,6 +54,12 @@ struct BriefScreen: View {
                                 }
                                 Text(hero.reason).interfaceVoice(size: 11.5)
                                     .foregroundStyle(Tokens.inkMuted(room))
+                                // FN-15: review used to be the only moment
+                                // anything could be corrected. It isn't now.
+                                TertiaryButton(Copy.factFixAction) {
+                                    factEdit = .init(id: hero.assertionID, claim: hero.claim)
+                                }
+                                .accessibilityIdentifier("desk.fixHero")
                             }
                         }
                     }
@@ -155,14 +170,36 @@ struct BriefScreen: View {
         .fullScreenCover(isPresented: $showPortrait) {
             PortraitCaptureView(personName: brief?.header.name)
         }
+        .sheet(isPresented: $renaming) {
+            CorrectionSheet(title: Copy.deskRenameTitle,
+                            hint: Copy.deskRenameHint,
+                            initial: brief?.header.name ?? "") { name in
+                app.renamePerson(personID, to: name)
+                brief = try? app.assembleBrief(personID: personID)
+            }
+        }
+        .sheet(item: $factEdit) { edit in
+            CorrectionSheet(title: Copy.factFixTitle,
+                            hint: Copy.factFixHint,
+                            initial: "",
+                            quote: edit.claim) { value in
+                app.amendFact(edit.id, objectValue: value)
+                brief = try? app.assembleBrief(personID: personID)
+            }
+        }
     }
 
     func header(_ brief: Brief) -> some View {
         HStack(spacing: 12) {
             PortraitView(initial: String(brief.header.name.prefix(1)))
             VStack(alignment: .leading, spacing: 3) {
-                Text(brief.header.name).memoryVoice(size: 21, weight: .semibold)
-                    .foregroundStyle(Tokens.ink(room))
+                // FN-13: a saved name had no way to be corrected anywhere in the
+                // app. Tapping it is that way — quiet, no chrome, no pencil.
+                Button { renaming = true } label: {
+                    Text(brief.header.name).memoryVoice(size: 21, weight: .semibold)
+                        .foregroundStyle(Tokens.ink(room))
+                }
+                .accessibilityIdentifier("desk.name")
                 if !brief.header.metLine.isEmpty {
                     Text(brief.header.metLine).interfaceVoice(size: 11)
                         .foregroundStyle(Tokens.inkMuted(room))
@@ -492,5 +529,58 @@ struct SearchScreen: View {
                     .foregroundStyle(Tokens.inkFaint(room))
             }
         }
+    }
+}
+
+/// Correcting something already saved (FIELD-NOTES FN-13 / FN-15).
+///
+/// One sheet for both jobs, because both are the same shape: show what is
+/// there, take a replacement, write it through the funnel (INV-5). When a
+/// quote is passed it is shown and untouchable — his words are the record
+/// (P5); the correction lands on what Orbit filed under them, and INV-1 keeps
+/// the original readable in the ledger.
+struct CorrectionSheet: View {
+    let title: String
+    let hint: String
+    let initial: String
+    var quote: String? = nil
+    let onSave: (String) -> Void
+
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.room) var room
+    @State private var text = ""
+
+    var body: some View {
+        RoomBackground { _ in
+            VStack(alignment: .leading, spacing: 16) {
+                Text(title).interfaceVoice(size: 16, weight: .semibold)
+                    .foregroundStyle(Tokens.ink(room))
+                if let quote {
+                    Text(quote).memoryVoice(size: 14)
+                        .foregroundStyle(Tokens.inkMuted(room))
+                }
+                TextField("", text: $text)
+                    .accessibilityIdentifier("correction.field")
+                    .font(.system(size: 16))
+                    .padding(12)
+                    .background(Tokens.paper(room))
+                    .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusCard))
+                    .overlay(RoundedRectangle(cornerRadius: Tokens.radiusCard)
+                        .strokeBorder(Tokens.paperEdge(room), lineWidth: 1))
+                Text(hint).interfaceVoice(size: 11.5)
+                    .foregroundStyle(Tokens.inkFaint(room))
+                PrimaryButton(Copy.saveCorrection) {
+                    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !trimmed.isEmpty else { return }
+                    onSave(trimmed)
+                    dismiss()
+                }
+                TertiaryButton(Copy.notNow) { dismiss() }
+                Spacer()
+            }
+            .padding(.top, 30)
+            .padding(.horizontal, Tokens.screenPaddingSide)
+        }
+        .onAppear { text = initial }
     }
 }

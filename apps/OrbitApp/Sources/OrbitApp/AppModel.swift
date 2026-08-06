@@ -171,6 +171,32 @@ final class AppModel: ObservableObject {
         return model
     }
 
+    // MARK: correcting what is already saved (FIELD-NOTES FN-13 / FN-15)
+
+    /// Rename a saved person. Everything goes through the write funnel (INV-5).
+    func renamePerson(_ id: String, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        try? edits.renamePerson(id, displayName: trimmed)
+        refreshAmbient()
+    }
+
+    /// Rename a saved entity — the old name survives as an alias, so the way he
+    /// said it before still resolves (§7.10 guarantee 3).
+    func renameEntity(_ id: String, to name: String) {
+        try? edits.renameEntity(id, canonicalName: name)
+    }
+
+    /// Correct what a saved fact says, without touching what he said. The
+    /// verbatim is the record (P5) and stays; the amendment posts a correction
+    /// over `object_value`, and INV-1 keeps the original readable in the ledger.
+    func amendFact(_ assertionID: String, objectValue: String) {
+        let trimmed = objectValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        try? edits.amendAssertion(assertionID, field: "object_value",
+                                  newValue: trimmed, reason: "corrected on the desk")
+    }
+
     /// Minimal onboarding: the quiet self profile (§7.12) — created once, invisible.
     func ensureSelf(named name: String) {
         guard selfID == nil else { return }
