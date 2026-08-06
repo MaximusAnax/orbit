@@ -92,6 +92,16 @@ enum TranscriptionError: Error {
     case bridgeUnavailable
 }
 
+/// Mic failures the capture door has to tell the truth about. `denied` is the
+/// one the user can fix (Settings › Orbit › Microphone); `sessionFailed`
+/// carries the underlying reason so a failure is diagnosable instead of a
+/// shrug — the typed note stays available either way (P3).
+enum RecordingError: Error {
+    case denied
+    case sessionFailed(String)
+    case didNotStart
+}
+
 #if canImport(whisper)
 import whisper
 import AVFoundation
@@ -224,9 +234,11 @@ final class DeviceRecorder: AudioRecording {
     private var url: URL?
 
     func begin() throws {
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.record, mode: .spokenAudio)
-        try session.setActive(true)
+        // A denied mic is the user's to fix; anything else we report verbatim.
+        if AVAudioApplication.shared.recordPermission == .denied { throw RecordingError.denied }
+
+        try configureSession()
+
         let dir = try FileManager.default.url(for: .applicationSupportDirectory,
                                               in: .userDomainMask, appropriateFor: nil, create: true)
             .appendingPathComponent("audio", isDirectory: true)
@@ -237,9 +249,42 @@ final class DeviceRecorder: AudioRecording {
             AVSampleRateKey: 16_000,
             AVNumberOfChannelsKey: 1,
         ])
-        r.record()
+        r.prepareToRecord()
+        // record() returning false (or an undetermined permission the system is
+        // still prompting for) must not leave the UI claiming it's listening.
+        guard r.record() else {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            throw RecordingError.didNotStart
+        }
         recorder = r
         url = file
+    }
+
+    /// Category and mode must be a *compatible pair* — an invalid combination
+    /// fails with kAudio_ParamError (-50, logged by CoreAudio as 4294967246).
+    /// `.measurement` is the speech-recognition mode: it turns off the system
+    /// signal processing that would otherwise reshape input before whisper
+    /// hears it. Devices/simulators that reject it fall back rather than
+    /// leaving the user with a dead mic.
+    private func configureSession() throws {
+        let session = AVAudioSession.sharedInstance()
+        var lastError: Error?
+        for mode: AVAudioSession.Mode in [.measurement, .default] {
+            do {
+                try session.setCategory(.record, mode: mode)
+                try session.setActive(true)
+                return
+            } catch {
+                lastError = error
+            }
+        }
+        do {                                  // last resort: bare record category
+            try session.setCategory(.record)
+            try session.setActive(true)
+        } catch {
+            throw RecordingError.sessionFailed(
+                String(describing: lastError ?? error))
+        }
     }
 
     func pause() { recorder?.pause() }
@@ -249,6 +294,8 @@ final class DeviceRecorder: AudioRecording {
         guard let recorder, let url else { throw TranscriptionError.noModel }
         recorder.stop()
         self.recorder = nil
+        // hand the audio route back — otherwise other apps stay ducked after a memo
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         return url.path
     }
 }

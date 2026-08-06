@@ -96,6 +96,7 @@ enum Copy {
     }
     static let keepNote = "Keep this"
     static let micUnavailable = "The mic isn't available right now — the note field below still works."
+    static let micDenied = "Orbit needs microphone access: Settings › Orbit › Microphone. The note field below still works."
 
     // Edit sheet (P5: accept with edits; the quote itself is untouchable)
     static let editValueLabel = "The mapped value"
@@ -134,7 +135,7 @@ enum Copy {
             onboardingPortraitInvite,
             settingsTitle, settingsHint, anthropicKeyLabel, openAIKeyLabel,
             saveKeys, keySaved,
-            waitingFooter(1), waitingFooter(3), keepNote, micUnavailable,
+            waitingFooter(1), waitingFooter(3), keepNote, micUnavailable, micDenied,
             editValueLabel, editSinceLabel, editOrbitLabel, saveEdited,
             knownOfBanner, storeFailureTitle, storeFailureBody,
         ] + portraitPrompts

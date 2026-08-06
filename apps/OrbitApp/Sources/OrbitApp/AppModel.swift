@@ -33,6 +33,12 @@ final class AppModel: ObservableObject {
     /// nothing nags (P10).
     @Published var waitingMemos: [WaitingMemo] = []
 
+    /// Why the mic didn't start, when it didn't. `denied` is the one the user
+    /// can act on; the rest carry their reason for the log rather than
+    /// disappearing into a false "unavailable".
+    @Published var micFailure: MicFailure?
+    enum MicFailure: Equatable { case denied, unavailable(String) }
+
     struct WaitingMemo: Identifiable {
         enum Stage { case needsTranscription, needsTranscriptReview, needsSync }
         let id: String          // event id
@@ -235,10 +241,16 @@ final class AppModel: ObservableObject {
     func beginRecording() -> Bool {
         do {
             try recorder.begin()
+            micFailure = nil
             pendingCapture = .recording
             return true
         } catch {
             pendingCapture = nil   // mic unavailable: the typed note is right there (P3)
+            if case RecordingError.denied = error {
+                micFailure = .denied
+            } else {
+                micFailure = .unavailable(String(describing: error))
+            }
             return false
         }
     }

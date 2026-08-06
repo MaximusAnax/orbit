@@ -225,8 +225,10 @@ struct CaptureView: View {
                 }
                 if micFailed {
                     // plain ink, never red (D-1); the typed note is right below
-                    Text(Copy.micUnavailable).interfaceVoice(size: 12)
+                    Text(app.micFailure == .denied ? Copy.micDenied : Copy.micUnavailable)
+                        .interfaceVoice(size: 12)
                         .foregroundStyle(Tokens.inkMuted(room))
+                        .multilineTextAlignment(.center)
                 }
 
                 Spacer()

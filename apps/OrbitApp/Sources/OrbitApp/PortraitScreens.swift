@@ -71,6 +71,12 @@ struct PortraitCaptureView: View {
                     Text(isPaused ? Copy.portraitPaused : Copy.captureRecording)
                         .interfaceVoice(size: 12)
                         .foregroundStyle(Tokens.inkMuted(room))
+                } else if let failure = app.micFailure {
+                    // plain ink, never red (D-1) — and it says what to do about it
+                    Text(failure == .denied ? Copy.micDenied : Copy.micUnavailable)
+                        .interfaceVoice(size: 12)
+                        .foregroundStyle(Tokens.inkMuted(room))
+                        .multilineTextAlignment(.center)
                 }
                 if isRecording {
                     PrimaryButton(Copy.portraitDone) {
