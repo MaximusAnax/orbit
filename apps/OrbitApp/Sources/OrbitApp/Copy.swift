@@ -98,6 +98,12 @@ enum Copy {
     static let micUnavailable = "The mic isn't available right now — the note field below still works."
     static let micDenied = "Orbit needs microphone access: Settings › Orbit › Microphone. The note field below still works."
 
+    // Transcription notices — the recording is always safe; every line says so
+    static let transcriptionUnavailable = "Nothing on this phone can turn that into words yet. The recording is safe and waiting."
+    static let speechDenied = "Orbit needs speech recognition: Settings › Orbit › Speech Recognition. The recording is safe and waiting."
+    static let transcriptionOffDeviceRefused = "This phone can't transcribe without sending the audio away, so Orbit stopped. The recording is safe and stays here."
+    static let memoAudioMissing = "That recording is no longer on this phone, so there's nothing left to transcribe."
+
     // Edit sheet (P5: accept with edits; the quote itself is untouchable)
     static let editValueLabel = "The mapped value"
     static let editSinceLabel = "Since (YYYY-MM or YYYY-MM-DD)"
@@ -136,6 +142,8 @@ enum Copy {
             settingsTitle, settingsHint, anthropicKeyLabel, openAIKeyLabel,
             saveKeys, keySaved,
             waitingFooter(1), waitingFooter(3), keepNote, micUnavailable, micDenied,
+            transcriptionUnavailable, speechDenied, transcriptionOffDeviceRefused,
+            memoAudioMissing,
             editValueLabel, editSinceLabel, editOrbitLabel, saveEdited,
             knownOfBanner, storeFailureTitle, storeFailureBody,
         ] + portraitPrompts

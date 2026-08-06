@@ -82,6 +82,17 @@ struct HomeView: View {
                 .accessibilityIdentifier("home.waitingFooter")
             }
 
+            // Why the last pick-up didn't get anywhere. Plain ink, no red (D-1),
+            // and it clears the moment something works.
+            if let notice = app.captureNotice {
+                Text(notice)
+                    .interfaceVoice(size: 11)
+                    .foregroundStyle(Tokens.inkMuted(room))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 12)
+                    .accessibilityIdentifier("home.captureNotice")
+            }
+
             // Set-asides: a footer text line, never a card, never a badge (D-2);
             // tapping it reopens them — a footer without a door is a dead end
             if app.setAsideCount > 0 {

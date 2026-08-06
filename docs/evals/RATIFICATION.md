@@ -87,3 +87,13 @@ missing column in minutes.
    the app could not function without it, each is rendered in the ratified
    tokens with both room forms, and none went through design ratification.
    Ratify as-is, or send any of them back for a designed treatment.
+12. **Apple on-device recognition as the transcription floor** — DATA-MODEL §6
+   ratified `SpeechTranscriber` (iOS 26) for exactly this role; the build
+   targets iOS 17, so the same idea is implemented on `SFSpeechRecognizer`
+   with `requiresOnDeviceRecognition = true` and `supportsOnDeviceRecognition`
+   checked first. **There is no server-side path to fall into**: if this phone
+   cannot recognize locally, transcription fails and says so rather than
+   sending the recording to Apple (PRIV-1 stays absolute). Its transcripts
+   report `usedFullModel: false`, so §7.5 keeps the audio until whisper's
+   ceiling model re-listens and replaces them. Ratify this as the floor, or
+   veto and whisper becomes a hard prerequisite for capture.

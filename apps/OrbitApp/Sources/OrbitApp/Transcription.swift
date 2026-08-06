@@ -90,7 +90,98 @@ final class WhisperTranscriber: TranscriptionService, @unchecked Sendable {
 enum TranscriptionError: Error {
     case noModel
     case bridgeUnavailable
+    /// Speech-recognition permission not granted (the user can fix this).
+    case speechDenied
+    /// The recognizer exists but cannot run **on device** — refused rather than
+    /// silently sending the recording to a server (PRIV-1 is absolute).
+    case onDeviceUnavailable
 }
+
+/// Tries each transcriber in order and returns the first success; the last
+/// error survives if every stage fails. Order is quality-first: whisper's
+/// ceiling model when it's on the phone, Apple's on-device recognizer as the
+/// floor that keeps capture working the moment the app is installed.
+final class CascadingTranscriber: TranscriptionService, @unchecked Sendable {
+    private let stages: [TranscriptionService]
+    init(_ stages: [TranscriptionService]) { self.stages = stages }
+
+    func transcribe(audioAt path: String, primedWith names: [String]) async throws -> TranscriptResult {
+        var last: Error = TranscriptionError.noModel
+        for stage in stages {
+            do { return try await stage.transcribe(audioAt: path, primedWith: names) }
+            catch { last = error }
+        }
+        throw last
+    }
+}
+
+/// Resume-once guard for callback APIs that may fire more than once.
+private final class OnceBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var done = false
+    func claim() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        if done { return false }
+        done = true
+        return true
+    }
+}
+
+#if canImport(Speech) && os(iOS)
+import Speech
+
+/// Apple's on-device recognizer as the transcription floor (DATA-MODEL §6
+/// ratified `SpeechTranscriber` on iOS 26 for this role; this is the same idea
+/// on the iOS 17 API, registered as a divergence in RATIFICATION §4.12).
+///
+/// **PRIV-1 is absolute here.** `requiresOnDeviceRecognition = true` is set and
+/// `supportsOnDeviceRecognition` is checked first: if this phone cannot
+/// recognize locally, transcription fails rather than putting the recording on
+/// Apple's servers. There is deliberately no server-side path to fall into.
+///
+/// Results report `usedFullModel: false`, so §7.5 keeps the audio until
+/// whisper's ceiling model re-listens — the upgrade pass then replaces this
+/// transcript with the better one and deletes the recording.
+final class AppleSpeechTranscriber: TranscriptionService, @unchecked Sendable {
+    func transcribe(audioAt path: String, primedWith names: [String]) async throws -> TranscriptResult {
+        guard await Self.authorized() else { throw TranscriptionError.speechDenied }
+        guard let recognizer = SFSpeechRecognizer(), recognizer.isAvailable else {
+            throw TranscriptionError.onDeviceUnavailable
+        }
+        guard recognizer.supportsOnDeviceRecognition else {
+            throw TranscriptionError.onDeviceUnavailable
+        }
+        let request = SFSpeechURLRecognitionRequest(url: URL(fileURLWithPath: path))
+        request.requiresOnDeviceRecognition = true      // never negotiable
+        request.shouldReportPartialResults = false
+        request.addsPunctuation = true
+        // the same name-priming discipline whisper gets via initial_prompt
+        request.contextualStrings = Array(names.prefix(48))
+
+        let text: String = try await withCheckedThrowingContinuation { continuation in
+            let once = OnceBox()
+            recognizer.recognitionTask(with: request) { result, error in
+                if let error {
+                    if once.claim() { continuation.resume(throwing: error) }
+                    return
+                }
+                guard let result, result.isFinal else { return }
+                if once.claim() {
+                    continuation.resume(returning: result.bestTranscription.formattedString)
+                }
+            }
+        }
+        return TranscriptResult(text: text, usedFullModel: false)
+    }
+
+    private static func authorized() async -> Bool {
+        if SFSpeechRecognizer.authorizationStatus() == .authorized { return true }
+        return await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
+        }
+    }
+}
+#endif
 
 /// Mic failures the capture door has to tell the truth about. `denied` is the
 /// one the user can fix (Settings › Orbit › Microphone); `sessionFailed`

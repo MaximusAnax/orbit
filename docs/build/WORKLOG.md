@@ -220,3 +220,35 @@ actually run.
   flattening keeps the pointer graph one hop deep, reads still resolve to a
   fixpoint with a cycle guard, self-row merges are refused.
 - **RATIFICATION.md** — item 11 added (the four undesigned surfaces).
+
+## 2026-08-06 · Device bring-up defects (Abdoul's first real memo)
+
+Three defects, found by the only tier that could find them — a person holding
+the phone (T3):
+
+- **Mic refused to start: `kAudio_ParamError` (-50, logged as 4294967246).**
+  The capture session paired the `.record` category with the `.spokenAudio`
+  mode; that mode is for *playing* spoken content and the pair is invalid, so
+  every recording attempt failed into the mic-unavailable line. Now `.record` +
+  `.measurement` (the speech-recognition mode, which also disables the system
+  signal processing that would reshape input before whisper hears it), with
+  fallbacks to `.default` and a bare category. `record()`'s return is checked
+  (a false return no longer leaves the UI claiming it is listening),
+  `prepareToRecord()` runs first, and the session is deactivated with
+  `notifyOthersOnDeactivation` so other apps aren't left ducked.
+- **No transcription on the phone at all.** `#if canImport(whisper)` is false
+  until `scripts/build-whisper.sh` vendors the xcframework, so every memo
+  parked as audio-only. Added `CascadingTranscriber`: whisper first, **Apple's
+  on-device recognizer as the floor** (`requiresOnDeviceRecognition = true`,
+  `supportsOnDeviceRecognition` checked, no server path to fall into — PRIV-1
+  unchanged). Floor transcripts report `usedFullModel: false`, so §7.5 keeps
+  the audio until the ceiling model re-listens and the upgrade pass replaces
+  them. Registered as a divergence from DATA-MODEL §6's iOS-26
+  `SpeechTranscriber` (RATIFICATION §4.12); `NSSpeechRecognitionUsageDescription`
+  added.
+- **"1 memo waiting · tap to pick it up" did nothing when tapped.** The retry
+  hit the same missing transcriber and swallowed the error. A tap that fails
+  now states why (`captureNotice`, one plain line under the footer, no red),
+  distinguishing a denied permission, a refused off-device path, missing audio,
+  and "nothing here can do this yet". `CaptureFailureTests` pins all four plus
+  the cascade's fall-through — a silent dead end is now a test failure.

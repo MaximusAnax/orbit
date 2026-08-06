@@ -60,6 +60,9 @@ targets:
         INFOPLIST_KEY_NSMicrophoneUsageDescription: >-
           Orbit records your voice memos on this device. Audio never leaves
           your phone and is deleted once transcribed.
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: >-
+          Orbit turns your memos into text using on-device recognition only.
+          The recording never leaves your phone.
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         # device installs: ORBIT_TEAM=<your team id> xcodegen generate
         # (CI never signs — CODE_SIGNING_ALLOWED=NO — so this stays inert there)

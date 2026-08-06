@@ -39,6 +39,10 @@ final class AppModel: ObservableObject {
     @Published var micFailure: MicFailure?
     enum MicFailure: Equatable { case denied, unavailable(String) }
 
+    /// Why a memo couldn't be turned into text. Shown as one plain line — a
+    /// tap that silently does nothing is worse than a tap that explains itself.
+    @Published var captureNotice: String?
+
     struct WaitingMemo: Identifiable {
         enum Stage { case needsTranscription, needsTranscriptReview, needsSync }
         let id: String          // event id
@@ -85,7 +89,14 @@ final class AppModel: ObservableObject {
         #else
         let recorder: AudioRecording = MockRecorder()
         #endif
-        return AppModel(store: store, transcription: WhisperTranscriber(models: ModelManager()),
+        // Quality first, but never nothing: whisper when its model is on the
+        // phone, Apple's on-device recognizer as the floor so capture works
+        // from the first launch (both stay on-device — PRIV-1).
+        var stages: [TranscriptionService] = [WhisperTranscriber(models: ModelManager())]
+        #if canImport(Speech) && os(iOS)
+        stages.append(AppleSpeechTranscriber())
+        #endif
+        return AppModel(store: store, transcription: CascadingTranscriber(stages),
                         recorder: recorder)
     }
 
@@ -275,6 +286,7 @@ final class AppModel: ObservableObject {
     func finishRecording(audioRef: String, participants: [(String, Attendance, String?)],
                          kind: EventKind) async {
         pendingCapture = .transcribing(audioRef: audioRef)
+        captureNotice = nil
         let primer = knownNamesPrimer()
         do {
             let result = try await transcription.transcribe(audioAt: audioRef, primedWith: primer)
@@ -293,7 +305,18 @@ final class AppModel: ObservableObject {
                 kind: kind, occurredAt: store.clock.now(),
                 audioRef: audioRef, participants: participants))
             pendingCapture = nil
+            captureNotice = Self.notice(for: error)
             refreshAmbient()
+        }
+    }
+
+    /// Transcription failures in the user's words. The recording is always
+    /// safe — that is the part that matters and the part every line says.
+    static func notice(for error: Error) -> String {
+        switch error {
+        case TranscriptionError.speechDenied: return Copy.speechDenied
+        case TranscriptionError.onDeviceUnavailable: return Copy.transcriptionOffDeviceRefused
+        default: return Copy.transcriptionUnavailable
         }
     }
 
@@ -301,7 +324,13 @@ final class AppModel: ObservableObject {
     func transcribeExisting(eventID: String) async {
         guard let audioRef = try? store.db.scalar(
             "SELECT raw_audio_ref FROM event WHERE id=? AND lifecycle='captured'",
-            [.text(eventID)]).stringValue else { return }
+            [.text(eventID)]).stringValue else {
+            // the audio is gone (deleted, or never written) — say so rather
+            // than leaving a tap that does nothing
+            captureNotice = Copy.memoAudioMissing
+            return
+        }
+        captureNotice = nil
         pendingCapture = .transcribing(audioRef: audioRef)
         let primer = knownNamesPrimer()
         do {
@@ -313,6 +342,7 @@ final class AppModel: ObservableObject {
             pendingCapture = .reviewingTranscript(vm)
         } catch {
             pendingCapture = nil   // still waiting; still resumable (P10: no nag)
+            captureNotice = Self.notice(for: error)
         }
     }
 
