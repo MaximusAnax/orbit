@@ -61,13 +61,54 @@ def check_schema() -> None:
         subprocess.run([sys.executable, str(props)], check=True)
 
 
-def check_embedded_sql() -> None:
-    """Every triple-quoted SQL statement embedded in Swift sources must at least
-    PREPARE against the real schema — catches phantom columns/tables at T1
-    (this class of bug already appeared once: a query against a `reconstructed`
-    column that doesn't exist). EXPLAIN compiles without executing."""
+SQL_START = r"(SELECT|INSERT|UPDATE|DELETE|WITH)\b"
+# ...and a real statement also carries a second clause keyword. Without this a
+# bare English word in a Swift literal ("with" lives in the search stopword set)
+# is harvested as SQL and fails to prepare.
+SQL_BODY = r"\b(FROM|INTO|SET|VALUES|AS|WHERE)\b"
+# A Swift single-line string literal, escapes handled: "…\"…"
+SINGLE_LINE_LITERAL = r'"((?:[^"\\\n]|\\.)*)"'
+
+
+def looks_like_sql(body: str) -> bool:
+    import re
+    return bool(re.match(SQL_START, body, re.I) and re.search(SQL_BODY, body, re.I))
+
+
+def harvest_sql(text: str):
+    """Yield every SQL statement embedded in one Swift source.
+
+    Both literal forms are harvested — triple-quoted blocks AND single-line
+    literals. Only harvesting the former checked 23% of the SQL in the tree
+    (FIELD-NOTES FN-4): most of StoreReader and every ad-hoc app lookup is
+    written on one line, so a typo there reached the device untouched.
+
+    Interpolated SQL is skipped by construction: `\\(` cannot be prepared, and
+    it is skipped up front rather than after a failure so the reported count
+    means what it says.
+    """
     import re
 
+    # take triple-quoted blocks first, then blank them so the single-line pass
+    # cannot re-match fragments of their contents
+    for m in re.finditer(r'"""\n(.*?)"""', text, re.S):
+        body = m.group(1).strip()
+        if looks_like_sql(body) and "\\(" not in body:
+            yield body
+    text = re.sub(r'""".*?"""', '""', text, flags=re.S)
+
+    for m in re.finditer(SINGLE_LINE_LITERAL, text):
+        body = m.group(1).strip()
+        if looks_like_sql(body) and "\\(" not in body:
+            yield body
+
+
+def check_embedded_sql() -> None:
+    """Every SQL statement embedded in Swift sources must at least PREPARE
+    against the real schema — catches phantom columns/tables at T1 (this class
+    of bug has appeared twice: a query against a `reconstructed` column that
+    doesn't exist, and the single-line blind spot of FN-4). EXPLAIN compiles
+    without executing."""
     con = sqlite3.connect(":memory:")
     con.executescript("PRAGMA foreign_keys=ON;")
     for f in sorted(SCHEMA_DIR.glob("*.sql")):
@@ -78,20 +119,11 @@ def check_embedded_sql() -> None:
         + sorted((ROOT / "apps").rglob("*.swift"))
     checked = failed = 0
     for f in swift_files:
-        for m in re.finditer(r'"""\n(.*?)"""', f.read_text(), re.S):
-            body = m.group(1).strip()
-            if not re.match(r"(SELECT|INSERT|UPDATE|DELETE|WITH)\b", body, re.I):
-                continue
+        for body in harvest_sql(f.read_text()):
             checked += 1
             try:
-                stmt = "EXPLAIN " + body
-                con.execute(stmt, tuple([None] * body.count("?")))
+                con.execute("EXPLAIN " + body, tuple([None] * body.count("?")))
             except sqlite3.Error as e:
-                # Swift string interpolation inside SQL can't be prepared — skip
-                # only those; everything else is a real defect
-                if "\\(" in m.group(1):
-                    checked -= 1
-                    continue
                 failed += 1
                 print(f"  EMBEDDED-SQL FAIL {f.relative_to(ROOT)}: {e}\n    {body.splitlines()[0]}…")
     print(f"embedded sql: {checked} statement(s) prepared, {failed} failed")
