@@ -20,6 +20,12 @@ session could produce and what's blocking a real number where one is missing.
 corpus*, marked "in-session model" — they bind CI immediately (any regression
 on the same fixtures fails) without pretending to be production numbers.
 
+> **Stale as of 2026-08-06.** Every number above was measured against fixtures
+> produced by prompt **v1**. The live prompt is now **v2** (§4.16 — you waived
+> the golden gate), so these describe the previous prompt until a live run
+> re-measures them. They remain a valid CI ratchet, because the fixtures they
+> grade are unchanged; they are no longer a description of what the app does.
+
 ## 2. ◊ awaiting your first ratified number (machinery ready, needs you/device/key)
 
 | Check | ◊ item | What produces the number |
@@ -38,7 +44,8 @@ The provisional pipeline numbers were produced by the same in-session model
 that authored the fixtures (recorded as `claude-fable-5(in-session)` in every
 fixture). The Eliah golden was authored independently by you, which makes the
 grading legitimate — but threshold ratification for the production pipeline
-still requires the production extractor (`claude-opus-5`, prompt v1) per
+still requires the production extractor (`claude-opus-5`) run against the
+**live** prompt — which is now v2, not the v1 these fixtures came from — per
 EVALS §9. Add the key; `orbit-evals measure --live` produces the packet's
 missing column in minutes.
 
@@ -113,11 +120,14 @@ missing column in minutes.
    birthplace is never closed by a move. The cleaner fix is a separate
    predicate, which needs a schema migration that does not exist yet (FN-17).
    Ratify the narrowing as the interim, or prioritise the migration runner.
-16. **Prompt v2 is written but not promoted** (FN-10/12/14/2/8) — it fixes the
-   `object_value`-as-summary defect. Promoting it needs the golden run that
-   BUILD §1.3 requires, on your Mac:
-   `ORBIT_PROMPT_VERSION=v2 swift run orbit-evals measure --live`. Ratify the
-   new numbers, then make v2 the default.
+16. **Prompt v2 promoted, golden gate waived by you** (FN-10/12/14/2/8) — you
+   waived BUILD §1.3 on 2026-08-06 so the `object_value`-as-summary fix reaches
+   the device now rather than after a measurement run. v2 is the active prompt.
+   The outstanding debt is measurement, not correctness: run
+   `swift run orbit-evals measure --live` when you have a key, and the numbers
+   in §1 below get replaced with ones that describe the prompt actually
+   running. `ORBIT_PROMPT_VERSION=v1` restores the measured prompt if v2 turns
+   out worse in practice.
 17. **Entity disambiguation card: still not built** (FN-11's tail) — `Ambiguity.kind`
    remains person-shaped, so "is CMU Carnegie Mellon?" cannot be asked. Adding
    it means a new card type, a schema change, and a golden run; the field note

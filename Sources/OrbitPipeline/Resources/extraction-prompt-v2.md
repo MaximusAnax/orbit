@@ -1,9 +1,14 @@
 # Orbit extraction prompt — v2
 
 Versioned artifact. Changes require a golden run attached to the same commit
-(BUILD.md §1.3). **v2 is not yet the default** — v1 stays active until the
-golden run passes on a machine with a key. Run it with
-`ORBIT_PROMPT_VERSION=v2 swift run orbit-evals measure --live`, then promote.
+(BUILD.md §1.3). **v2 is the active prompt, promoted without that run** —
+Abdoul waived the gate explicitly on 2026-08-06 (WORKLOG; RATIFICATION §4.16).
+
+What the waiver costs, stated plainly: every provisional PIPE number in the
+ratification packet was measured against fixtures produced by v1, so those
+numbers describe the previous prompt, not this one. The first
+`swift run orbit-evals measure --live` on a machine with a key re-measures
+them. `ORBIT_PROMPT_VERSION=v1` runs the measured prompt for comparison.
 
 v2 adds rule 16 (the tag/sentence split, made concrete) in response to
 FIELD-NOTES FN-10, FN-12, FN-14, FN-2 and FN-8 — every one of which was the

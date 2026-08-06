@@ -477,3 +477,21 @@ cascade.
 
 *Lesson worth keeping alongside FN-1's: the layer that silently drops something
 produces no bug report at all — which is worse than a false one.*
+
+### Update 2026-08-06 (later) · FN-10/12/14/2/8 — v2 promoted, golden gate waived
+
+Abdoul waived BUILD §1.3 explicitly so the fix ships now rather than after a
+measurement run. **v2 is the active prompt.** The correctness work is done; what
+remains is measurement, and it is tracked rather than forgotten:
+
+- Every provisional PIPE number was measured on v1 fixtures, so the packet's §1
+  table now describes the *previous* prompt. It is still a valid CI ratchet —
+  the fixtures it grades are unchanged — but it is no longer a description of
+  what the app does.
+- `swift run orbit-evals measure --live` clears the debt and produces numbers
+  for the prompt actually running.
+- `ORBIT_PROMPT_VERSION=v1` restores the measured prompt if v2 reads worse in
+  practice on real memos.
+
+The one check that *is* live for this: **PIPE-17** (tag discipline) runs in the
+gate on every commit, so the specific defect v2 targets cannot silently return.

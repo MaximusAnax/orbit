@@ -347,3 +347,22 @@ measurement, negative controls on both new checks) plus Swift tests written for
 the new behaviour. No Swift compiler and no Apple toolchain exist in this
 environment, and GitHub Actions has not picked up a job since 07-31, so the
 Swift halves are **unbuilt** until Abdoul's Mac runs them.
+
+### 2026-08-06 (later) · Prompt v2 promoted — golden gate waived by Abdoul
+
+Abdoul waived BUILD §1.3's golden-run requirement in chat so the FN-10 fix
+(`object_value` as a tag, not a summary) reaches the device now. v2 is the
+active prompt; `ORBIT_PROMPT_VERSION=v1` restores the measured one.
+
+Registered in three places rather than taken quietly, because the waiver has a
+consequence that outlives the decision: **the provisional PIPE numbers were all
+measured on v1 fixtures, so the ratification packet's §1 table now describes the
+previous prompt.** It remains a valid CI ratchet — the fixtures it grades did
+not change — but it no longer describes what the app does. `orbit-evals measure
+--live` clears that debt.
+
+Noted for the record: the rule stands for future bumps. This is an exception the
+owner took deliberately with the cost stated, not a precedent that the gate is
+optional. The narrower protection still runs on every commit — PIPE-17 grades
+tag discipline in `check.sh`, so the specific defect v2 targets cannot return
+unnoticed even without a live run.
