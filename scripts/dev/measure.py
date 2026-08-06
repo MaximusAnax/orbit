@@ -101,8 +101,41 @@ class Grader:
 
     # ---- grading passes ----
 
+    # PIPE-17 — the tag/sentence split, measured (FIELD-NOTES FN-10/FN-14).
+    # DATA-MODEL §2: object_value holds a literal, verbatim holds the sentence.
+    # A clause in the tag slot defeats the point of having two fields, because
+    # §17 network queries traverse tags and no query will ever match a
+    # paragraph. Measured max on the ratified corpus was 7 words.
+    TAG_WORD_CEILING = 12
+
+    def grade_tag_discipline(self):
+        people = {norm(m.get("name_as_heard")) for m in self.p.get("people", [])}
+        people |= {norm(a) for m in self.p.get("people", []) for a in (m.get("aliases") or [])}
+        people.discard("")
+        for a in self.p.get("assertions", []):
+            value = a.get("object_value")
+            if not value:
+                continue
+            words = len(value.split())
+            if words > self.TAG_WORD_CEILING:
+                self.criticals.append((
+                    "PIPE-17",
+                    f"{a['predicate']} object_value is a clause, not a tag "
+                    f"({words} words): {value[:60]!r}"))
+            # FN-14: a name the ref already carries must not be repeated in the
+            # tag — it becomes a second place to be wrong, and renaming the ref
+            # cannot reach it.
+            for name in people:
+                if len(name) > 2 and name in norm(value):
+                    self.criticals.append((
+                        "PIPE-17",
+                        f"{a['predicate']} object_value repeats the person name "
+                        f"{name!r} that its ref already carries: {value[:60]!r}"))
+                    break
+
     def grade(self):
         g, p = self.g, self.p
+        self.grade_tag_discipline()
 
         if g.get("expect_empty"):
             total = sum(len(p[k]) for k in
@@ -372,6 +405,7 @@ def main():
     lines.append(f"| PIPE-12 episode split (Eliah golden) | see eliah row (episodes are Critical-tracked) | ◊ gate |")
     lines.append(f"| PIPE-1b identity fragmentation | {sum(1 for c in all_criticals if c[1]=='PIPE-1b identity')} | 0 |")
     lines.append(f"| PIPE-13 entity fragmentation (alias-overlap unify) | {frag} unresolvable | ◊ ≤ 5% |")
+    lines.append(f"| PIPE-17 tag discipline (object_value is a tag, not a clause) | {sum(1 for c in all_criticals if c[1]=='PIPE-17')} | 0 |")
     lines.append("")
     if all_criticals:
         lines.append("## Criticals")

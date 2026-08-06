@@ -122,7 +122,15 @@ public struct RemoteExtractor: Extractor {
     public var model: String
     public var baseURL: URL
 
-    public static let promptVersion = "v1"
+    /// The active prompt version. v1 is the default because every recorded
+    /// fixture and every ratified provisional number was produced under it;
+    /// promoting v2 requires a golden run attached to the same commit
+    /// (BUILD.md §1.3), which needs a key. `ORBIT_PROMPT_VERSION=v2` runs the
+    /// candidate so that run can happen.
+    public static var promptVersion: String {
+        let requested = ProcessInfo.processInfo.environment["ORBIT_PROMPT_VERSION"] ?? "v1"
+        return ["v1", "v2"].contains(requested) ? requested : "v1"
+    }
 
     public init(apiKey: String, model: String = "claude-opus-5",
                 baseURL: URL = URL(string: "https://api.anthropic.com")!) {
