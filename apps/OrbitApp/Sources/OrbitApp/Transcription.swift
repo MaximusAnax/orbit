@@ -44,18 +44,40 @@ final class ModelManager: @unchecked Sendable {
     /// retained (§7.5); retried on next launch. PRIV note: this is an inbound
     /// fetch of a public artifact — no user content leaves the device (PRIV-2
     /// governs content-carrying egress; this carries none).
-    func downloadCeilingIfNeeded() async {
-        guard ceilingURL == nil else { return }
+    /// Consecutive failed attempts (FIELD-NOTES FN-5). A download that quietly
+    /// never lands has no user-visible symptom except audio piling up forever,
+    /// because §7.5 retains every recording until the ceiling model has heard
+    /// it. Counting the failures lets the app say so once it is clearly stuck,
+    /// rather than retrying in silence for the life of the install.
+    private static let failureKey = "orbit.ceilingDownload.consecutiveFailures"
+    var consecutiveDownloadFailures: Int {
+        UserDefaults.standard.integer(forKey: Self.failureKey)
+    }
+
+    @discardableResult
+    func downloadCeilingIfNeeded() async -> Bool {
+        guard ceilingURL == nil else {
+            UserDefaults.standard.set(0, forKey: Self.failureKey)
+            return true
+        }
         do {
             let (tmp, response) = try await URLSession.shared.download(from: Self.ceilingDownloadURL)
-            guard (response as? HTTPURLResponse)?.statusCode == 200 else { return }
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+                UserDefaults.standard.set(consecutiveDownloadFailures + 1, forKey: Self.failureKey)
+                return false
+            }
             try FileManager.default.createDirectory(at: modelsDirectory,
                                                     withIntermediateDirectories: true)
             let dest = modelsDirectory.appendingPathComponent(Tier.ceiling.rawValue + ".bin")
             try? FileManager.default.removeItem(at: dest)
             try FileManager.default.moveItem(at: tmp, to: dest)
+            UserDefaults.standard.set(0, forKey: Self.failureKey)
+            return true
         } catch {
-            // quiet: the floor model keeps capture working (P3); no nagging (P10)
+            // still quiet here — the floor model keeps capture working (P3) and
+            // one failed attempt is not news (P10). The count is what speaks.
+            UserDefaults.standard.set(consecutiveDownloadFailures + 1, forKey: Self.failureKey)
+            return false
         }
     }
 }
@@ -116,6 +138,15 @@ enum TranscriptionError: Error {
 final class CascadingTranscriber: TranscriptionService, @unchecked Sendable {
     private let stages: [TranscriptionService]
     init(_ stages: [TranscriptionService]) { self.stages = stages }
+
+    /// The whisper stage, when one is in the chain. Model warm-up and the §7.5
+    /// re-listen pass both need it, and both used to reach for it with a cast
+    /// straight at `transcription` — which silently stopped matching the moment
+    /// the cascade wrapped it, leaving the ceiling model undownloaded and audio
+    /// retained forever.
+    var whisperStage: WhisperTranscriber? {
+        stages.compactMap { $0 as? WhisperTranscriber }.first
+    }
 
     func transcribe(audioAt path: String, primedWith names: [String]) async throws -> TranscriptResult {
         var last: Error = TranscriptionError.noModel

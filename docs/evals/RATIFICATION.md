@@ -97,3 +97,29 @@ missing column in minutes.
    report `usedFullModel: false`, so §7.5 keeps the audio until whisper's
    ceiling model re-listens and replaces them. Ratify this as the floor, or
    veto and whisper becomes a hard prerequisite for capture.
+13. **Within-run contradiction detection** (FN-9) — two contradicting claims in
+   one memo now resolve against each other: the superseded one is *proposed*
+   with its end date already set, quoting what ended it. This is the system
+   inferring an order from stated dates, which it did not do before; both cards
+   still require your yes. Ratify, or veto and both stay open for you to
+   reconcile by hand.
+14. **Duplicate claims are noted, never suppressed** (FN-16) — capturing the
+   same conversation twice tells you the fact already exists and lets you
+   decide, rather than dropping the repeat. The reasoning: two independent
+   observations are evidence. Veto if you would rather repeats were dropped
+   silently.
+15. **`location` narrowing instead of an `origin` predicate** (FN-2) — a
+   location fact now only closes another when both sides state a start, so a
+   birthplace is never closed by a move. The cleaner fix is a separate
+   predicate, which needs a schema migration that does not exist yet (FN-17).
+   Ratify the narrowing as the interim, or prioritise the migration runner.
+16. **Prompt v2 is written but not promoted** (FN-10/12/14/2/8) — it fixes the
+   `object_value`-as-summary defect. Promoting it needs the golden run that
+   BUILD §1.3 requires, on your Mac:
+   `ORBIT_PROMPT_VERSION=v2 swift run orbit-evals measure --live`. Ratify the
+   new numbers, then make v2 the default.
+17. **Entity disambiguation card: still not built** (FN-11's tail) — `Ambiguity.kind`
+   remains person-shaped, so "is CMU Carnegie Mellon?" cannot be asked. Adding
+   it means a new card type, a schema change, and a golden run; the field note
+   asks whether it deserves its own kind, and that is a design call rather than
+   a defect. It was left for you, not silently half-built.

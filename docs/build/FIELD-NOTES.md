@@ -42,7 +42,7 @@ absent, it is prompt work + golden run (BUILD.md §1.3).
 *Lesson worth keeping: a display that silently drops a field produces
 false bug reports about the layer underneath it.*
 
-### FN-2 · `location` is doing three different jobs — open · T3 to reproduce
+### FN-2 · `location` is doing three different jobs — **contradiction half closed 2026-08-06; modelling question open** · T3
 
 One memo produced three `location` assertions: born and raised in New York,
 from the Upper East Side, in San Francisco since 2022. The first two are origin,
@@ -64,7 +64,7 @@ as mutually exclusive.
 **To close:** decide the modelling question first, then prompt + golden run.
 Fixture: one memo carrying birthplace and current city together.
 
-### FN-3 · `scripts/check.sh` never builds the iOS app target — open · T2
+### FN-3 · `scripts/check.sh` never builds the iOS app target — **closed 2026-08-06** · T2
 
 The one gate runs `swift build` / `swift test` over the SPM package only.
 Everything under `apps/OrbitApp/` — the entire app: `Transcription.swift`,
@@ -82,7 +82,7 @@ generate && xcodebuild build`, skipped when Xcode is absent, the same shape as
 the existing `command -v swift` guard) or whether the gap gets stated loudly in
 the script's own output so nobody reads green as more than it is.
 
-### FN-4 · The SQL fast-loop checks 23% of the SQL — open · T1
+### FN-4 · The SQL fast-loop checks 23% of the SQL — **closed 2026-08-06** · T1
 
 `scripts/dev/sql_check.py` harvests embedded SQL with a single regex over
 **triple-quoted** Swift literals (`"""…"""`). Single-line SQL string literals are
@@ -98,7 +98,7 @@ reaches the device.
 already has a skip path (`\(` → excluded), so the same escape applies. Expect
 real failures on first run; that is the point.
 
-### FN-5 · Whisper ceiling model is a 547MB first-run download — open · T3
+### FN-5 · Whisper ceiling model is a 547MB first-run download — **visibility added 2026-08-06; device observation still owed** · T3
 
 `ModelManager.downloadCeilingIfNeeded()` fetches `large-v3-turbo-q5_0` (547MB)
 during onboarding dead time, unmetered and unannounced. Until it lands, every
@@ -114,7 +114,7 @@ current failure path is a silent `catch` that retries next launch.
 connection? Then decide whether a failure that persists across N launches
 deserves a line the user can see.
 
-### FN-16 · Nothing dedupes facts across two captures of the same thing — open
+### FN-16 · Nothing dedupes facts across two captures of the same thing — **closed 2026-08-06 (as a note, not a merge)**
 
 Two "Memos waiting" rows looked identical, and going through one surfaced what
 appeared to be the same memo again. Two separate things were going on:
@@ -147,7 +147,7 @@ entry below) was attributed to INV-7 "dropping every claim already saved." That
 was wrong — INV-7 only drops previously rejected claims. The user-facing copy has
 been corrected to match.*
 
-### FN-15 · Review is the only moment anything can be corrected — open · write path
+### FN-15 · Review is the only moment anything can be corrected — **mostly closed 2026-08-06** · write path
 
 Raised as "should I confirm now and fix it later, or edit the entry manually?"
 The honest answer is that the second option does not exist.
@@ -177,7 +177,7 @@ fact can be corrected in place, through the write funnel with an amendment row
 (INV-1 keeps the original). (b) Decide whether the waiting list deserves a
 visible affordance instead of a hidden gesture.
 
-### FN-14 · A name inside `object_value` cannot be corrected by renaming — open
+### FN-14 · A name inside `object_value` cannot be corrected by renaming — **fix written, golden run owed**
 
 `relation · Amaad — really good friends with Ahmad`. Correcting the person fixed
 the first half and left the second, because a name lives in up to three places
@@ -205,7 +205,7 @@ bound to, so accepting the person card no longer makes the old name reappear on
 every other card in the run. That was a genuine propagation bug; the
 `object_value` half remains and belongs to FN-10.
 
-### FN-13 · Nothing already saved can be renamed — open · write path
+### FN-13 · Nothing already saved can be renamed — **closed 2026-08-06** · write path
 
 Found by asking what happens to a rename *after* it lands. Three separate holes,
 all in the same direction:
@@ -236,7 +236,7 @@ alongside an amendment row so the change is auditable like every other
 correction; then surface both it and `renamePerson` somewhere — the Desk is the
 natural home, not the review screen.
 
-### FN-10 · `object_value` is absorbing whole transcript spans — open · prompt
+### FN-10 · `object_value` is absorbing whole transcript spans — **fix written, golden run owed** · prompt
 
 `skill` on a Bob capture came back as the entire clause: *"specializes in like
 finding spotting patterns and data, collecting that data, interpreting it and
@@ -293,7 +293,7 @@ better *asked* than typed, and `Ambiguity.kind` is `subject | self_collision |
 attendance` — all person-shaped. **Entity disambiguation has no card type**, so
 that question cannot be asked at all. Decide whether it deserves its own kind.
 
-### FN-12 · Education has no way to say undergrad / grad / alumni — open · design
+### FN-12 · Education has no way to say undergrad / grad / alumni — **fix written (option 1), golden run owed** · design
 
 Raised during review: "He was also a CMU alumni" — the school is the object, and
 *alumni* is a status. Where does the status live?
@@ -322,7 +322,7 @@ Options, cheapest first:
 
 **To close:** try (1), see whether the ambiguity actually bites in practice.
 
-### FN-9 · Contradictions inside a single memo are never detected — open · T1 testable
+### FN-9 · Contradictions inside a single memo are never detected — **closed 2026-08-06** · T1 testable
 
 Asked during review: "born and raised in New York" and "in San Francisco since
 2022" both landed as open `location` facts — how does that resolve? It doesn't.
@@ -390,7 +390,7 @@ Two properties worth keeping in mind if this is revisited:
 - Only refs *introduced in this run* are renameable. Correcting an already-saved
   person still needs `UserEditService.renamePerson`, which has no UI here.
 
-### FN-8 · "Map places to real-world locations" runs into PRIV-2 — open · privacy
+### FN-8 · "Map places to real-world locations" runs into PRIV-2 — **route (1) taken 2026-08-06** · privacy
 
 Asked during testing: could New York / Upper East Side / Harvard resolve to real
 geographic entities rather than free-standing strings?
@@ -429,3 +429,51 @@ Highest-risk of the four, in order:
    `pendingCapture` while that sheet is still dismissing.
 
 **To close:** one deliberate pass on device.
+
+---
+
+## 2026-08-06 · Session 2 — implementing the session-1 queue
+
+### FN-17 · There is no migration path for a database that already has data — open · **blocks FN-2**
+
+Found while looking for somewhere to record an entity rename. `Schema.ensure`
+creates the schema **only when the database is empty**:
+
+```swift
+if exists.intValue == 0 { try create(on: db) }
+```
+
+`schema_version` is written into `orbit_meta` at creation and never read again,
+and there is no migration runner. So every schema change from here is a change
+only a *fresh* install receives. Abdoul's phone now holds real memos, which
+makes this the difference between evolving the model and losing his data.
+
+This is why FN-2 was closed at the contradiction rule rather than at the model:
+a separate `origin` predicate means altering a `CHECK` constraint, which in
+SQLite means rebuilding the table — with the INV-1/INV-3 triggers and every
+foreign key pointing at it — under a live database. Same for FN-11's entity
+ambiguity kind, and for anything else the field notes eventually want.
+
+**To close:** a versioned migration runner keyed on `orbit_meta.schema_version`
+— numbered files applied in order, each in one transaction, with a test that
+migrates a populated v1 database and re-runs the INV-4 rebuild equivalence
+check afterwards. Cheap to build now, expensive to retrofit after the second
+schema change.
+
+### FN-18 · `warmModels` silently stopped working when the cascade shipped — closed 2026-08-06
+
+Caught while implementing FN-5, and worth recording because it is a *pattern*,
+not a one-off: `warmModels` and `upgradeRetainedAudio` both reached for the
+whisper stage with `transcription as? WhisperTranscriber`. Wrapping the
+transcriber in `CascadingTranscriber` the day before made both casts fail
+silently — no error, no log, just a ceiling model that never downloaded and a
+§7.5 re-listen pass that never ran, which would have shown up on device only as
+audio accumulating forever.
+
+A conditional cast at a seam is a silent coupling: it compiles, it type-checks,
+and it stops matching the moment anything wraps the thing it points at. Both
+now resolve through `AppModel.whisperTranscriber`, which looks inside the
+cascade.
+
+*Lesson worth keeping alongside FN-1's: the layer that silently drops something
+produces no bug report at all — which is worse than a false one.*

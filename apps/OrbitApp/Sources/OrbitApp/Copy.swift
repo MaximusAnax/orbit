@@ -158,6 +158,9 @@ enum Copy {
     static let speechDenied = "Orbit needs speech recognition: Settings › Orbit › Speech Recognition. The recording is safe and waiting."
     static let transcriptionOffDeviceRefused = "This phone can't transcribe without sending the audio away, so Orbit stopped. The recording is safe and stays here."
     static let memoAudioMissing = "That recording is no longer on this phone, so there's nothing left to transcribe."
+    /// FN-5: said only once the download is clearly stuck AND recordings are
+    /// actually piling up behind it — never as a progress report.
+    static let modelDownloadStalled = "The better listener hasn't finished downloading, so your recordings are being kept until it can hear them. Wi-Fi and free space are the usual reasons."
     static let transcriptionNoSpeech = "That recording came out silent, so there are no words to find in it. Nothing else went wrong."
     /// No "yet", no "waiting" — this one will never succeed, and a line that
     /// implies otherwise sends him back to tap it again tomorrow.
@@ -215,7 +218,7 @@ enum Copy {
             workingTranscribing, workingExtracting, workingHint, collapseWork,
             nothingNewInCapture, nothingToStructure,
             transcriptionUnavailable, speechDenied, transcriptionOffDeviceRefused,
-            memoAudioMissing,
+            memoAudioMissing, modelDownloadStalled,
             deskRenameTitle, deskRenameHint, factFixAction, factFixTitle,
             factFixHint, saveCorrection, correctionSaved, transcriptionNoSpeech, transcriptionAudioUnreadable,
             transcriptionFailed("kAFAssistantErrorDomain 1700"),

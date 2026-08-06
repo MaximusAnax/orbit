@@ -252,3 +252,98 @@ the phone (T3):
   distinguishing a denied permission, a refused off-device path, missing audio,
   and "nothing here can do this yet". `CaptureFailureTests` pins all four plus
   the cascade's fall-through — a silent dead end is now a test failure.
+
+## 2026-08-06 · Session 2 · Working the field-notes queue
+
+Abdoul hand-tested on device and wrote up sixteen findings; this pass implements
+them. Two of the sixteen were already closed by him mid-session (FN-7, FN-11's
+main half), three need his decision or his hardware, and the rest landed here.
+
+**Verification tooling first, because it was measuring less than it claimed:**
+
+- **FN-4** — `sql_check.py` harvested only triple-quoted Swift literals: 56 of
+  243 embedded statements, reported as "56 prepared, 0 failed", which reads
+  like coverage. Single-line literals are now harvested too — **186 → 190
+  statements**, most of `StoreReader` and every ad-hoc app lookup among them.
+  Verified with a planted typo rather than by assertion. Also tightened: a
+  statement now needs a clause keyword as well as a leading verb, because
+  `"with"` is an English stopword in the search module and was being harvested
+  as a CTE.
+- **FN-3** — nothing the gate ran compiled `apps/OrbitApp/**`, which is how an
+  `AppleSpeechTranscriber` hang sat in a fully green tree. `check.sh` now
+  builds the app target when Xcode and xcodegen are present, and when they are
+  not it **names the tier it could not run** instead of printing an
+  unqualified pass. (Skips are tracked in a newline-joined string: macOS ships
+  bash 3.2, where an empty array under `set -u` is an unbound-variable error.)
+
+**The funnel:**
+
+- **FN-9** — two contradicting claims in one memo passed each other unseen; the
+  check read only stored facts and only ran for already-existing subjects, so a
+  person's *first* memo could never be checked against itself. Drafts are now
+  compared to each other. A draft has no assertion row to CLOSE, so the
+  superseded one is proposed with its end date already set and a rationale
+  quoting what ended it — both cards still go to review (P5). Only dated claims
+  pair up: undated, there is no order to infer, and inferring one is what P4
+  forbids.
+- **FN-2** — `location` carries origin *and* residence, so a birthplace and a
+  current city raised a contradiction between two facts that are both true. A
+  location fact now only closes another when both sides state a start. The
+  modelling question (a separate `origin` predicate) is **not** taken here: it
+  needs a CHECK-constraint migration, and FN-17 below says why that is not
+  currently possible.
+- **FN-16** — the same conversation captured twice wrote two assertions for one
+  truth, unnoticed (INV-7 suppresses *rejected* claims, and only within one
+  event). A draft matching a live fact now says so on the card. Deliberately a
+  note and not a suppression: two independent observations are evidence, and
+  collapsing them silently would destroy it.
+
+**Correcting what is already saved (FN-13, FN-15, and FN-14/FN-11's tail):**
+
+`renamePerson` had zero call sites, entities had no rename method at all, and
+`amendAssertion` was wired to nothing — so a name was frozen at first write and
+a wrong fact could only be answered by recording another memo. `renameEntity`
+now exists behind the write funnel (INV-5) and keeps the old name **as an
+alias**, which is both the audit trail and what keeps §7.10 guarantee 3 working:
+the next voice note using the shorthand still resolves. On the Desk the name is
+tappable and the hero fact carries a quiet "Fix this"; one sheet serves both,
+showing the quote untouchable (P5) and writing over `object_value` as an
+amendment so the original stays readable (INV-1).
+
+**Extraction (FN-10, FN-12, FN-14, FN-8) — one defect wearing five shirts:**
+
+`object_value` used as a free-text summary. A 27-word clause in the tag slot
+defeats the point of two fields, because §17 network queries traverse tags.
+The prompt is golden-gated (BUILD §1.3) and no key or Swift toolchain exists in
+the cloud session, so **v1 is untouched and stays the default** — every recorded
+fixture and every ratified provisional number was produced under it. `v2` adds
+the rule as *one* rule with concrete cases (never a clause; never a name a ref
+already carries; never a restatement of the date; status for education; role
+title alone for employment), plus origin-vs-residence marking that the narrowed
+contradiction rule keys on, plus `part_of` nesting for places instead of any
+lookup (PRIV-2 unchanged). `ORBIT_PROMPT_VERSION=v2` runs the candidate so the
+golden run can happen on Abdoul's Mac.
+
+**PIPE-17** makes it measurable rather than aspirational: a tag over twelve
+words, or one repeating a person name its ref already carries, is a Critical.
+The ratified corpus passes at a measured max of seven words; both planted
+defect shapes are caught.
+
+**FN-5 + a regression it exposed:** the ceiling download now counts consecutive
+failures and, after three launches *with recordings actually piling up*, says
+so in one plain line — never as a progress report (P10). Implementing it
+surfaced **FN-18**: `warmModels` and `upgradeRetainedAudio` reached for the
+whisper stage with `transcription as? WhisperTranscriber`, and wrapping the
+transcriber in `CascadingTranscriber` the day before made both casts fail
+silently. No error, no log — just a model that never downloaded and a §7.5
+re-listen that never ran. Both now resolve through `AppModel.whisperTranscriber`.
+
+**New field notes raised by this pass:** FN-17 (no migration path for a
+populated database — blocks FN-2 and FN-11's remainder, and matters now that
+his phone holds real memos) and FN-18 (above, closed).
+
+**Tier honesty:** everything here is T1-verified (SQL rig, design lint, PIPE
+measurement, negative controls on both new checks) plus Swift tests written for
+the new behaviour. No Swift compiler and no Apple toolchain exist in this
+environment, and GitHub Actions has not picked up a job since 07-31, so the
+Swift halves are **unbuilt** until Abdoul's Mac runs them.

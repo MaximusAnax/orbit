@@ -533,19 +533,40 @@ final class AppModel: ObservableObject {
     /// upgrade pass keeps the §7.5 promise: the full model re-listens to any
     /// retained recording, the improved transcript lands as an event amendment
     /// (the confirmed original is frozen, §7.1), and the recording is deleted.
+    /// The whisper stage, wherever it sits. Reaching for it with a direct cast
+    /// at `transcription` stopped working the moment the cascade wrapped it.
+    var whisperTranscriber: WhisperTranscriber? {
+        if let whisper = transcription as? WhisperTranscriber { return whisper }
+        return (transcription as? CascadingTranscriber)?.whisperStage
+    }
+
     func warmModels() {
-        guard let whisper = transcription as? WhisperTranscriber else { return }
+        guard let whisper = whisperTranscriber else { return }
         let models = whisper.models
         Task { [weak self] in
             await Task.detached(priority: .utility) {
                 await models.downloadCeilingIfNeeded()
             }.value
             await self?.upgradeRetainedAudio()
+            self?.noteStalledModelDownload(models)
         }
     }
 
+    /// FN-5: a download that never lands has no symptom except recordings
+    /// piling up, because §7.5 keeps every one of them until the ceiling model
+    /// has listened. After several launches that is worth one plain line — and
+    /// only if audio is actually accumulating, so a phone that simply never
+    /// needed the model stays quiet (P10).
+    func noteStalledModelDownload(_ models: ModelManager) {
+        guard models.ceilingURL == nil, models.consecutiveDownloadFailures >= 3 else { return }
+        let retained = (try? store.db.scalar(
+            "SELECT COUNT(*) FROM event WHERE raw_audio_ref IS NOT NULL").intValue) ?? 0
+        guard retained > 0 else { return }
+        captureNotice = Copy.modelDownloadStalled
+    }
+
     func upgradeRetainedAudio() async {
-        guard let whisper = transcription as? WhisperTranscriber,
+        guard let whisper = whisperTranscriber,
               whisper.models.ceilingURL != nil else { return }
         let rows = (try? store.db.query(
             "SELECT id, raw_audio_ref FROM event WHERE lifecycle='confirmed' AND raw_audio_ref IS NOT NULL"
