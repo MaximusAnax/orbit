@@ -154,7 +154,18 @@ public struct SyncEngine {
         }
 
         // 5. Assertions — including CLOSE proposals when an open fact is contradicted.
-        for draft in result.payload.assertions {
+        //
+        // Within-run supersession (FIELD-NOTES FN-9): two contradicting claims in
+        // ONE memo used to pass each other unseen, because the contradiction check
+        // below only reads *stored* facts and only fires for subjects that already
+        // exist. A person's first memo is exactly where a life story arrives, so
+        // that was the case most likely to need it. A draft has no assertion row to
+        // CLOSE yet, so the resolution happens where it can: the superseded draft is
+        // proposed with its end date already set, and its rationale says why. The
+        // human still confirms both cards (P5) and can reject either.
+        let supersededWithin = withinRunSupersessions(result.payload.assertions)
+
+        for (draftIndex, draft) in result.payload.assertions.enumerated() {
             let subject = try personRef(draft.subjectRef)
             let assertPayload = AssertPayload(
                 subject: subject,
@@ -167,17 +178,52 @@ public struct SyncEngine {
                 objectValue: draft.objectValue,
                 verbatim: draft.verbatim,
                 validFrom: draft.validFrom,
-                validTo: draft.validTo,
+                validTo: draft.validTo ?? supersededWithin[draftIndex]?.closedAt,
                 datePrecision: draft.datePrecision,
                 sourceKind: draft.sourceKind,
                 attributedTo: try draft.attributedToRef.map { try personRef($0) },
                 confidence: draft.confidence ?? (draft.hedged ? 0.5 : nil),
                 threadRef: draft.threadRef)
+            let draftEntityID: String? = draft.objectEntityRef.flatMap { ref in
+                result.payload.entities.first(where: { $0.ref == ref })?.existingEntityID
+            }
+            let draftValue = draft.objectValue?.lowercased()
+
+            /// Does a live fact already say exactly this? (FIELD-NOTES FN-16)
+            func matchesExisting(_ fact: Row) -> Bool {
+                guard fact.text("predicate") == draft.predicate else { return false }
+                let sameEntity = draftEntityID != nil
+                    && fact.text("object_entity_id") == draftEntityID
+                let factValue = fact.text("object_value")?.lowercased()
+                let sameValue = factValue != nil && factValue == draftValue
+                return sameEntity || sameValue
+            }
+
+            // FN-16: the same conversation captured twice produced two full
+            // reviews and, on acceptance, two assertions for one truth — with
+            // nothing in the pipeline noticing. INV-7 does not help: it
+            // suppresses previously *rejected* claims, and only within one event.
+            //
+            // This is deliberately a NOTE, not a suppression. Two independent
+            // observations of the same fact are evidence, and collapsing them
+            // silently would destroy that (P2: the record is not deduplicated
+            // for tidiness). So the card says he already has this and lets him
+            // decide — a repeat is a normal thing to say no to.
+            var repeatNote = ""
+            if case .id(let subjectID) = subject,
+               let existing = try store.reader.currentState(of: subjectID).first(where: matchesExisting) {
+                let since = existing.text("observed_at").map { String($0.prefix(10)) } ?? "before"
+                repeatNote = " — you already have this, first recorded \(since); saying yes keeps both as two times you heard it"
+            }
+
             let hedgeNote = draft.hedged ? " (speaker hedged — kept tentative)" : ""
+            let supersessionNote = supersededWithin[draftIndex].map {
+                " — later in the same memo you said \u{201C}\($0.byVerbatim)\u{201D}, so this one is proposed as having ended \($0.closedAt)"
+            } ?? ""
             try emit(.init(
                 op: .assert,
                 payloadJSON: try PayloadCoding.encode(assertPayload),
-                rationale: "\u{201C}\(draft.verbatim)\u{201D}\(hedgeNote)"))
+                rationale: "\u{201C}\(draft.verbatim)\u{201D}\(hedgeNote)\(supersessionNote)\(repeatNote)"))
 
             // Contradiction of a currently-open fact → CLOSE proposal, never overwrite.
             // "Same object" is checked by entity id when both sides carry one
@@ -185,19 +231,21 @@ public struct SyncEngine {
             // by case-insensitive value otherwise.
             if case .id(let subjectID) = subject,
                draft.validTo == nil,
-               ["employment", "location", "education"].contains(draft.predicate) {
-                let draftEntityID: String? = draft.objectEntityRef.flatMap { ref in
-                    result.payload.entities.first(where: { $0.ref == ref })?.existingEntityID
-                }
-                let draftValue = draft.objectValue?.lowercased()
+               Self.exclusivePredicates.contains(draft.predicate) {
                 let open = try store.reader.currentState(of: subjectID)
                     .filter { fact in
                         guard fact.text("predicate") == draft.predicate else { return false }
-                        let sameEntity = draftEntityID != nil
-                            && fact.text("object_entity_id") == draftEntityID
-                        let factValue = fact.text("object_value")?.lowercased()
-                        let sameValue = factValue != nil && factValue == draftValue
-                        return !(sameEntity || sameValue)
+                        guard !matchesExisting(fact) else { return false }   // same fact, not a rival
+                        // FIELD-NOTES FN-2: `location` carries origin AND residence.
+                        // A birthplace is not superseded by a move, so a location
+                        // fact only closes another when BOTH sides state a start —
+                        // a dated residence replacing a dated residence. Undated
+                        // location facts ("born and raised in New York") read as
+                        // background and are left open.
+                        if draft.predicate == "location" {
+                            return fact.text("valid_from") != nil && draft.validFrom != nil
+                        }
+                        return true
                     }
                 for fact in open {
                     try emit(.init(
@@ -357,5 +405,56 @@ public struct SyncEngine {
     func eventDate(_ id: String) -> String {
         (try? store.db.scalar("SELECT occurred_at FROM event WHERE id=?", [.text(id)]).stringValue ?? "")
             ?? ""
+    }
+
+    /// What one draft says about another *in the same memo* (FIELD-NOTES FN-9).
+    struct WithinRunSupersession {
+        let closedAt: String       // the superseding claim's start date
+        let byVerbatim: String     // what he said that ended it — quoted in the rationale
+    }
+
+    /// Predicates where one open claim genuinely displaces another. `relation`,
+    /// `interest`, `trait` and friends are cumulative — two of them are two facts,
+    /// not a contradiction — so they are deliberately absent.
+    static let exclusivePredicates: Set<String> = ["employment", "location", "education"]
+
+    /// Pair up drafts that contradict each other inside a single extraction.
+    ///
+    /// Both sides must state a start date. Without one there is no way to tell
+    /// which claim is the current one, and guessing would be exactly the
+    /// inference P4 forbids — an undated pair is left as two open facts, which
+    /// is the honest representation of "he told me both and I don't know the
+    /// order". Dates are ISO-prefixed strings, so lexicographic order is
+    /// chronological order, and a coarser precision ("2022" vs "2022-06")
+    /// still sorts correctly.
+    ///
+    /// Returns: draft index → how it was superseded.
+    func withinRunSupersessions(
+        _ drafts: [ExtractionPayload.AssertionDraft]
+    ) -> [Int: WithinRunSupersession] {
+        var result: [Int: WithinRunSupersession] = [:]
+        for (i, earlier) in drafts.enumerated() {
+            guard earlier.validTo == nil,
+                  let earlierFrom = earlier.validFrom,
+                  Self.exclusivePredicates.contains(earlier.predicate) else { continue }
+            for (j, later) in drafts.enumerated() where i != j {
+                guard later.validTo == nil,
+                      later.predicate == earlier.predicate,
+                      later.subjectRef == earlier.subjectRef,
+                      let laterFrom = later.validFrom,
+                      laterFrom > earlierFrom else { continue }
+                // same object = the same fact restated, not a contradiction
+                let sameEntity = later.objectEntityRef != nil
+                    && later.objectEntityRef == earlier.objectEntityRef
+                let sameValue = later.objectValue?.lowercased() != nil
+                    && later.objectValue?.lowercased() == earlier.objectValue?.lowercased()
+                guard !(sameEntity || sameValue) else { continue }
+                // the closest superseding claim wins, so a three-step history
+                // closes each step at the next one rather than all at the last
+                if let existing = result[i], existing.closedAt <= laterFrom { continue }
+                result[i] = WithinRunSupersession(closedAt: laterFrom, byVerbatim: later.verbatim)
+            }
+        }
+        return result
     }
 }
