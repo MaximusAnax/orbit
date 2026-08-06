@@ -11,6 +11,7 @@ struct HomeView: View {
     @State private var searchText = ""
     @State private var showCapture = false
     @State private var showSettings = false
+    @State private var showWaitingList = false
 
     var body: some View {
         VStack(spacing: 14) {
@@ -72,7 +73,10 @@ struct HomeView: View {
             .accessibilityLabel(Copy.captureIdle)
             .accessibilityIdentifier("home.mic")
 
-            // Waiting memos: the J-11 resume door — a plain line, never a badge (D-2)
+            // Waiting memos: the J-11 resume door — a plain line, never a badge (D-2).
+            // Tap resumes the oldest; long-press opens the list, which is where a
+            // memo that can never be picked up (a recording that didn't save) can
+            // be let go instead of sitting here forever.
             if let memo = app.waitingMemos.first {
                 Button { app.resume(memo) } label: {
                     Text(Copy.waitingFooter(app.waitingMemos.count))
@@ -80,6 +84,12 @@ struct HomeView: View {
                         .foregroundStyle(Tokens.inkFaint(room))
                 }
                 .accessibilityIdentifier("home.waitingFooter")
+                // simultaneousGesture, not onLongPressGesture: a Button's own tap
+                // handling swallows a plain long-press modifier, which would leave
+                // the list unreachable on device while looking correct in source.
+                .simultaneousGesture(LongPressGesture().onEnded { _ in showWaitingList = true })
+                // the long-press is invisible, so VoiceOver gets a named action
+                .accessibilityAction(named: Text(Copy.waitingListTitle)) { showWaitingList = true }
             }
 
             // Why the last pick-up didn't get anywhere. Plain ink, no red (D-1),
@@ -119,22 +129,36 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showCapture) { CaptureView() }
         .sheet(isPresented: $showSettings) { SettingsView() }
+        .sheet(isPresented: $showWaitingList) { WaitingListView() }
+        // a memo resumed from the footer works with no capture sheet open —
+        // without this the tap looked like it did nothing for several seconds
+        .fullScreenCover(isPresented: homeWorkingBinding) { WorkingView() }
         .fullScreenCover(item: homeTranscriptBinding) { vm in TranscriptReviewView(vm: vm) }
         .fullScreenCover(item: homeReviewBinding) { vm in ReviewView(vm: vm) }
         .onAppear { app.refreshAmbient() }
     }
 
-    // resume flows land here when no capture sheet is open
+    /// Read-only: collapsing is the only way out, and it goes through the model
+    /// so the running work is redirected rather than cancelled.
+    var homeWorkingBinding: Binding<Bool> {
+        Binding(get: { !showCapture && !showWaitingList && app.isWorking }, set: { _ in })
+    }
+
+    // resume flows land here when no sheet is open — the waiting list counts,
+    // since resuming from it sets pendingCapture while that sheet is still on
+    // screen, and a cover racing a dismissing sheet lands on neither.
     var homeTranscriptBinding: Binding<TranscriptReviewViewModel?> {
         Binding(get: {
-            guard !showCapture, case .reviewingTranscript(let vm) = app.pendingCapture else { return nil }
+            guard !showCapture, !showWaitingList,
+                  case .reviewingTranscript(let vm) = app.pendingCapture else { return nil }
             return vm
         }, set: { _ in })
     }
 
     var homeReviewBinding: Binding<ReviewViewModel?> {
         Binding(get: {
-            guard !showCapture, case .reviewingProposals(let vm) = app.pendingCapture else { return nil }
+            guard !showCapture, !showWaitingList,
+                  case .reviewingProposals(let vm) = app.pendingCapture else { return nil }
             return vm
         }, set: { _ in })
     }
@@ -142,6 +166,116 @@ struct HomeView: View {
 
 /// Key entry (§7.9 seam's one visible knob): two secure fields, keychain-only
 /// storage, provider chosen by whichever key exists.
+/// What's happening between the mic and the review. Transcription and
+/// extraction are the only two steps slow enough that the app looked idle while
+/// it worked — capture fell back to the idle mic, and a memo resumed from the
+/// footer showed nothing at all.
+///
+/// Collapsible on purpose: the work keeps running and its result lands in the
+/// waiting footer, so a slow transcription never holds the screen hostage (P10).
+struct WorkingView: View {
+    @EnvironmentObject var app: AppModel
+    @Environment(\.room) var room
+
+    var body: some View {
+        RoomBackground { _ in
+            VStack(spacing: 16) {
+                Spacer()
+                // ember, the app's one accent — not a per-person progress ring (P6)
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .tint(Tokens.ember(room))
+                    .scaleEffect(1.4)
+                Text(app.workingLine)
+                    .interfaceVoice(size: 15)
+                    .foregroundStyle(Tokens.ink(room))
+                    .multilineTextAlignment(.center)
+                Text(Copy.workingHint)
+                    .interfaceVoice(size: 12)
+                    .foregroundStyle(Tokens.inkFaint(room))
+                    .multilineTextAlignment(.center)
+                Spacer()
+                TertiaryButton(Copy.collapseWork) { app.collapseWork() }
+                    .accessibilityIdentifier("working.collapse")
+                    .padding(.bottom, 28)
+            }
+            .padding(.horizontal, Tokens.screenPaddingSide)
+        }
+        .accessibilityIdentifier("working")
+    }
+}
+
+/// The waiting list — reached by long-pressing the home footer. Its reason to
+/// exist is the memo that can never be picked up: a recording that didn't save
+/// leaves an event that fails every resume, and without this it sits in the
+/// footer forever. Letting one go is a lifecycle transition, not a row delete
+/// (INV-5); the write layer refuses anything past `captured`, so memos that
+/// can't be discarded simply don't offer it.
+struct WaitingListView: View {
+    @EnvironmentObject var app: AppModel
+    @Environment(\.room) var room
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        RoomBackground { _ in
+            VStack(alignment: .leading, spacing: 14) {
+                Text(Copy.waitingListTitle).interfaceVoice(size: 20, weight: .bold)
+                    .foregroundStyle(Tokens.ink(room))
+                    .padding(.top, 28)
+                Text(Copy.waitingListHint).interfaceVoice(size: 12)
+                    .foregroundStyle(Tokens.inkMuted(room))
+
+                ScrollView {
+                    VStack(spacing: Tokens.gridGap) {
+                        ForEach(app.waitingMemos) { memo in
+                            PaperTile {
+                                HStack(alignment: .top) {
+                                    VStack(alignment: .leading, spacing: 5) {
+                                        Text(String(memo.capturedAt.prefix(10)))
+                                            .interfaceVoice(size: 10.5)
+                                            .foregroundStyle(Tokens.inkFaint(room))
+                                        Text(Self.stageLine(memo.stage))
+                                            .interfaceVoice(size: 13)
+                                            .foregroundStyle(Tokens.ink(room))
+                                    }
+                                    Spacer()
+                                    if memo.canDiscard {
+                                        TertiaryButton(Copy.letGo) {
+                                            app.discard(memo)
+                                            if app.waitingMemos.isEmpty { dismiss() }
+                                        }
+                                        .accessibilityIdentifier("waitingList.letGo")
+                                    }
+                                }
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                dismiss()
+                                app.resume(memo)
+                            }
+                        }
+                    }
+                }
+                Spacer()
+            }
+            .padding(.horizontal, Tokens.screenPaddingSide)
+        }
+        .overlay(alignment: .topTrailing) {
+            TertiaryButton(Copy.notNow) { dismiss() }.padding()
+        }
+        .accessibilityIdentifier("waitingList")
+    }
+
+    static func stageLine(_ stage: AppModel.WaitingMemo.Stage) -> String {
+        switch stage {
+        case .needsTranscription: return Copy.waitingStageNeedsTranscription
+        case .needsTranscriptReview: return Copy.waitingStageNeedsReview
+        case .needsSync: return Copy.waitingStageNeedsSync
+        case .needsProposalReview: return Copy.waitingStageNeedsProposalReview
+        }
+    }
+}
+
 struct SettingsView: View {
     @Environment(\.room) var room
     @Environment(\.dismiss) var dismiss
@@ -277,6 +411,9 @@ struct CaptureView: View {
         .overlay(alignment: .topTrailing) {
             TertiaryButton(Copy.notNow) { dismiss() }.padding()
         }
+        // stopping the mic used to drop straight back to the idle capture screen,
+        // which read as "nothing happened" while transcription ran
+        .fullScreenCover(isPresented: workingBinding) { WorkingView() }
         .fullScreenCover(item: transcriptBinding) { vm in
             TranscriptReviewView(vm: vm)
         }
@@ -295,6 +432,10 @@ struct CaptureView: View {
         } catch {
             // the note text stays right where it is — nothing typed is ever lost
         }
+    }
+
+    var workingBinding: Binding<Bool> {
+        Binding(get: { app.isWorking }, set: { _ in })
     }
 
     var transcriptBinding: Binding<TranscriptReviewViewModel?> {
@@ -359,7 +500,7 @@ struct TranscriptReviewView: View {
                     HStack {
                         SecondaryButton(Copy.reRecord) { vm.discard() }
                         Spacer()
-                        TertiaryButton(Copy.later) { vm.app?.pendingCapture = nil }
+                        TertiaryButton(Copy.later) { vm.later() }
                     }
                 }
                 .padding(.top, Tokens.screenPaddingTop)
@@ -409,11 +550,62 @@ struct ReviewView: View {
     }
 }
 
+/// `sheet(item:)` needs an Identifiable; the ref itself is the identity.
+struct RenameTarget: Identifiable {
+    let ref: String
+    var id: String { ref }
+}
+
+/// One field, because there is only one thing to fix. The correction lands on
+/// the ref, so every card in the review that mentions it updates at once — which
+/// is the whole point: a name misheard once is misheard on every card.
+struct RenameSheet: View {
+    @ObservedObject var vm: ReviewViewModel
+    let ref: String
+    @Environment(\.room) var room
+    @Environment(\.dismiss) var dismiss
+    @State private var name: String = ""
+
+    var body: some View {
+        RoomBackground { _ in
+            VStack(alignment: .leading, spacing: 14) {
+                Text(Copy.renameTitle).interfaceVoice(size: 20, weight: .bold)
+                    .foregroundStyle(Tokens.ink(room))
+                    .padding(.top, 28)
+                Text(Copy.renameHint).interfaceVoice(size: 12)
+                    .foregroundStyle(Tokens.inkMuted(room))
+
+                // a name is his content, not the system's — memory voice (§4.2)
+                TextField("", text: $name)
+                    .accessibilityIdentifier("rename.field")
+                    .font(.custom(Tokens.serifFamily, size: 16))
+                    .padding(12)
+                    .background(Tokens.paper(room))
+                    .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusCard))
+                    .overlay(RoundedRectangle(cornerRadius: Tokens.radiusCard)
+                        .strokeBorder(Tokens.paperEdge(room), lineWidth: 1))
+
+                PrimaryButton(Copy.renameSave) {
+                    vm.rename(ref: ref, to: name)
+                    dismiss()
+                }
+                Spacer()
+            }
+            .padding(.horizontal, Tokens.screenPaddingSide)
+        }
+        .overlay(alignment: .topTrailing) {
+            TertiaryButton(Copy.notNow) { dismiss() }.padding()
+        }
+        .onAppear { name = vm.currentName(forRef: ref) }
+    }
+}
+
 struct ProposalCardView: View {
     @ObservedObject var vm: ReviewViewModel
     let card: ReviewViewModel.Card
     @Environment(\.room) var room
     @State private var editing = false
+    @State private var renaming: String?
 
     var body: some View {
         if let settled = card.settled {
@@ -461,12 +653,36 @@ struct ProposalCardView: View {
                         Text(card.quote).memoryVoice(size: 13.5)
                             .foregroundStyle(Tokens.ink(room))
                     }
+                    // On a CREATE_PERSON or LINK card this line is a *name*, not a
+                    // transcript quote — the one thing in review that is safe to
+                    // rewrite, and the only place a misheard name or a spoken
+                    // shorthand can be corrected. Verbatim quotes stay untouchable
+                    // (P5): assert cards have no ref and so never become tappable.
+                    if let ref = vm.renameableRef(card), card.settled == nil {
+                        Button { renaming = ref } label: {
+                            Text(Copy.renameTapHint).interfaceVoice(size: 10.5)
+                                .foregroundStyle(Tokens.inkFaint(room))
+                        }
+                        .accessibilityIdentifier("card.rename")
+                    }
                     if let suggestion = card.stateSuggestion {
                         Text(suggestion).interfaceVoice(size: 11.5)
                             .foregroundStyle(Tokens.inkMuted(room))
                     }
-                    Text(card.rationale).interfaceVoice(size: 11.5)
-                        .foregroundStyle(Tokens.inkMuted(room))
+                    // What actually gets saved, in the system's own voice — sans,
+                    // because this is Orbit's reading of the sentence, not the
+                    // sentence (§4.2). The quote above stays untouchable (P5).
+                    if let fact = card.mappedFact {
+                        Text(fact).interfaceVoice(size: 12, weight: .semibold)
+                            .foregroundStyle(Tokens.ink(room))
+                            .accessibilityIdentifier("card.mappedFact")
+                    }
+                    // the rationale earns its line only when it says something the
+                    // quote above hasn't already said, word for word
+                    if !card.rationale.isEmpty, !card.rationaleEchoesQuote {
+                        Text(card.rationale).interfaceVoice(size: 11.5)
+                            .foregroundStyle(Tokens.inkMuted(room))
+                    }
                     HStack(spacing: 10) {
                         SecondaryButton(Copy.yes) { vm.accept(card) }
                         SecondaryButton(Copy.no) { vm.reject(card, reason: nil) }
@@ -482,6 +698,10 @@ struct ProposalCardView: View {
                         TertiaryButton(Copy.firstMetAction) { vm.acceptAsFirstMet(card) }
                     }
                 }
+            }
+            .sheet(item: Binding(get: { renaming.map { RenameTarget(ref: $0) } },
+                                 set: { renaming = $0?.ref })) { target in
+                RenameSheet(vm: vm, ref: target.ref)
             }
             .sheet(isPresented: $editing) {
                 EditProposalSheet(vm: vm, card: card)

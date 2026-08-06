@@ -4,7 +4,7 @@
 #
 # Produces:
 #   apps/OrbitApp/Vendor/whisper.xcframework      — the C library, iOS + simulator
-#   apps/OrbitApp/Vendor/models/ggml-base.q5_1.bin            — bundled floor model
+#   apps/OrbitApp/Vendor/models/ggml-base-q5_1.bin            — bundled floor model
 #   apps/OrbitApp/Vendor/models/ggml-large-v3-turbo-q5_0.bin  — download-ceiling model
 #                                                   (hosted, not bundled; see §6)
 #
@@ -31,16 +31,42 @@ echo "== clone whisper.cpp @ ${WHISPER_TAG} =="
 git clone --depth 1 --branch "$WHISPER_TAG" https://github.com/ggml-org/whisper.cpp "$WORK/whisper.cpp"
 
 echo "== build xcframework (iOS device + simulator) =="
-(cd "$WORK/whisper.cpp" && ./build-xcframework.sh)
+# Upstream's build-xcframework.sh compiles seven platforms and then assembles
+# all of them in one `-create-xcframework` call — passing -debug-symbols for
+# each. Under Xcode 26 the tvOS and visionOS builds emit no dSYMs, so that final
+# call dies with "the path does not point to a valid debug symbols file" and
+# takes the whole run with it, leaving nothing vendored. It is the last command
+# in their script, so every framework is already built by the time it fails:
+# we let it fail, then assemble the two slices Orbit actually ships.
+(cd "$WORK/whisper.cpp" && ./build-xcframework.sh) || \
+  echo "-- upstream assembly failed (expected: tvOS/visionOS dSYMs); assembling iOS slices below"
 
+for slice in build-ios-device build-ios-sim; do
+  if [ ! -d "$WORK/whisper.cpp/$slice/framework/whisper.framework" ]; then
+    echo "error: $slice did not build — the failure above is real, not the dSYM one" >&2
+    echo "       work dir kept for inspection: $WORK" >&2
+    exit 1
+  fi
+done
+
+echo "== assemble whisper.xcframework (iOS device + simulator) =="
+ASSEMBLE=(xcodebuild -create-xcframework)
+for slice in build-ios-device build-ios-sim; do
+  ASSEMBLE+=(-framework "$WORK/whisper.cpp/$slice/framework/whisper.framework")
+  # dSYMs are an optional input; include them only when they exist so a future
+  # toolchain dropping them degrades the build instead of breaking it.
+  if [ -d "$WORK/whisper.cpp/$slice/dSYMs/whisper.dSYM" ]; then
+    ASSEMBLE+=(-debug-symbols "$WORK/whisper.cpp/$slice/dSYMs/whisper.dSYM")
+  fi
+done
 mkdir -p "$VENDOR/models"
 rm -rf "$VENDOR/whisper.xcframework"
-cp -R "$WORK/whisper.cpp/build-apple/whisper.xcframework" "$VENDOR/whisper.xcframework"
+"${ASSEMBLE[@]}" -output "$VENDOR/whisper.xcframework"
 
 echo "== fetch models =="
 # floor: ships in the app bundle so capture never hard-fails (§6)
-curl -L -o "$VENDOR/models/ggml-base.q5_1.bin" \
-  "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.q5_1.bin"
+curl -L -o "$VENDOR/models/ggml-base-q5_1.bin" \
+  "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin"
 # ceiling: downloaded during onboarding by ModelManager; kept here for local
 # device testing + as the artifact to host
 curl -L -o "$VENDOR/models/ggml-large-v3-turbo-q5_0.bin" \

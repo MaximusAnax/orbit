@@ -27,6 +27,25 @@ enum Copy {
 
     // Proposal review
     static let reviewTitle = "Does this look right?"
+    /// Entity LINK cards are plumbing, not claims about a person — one section
+    /// for all of them, so five places cost one "all yes" instead of five
+    /// headers (§7.10 still requires each to be reviewed; it never required
+    /// each to be its own screenful).
+    static let contextGroupTitle = "Places, schools, and topics"
+    /// The `kind` the extractor already assigned, said plainly.
+    static func entityKindLine(_ kind: String, partOf: String?) -> String {
+        let readable = kind.replacingOccurrences(of: "_", with: " ")
+        guard let partOf else { return readable }
+        return "\(readable) · part of \(partOf)"
+    }
+    /// Inline correction: transcription mishears names, and a voice note never
+    /// contains the full formal name of anything. This is the only door the real
+    /// name can come through.
+    static let renameTitle = "What should this be called?"
+    static let renameHint = "Fixing it here fixes it everywhere in this review. The way you said it is kept, so saying it that way again still finds this."
+    static let renameSave = "Use this name"
+    static let renameTapHint = "Tap the name to correct it"
+
     static let yes = "Yes"
     static let no = "No"
     static let later = "Later"
@@ -94,6 +113,31 @@ enum Copy {
         n == 1 ? "1 memo waiting · tap to pick it up"
                : "\(n) memos waiting · tap to pick one up"
     }
+    // Work in flight. Between the mic and the review the app used to look idle
+    // while it was busy — these say which of the two slow steps is running.
+    static let workingTranscribing = "Turning this into words."
+    static let workingExtracting = "Reading it back for names, facts, and threads."
+    static let workingHint = "This can take a moment. You can leave it running."
+    static let collapseWork = "Leave it running"
+
+    // A capture can structure to nothing: every claim in it was already turned
+    // down for this same memo (INV-7 suppresses *rejected* claims, not accepted
+    // ones), or there was nothing in it to structure. Either way there is no
+    // review to hold, and an empty review screen is not an answer (D-8).
+    static let nothingNewInCapture = "Nothing new in that one — you'd already said no to everything it turned up."
+    static let nothingToStructure = "Nothing to file from that one. The memo is kept as it is."
+
+    // The waiting list (long-press the footer): the exit for a memo that can't
+    // be picked up. Plain lines, no counts dressed as badges (D-2/D-9).
+    static let waitingListTitle = "Memos waiting"
+    static let waitingListHint = "Tap one to pick it up, or let it go if it's no use."
+    static let letGo = "Let it go"
+    static let waitingStageNeedsTranscription = "Not yet turned into words"
+    static let waitingStageNeedsReview = "Words ready to read over"
+    static let waitingStageNeedsSync = "Read over — not yet structured"
+    static let waitingStageNeedsProposalReview = "Structured — waiting on your yes or no"
+    static let memoDiscardFailed = "That one couldn't be let go — it's already further along than it looked."
+
     static let keepNote = "Keep this"
     static let micUnavailable = "The mic isn't available right now — the note field below still works."
     static let micDenied = "Orbit needs microphone access: Settings › Orbit › Microphone. The note field below still works."
@@ -103,6 +147,15 @@ enum Copy {
     static let speechDenied = "Orbit needs speech recognition: Settings › Orbit › Speech Recognition. The recording is safe and waiting."
     static let transcriptionOffDeviceRefused = "This phone can't transcribe without sending the audio away, so Orbit stopped. The recording is safe and stays here."
     static let memoAudioMissing = "That recording is no longer on this phone, so there's nothing left to transcribe."
+    static let transcriptionNoSpeech = "That recording came out silent, so there are no words to find in it. Nothing else went wrong."
+    /// No "yet", no "waiting" — this one will never succeed, and a line that
+    /// implies otherwise sends him back to tap it again tomorrow.
+    static let transcriptionAudioUnreadable = "That recording didn't save properly — the file has nothing readable in it. Nothing can be recovered from this one."
+    /// The reason travels with the failure — a named error can be looked up; a
+    /// generic line sends the user (and us) guessing.
+    static func transcriptionFailed(_ detail: String) -> String {
+        "Transcription stopped — \(detail). The recording is safe and waiting."
+    }
 
     // Edit sheet (P5: accept with edits; the quote itself is untouchable)
     static let editValueLabel = "The mapped value"
@@ -129,7 +182,10 @@ enum Copy {
             todayEmpty, setAsideFooter(3), captureIdle, captureRecording,
             typedNotePlaceholder, transcriptTitle, transcriptHint,
             audioDeletionNotice, audioRetainedNotice, confirmTranscript, reRecord,
-            reviewTitle, yes, no, later, editAction, saved, skipped, setAside,
+            reviewTitle, contextGroupTitle, entityKindLine("school", partOf: nil),
+            renameTitle, renameHint, renameSave, renameTapHint,
+            entityKindLine("place", partOf: "New York"),
+            yes, no, later, editAction, saved, skipped, setAside,
             doneForNow, notNow, rejectionReasonPrompt,
             walkMeIn, heroTag, openTag, oweTag, owedToYouTag, sinceTag("her"),
             worthHavingBack, timeline, reach("him"), goBePresent, deckEndTag,
@@ -142,8 +198,14 @@ enum Copy {
             settingsTitle, settingsHint, anthropicKeyLabel, openAIKeyLabel,
             saveKeys, keySaved,
             waitingFooter(1), waitingFooter(3), keepNote, micUnavailable, micDenied,
+            waitingListTitle, waitingListHint, letGo, waitingStageNeedsTranscription,
+            waitingStageNeedsReview, waitingStageNeedsSync,
+            waitingStageNeedsProposalReview, memoDiscardFailed,
+            workingTranscribing, workingExtracting, workingHint, collapseWork,
+            nothingNewInCapture, nothingToStructure,
             transcriptionUnavailable, speechDenied, transcriptionOffDeviceRefused,
-            memoAudioMissing,
+            memoAudioMissing, transcriptionNoSpeech, transcriptionAudioUnreadable,
+            transcriptionFailed("kAFAssistantErrorDomain 1700"),
             editValueLabel, editSinceLabel, editOrbitLabel, saveEdited,
             knownOfBanner, storeFailureTitle, storeFailureBody,
         ] + portraitPrompts

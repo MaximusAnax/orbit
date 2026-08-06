@@ -32,7 +32,7 @@ targets:
       - name: Bundle whisper floor model (if vendored)
         basedOnDependencyAnalysis: false
         script: |
-          MODEL="$SRCROOT/Vendor/models/ggml-base.q5_1.bin"
+          MODEL="$SRCROOT/Vendor/models/ggml-base-q5_1.bin"
           DEST="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
           if [ -f "$MODEL" ] && [ -n "$DEST" ]; then
             mkdir -p "$DEST" && cp "$MODEL" "$DEST/"

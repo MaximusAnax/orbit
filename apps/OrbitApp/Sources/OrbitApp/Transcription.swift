@@ -20,7 +20,7 @@ struct TranscriptResult: Sendable {
 /// never hard-fails; `large-v3-turbo` (quantized) downloads during onboarding and
 /// can upgrade without an app release.
 final class ModelManager: @unchecked Sendable {
-    enum Tier: String { case floor = "ggml-base.q5_1", ceiling = "ggml-large-v3-turbo-q5_0" }
+    enum Tier: String { case floor = "ggml-base-q5_1", ceiling = "ggml-large-v3-turbo-q5_0" }
 
     var ceilingURL: URL? {
         let url = modelsDirectory.appendingPathComponent(Tier.ceiling.rawValue + ".bin")
@@ -95,6 +95,18 @@ enum TranscriptionError: Error {
     /// The recognizer exists but cannot run **on device** — refused rather than
     /// silently sending the recording to a server (PRIV-1 is absolute).
     case onDeviceUnavailable
+    /// The recognizer ran and heard no speech. The phone is fine; the recording
+    /// is the problem — the opposite diagnosis from `onDeviceUnavailable`, so it
+    /// must never share a line with it.
+    case noSpeechFound
+    /// The audio file itself could not be opened or decoded — empty, truncated,
+    /// or otherwise not playable. Nothing about the phone or the recognizer is
+    /// wrong, and no retry will help, so this must not be worded as "not yet".
+    case audioUnreadable
+    /// Anything else the recognizer reported, carrying its reason so a failure
+    /// is diagnosable instead of a shrug (same discipline as
+    /// `RecordingError.sessionFailed`).
+    case recognizerFailed(String)
 }
 
 /// Tries each transcriber in order and returns the first success; the last
@@ -129,6 +141,7 @@ private final class OnceBox: @unchecked Sendable {
 
 #if canImport(Speech) && os(iOS)
 import Speech
+import AVFoundation      // AVFoundationErrorDomain, for classify(_:)
 
 /// Apple's on-device recognizer as the transcription floor (DATA-MODEL §6
 /// ratified `SpeechTranscriber` on iOS 26 for this role; this is the same idea
@@ -158,20 +171,41 @@ final class AppleSpeechTranscriber: TranscriptionService, @unchecked Sendable {
         // the same name-priming discipline whisper gets via initial_prompt
         request.contextualStrings = Array(names.prefix(48))
 
+        // The delegate form, not the result-handler form, on purpose: the handler
+        // is only called when there is something to report, so a task that ends
+        // without either a final result or an error leaves the continuation
+        // dangling and parks the UI in `.transcribing` forever. The delegate's
+        // `didFinishSuccessfully` always fires, so RecognitionSink can guarantee
+        // exactly one resume — a failure the user can read beats a silent hang.
         let text: String = try await withCheckedThrowingContinuation { continuation in
-            let once = OnceBox()
-            recognizer.recognitionTask(with: request) { result, error in
-                if let error {
-                    if once.claim() { continuation.resume(throwing: error) }
-                    return
-                }
-                guard let result, result.isFinal else { return }
-                if once.claim() {
-                    continuation.resume(returning: result.bestTranscription.formattedString)
-                }
-            }
+            let sink = RecognitionSink(continuation: continuation)
+            sink.task = recognizer.recognitionTask(with: request, delegate: sink)
         }
         return TranscriptResult(text: text, usedFullModel: false)
+    }
+
+    /// Speech reports failures as opaque `kAFAssistantErrorDomain` codes. Two of
+    /// them mean opposite things and were previously indistinguishable at the
+    /// call site: 1110 is "this audio held no speech" (recording problem), 1101
+    /// is "local recognition couldn't start" (phone problem — usually the
+    /// on-device language asset isn't installed). Everything else keeps its
+    /// domain and code so it can be looked up rather than guessed at.
+    fileprivate static func classify(_ error: Error) -> TranscriptionError {
+        let ns = error as NSError
+        // An AVFoundation error here is the recognizer reporting that it could
+        // not open the file we handed it (-11800 AVErrorUnknown is the usual
+        // shape for an empty or truncated capture). That is a fact about the
+        // recording, not about this phone's ability to transcribe — the two
+        // must not share a line, because one is retryable and the other never is.
+        if ns.domain == AVFoundationErrorDomain { return .audioUnreadable }
+        guard ns.domain == "kAFAssistantErrorDomain" else {
+            return .recognizerFailed("\(ns.domain) \(ns.code)")
+        }
+        switch ns.code {
+        case 1110: return .noSpeechFound
+        case 1101: return .onDeviceUnavailable
+        default: return .recognizerFailed("\(ns.domain) \(ns.code)")
+        }
     }
 
     private static func authorized() async -> Bool {
@@ -179,6 +213,46 @@ final class AppleSpeechTranscriber: TranscriptionService, @unchecked Sendable {
         return await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
         }
+    }
+}
+
+/// Bridges `SFSpeechRecognitionTaskDelegate` to one checked continuation.
+///
+/// Two lifetime facts drive the shape of this: the recognizer holds its delegate
+/// weakly, and it does not keep the task alive for the caller — so the sink
+/// retains itself and its task, and drops both the moment it resumes. Without
+/// that, the sink deallocates the instant `transcribe` suspends and no callback
+/// ever arrives.
+private final class RecognitionSink: NSObject, SFSpeechRecognitionTaskDelegate, @unchecked Sendable {
+    private let continuation: CheckedContinuation<String, Error>
+    private let once = OnceBox()
+    var task: SFSpeechRecognitionTask?
+    private var selfRetain: RecognitionSink?
+
+    init(continuation: CheckedContinuation<String, Error>) {
+        self.continuation = continuation
+        super.init()
+        selfRetain = self          // released in finish(), below
+    }
+
+    private func finish(_ result: Result<String, Error>) {
+        guard once.claim() else { return }
+        continuation.resume(with: result)
+        task = nil
+        selfRetain = nil
+    }
+
+    func speechRecognitionTask(_ task: SFSpeechRecognitionTask,
+                               didFinishRecognition recognitionResult: SFSpeechRecognitionResult) {
+        finish(.success(recognitionResult.bestTranscription.formattedString))
+    }
+
+    /// Always called when the task ends, success or not. If a transcript already
+    /// arrived this is a no-op; if nothing did, this is the arm that keeps the
+    /// caller from waiting forever.
+    func speechRecognitionTask(_ task: SFSpeechRecognitionTask, didFinishSuccessfully successfully: Bool) {
+        finish(.failure(task.error.map(AppleSpeechTranscriber.classify)
+            ?? TranscriptionError.recognizerFailed("the recognizer ended without a transcript")))
     }
 }
 #endif

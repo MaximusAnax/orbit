@@ -43,10 +43,68 @@ final class AppModel: ObservableObject {
     /// tap that silently does nothing is worse than a tap that explains itself.
     @Published var captureNotice: String?
 
+    /// He collapsed the working screen. The work itself keeps running — this
+    /// only decides where its result lands: the waiting footer, rather than on
+    /// top of whatever he moved on to (P10 — nothing seizes the screen).
+    @Published var workCollapsed = false
+
+    /// Transcription and extraction are the two steps slow enough to look like
+    /// nothing is happening. Everything else is instant.
+    var isWorking: Bool {
+        switch pendingCapture {
+        case .transcribing, .extracting: return true
+        default: return false
+        }
+    }
+
+    var workingLine: String {
+        if case .extracting = pendingCapture { return Copy.workingExtracting }
+        return Copy.workingTranscribing
+    }
+
+    /// Step out of the way without stopping anything.
+    func collapseWork() {
+        guard isWorking else { return }
+        workCollapsed = true
+        pendingCapture = nil
+    }
+
+    /// Hand a finished step to the screen — unless he collapsed the working
+    /// view, in which case it waits in the footer instead of interrupting him.
+    private func present(_ state: CaptureFlowState) {
+        // Backstop for every path, not just extraction: a review with nothing in
+        // it is never the right screen, so it silently becomes "no screen".
+        if case .reviewingProposals(let vm) = state, vm.visibleGroups.isEmpty {
+            workCollapsed = false
+            pendingCapture = nil
+            refreshAmbient()
+            return
+        }
+        if workCollapsed {
+            workCollapsed = false
+            pendingCapture = nil
+            refreshAmbient()
+        } else {
+            pendingCapture = state
+        }
+    }
+
     struct WaitingMemo: Identifiable {
-        enum Stage { case needsTranscription, needsTranscriptReview, needsSync }
+        enum Stage { case needsTranscription, needsTranscriptReview, needsSync,
+                     needsProposalReview(syncRunID: String) }
         let id: String          // event id
         let stage: Stage
+        /// Before a memo has words, the day it was captured is the only thing
+        /// that tells one apart from another in the list.
+        var capturedAt: String = ""
+        /// The write layer only discards `captured` events. A confirmed memo
+        /// waiting to sync has real content behind it, and offering an exit
+        /// that throws is worse than offering none.
+        var canDiscard: Bool {
+            if case .needsTranscription = stage { return true }
+            if case .needsTranscriptReview = stage { return true }
+            return false
+        }
     }
 
     struct TodayItem: Identifiable {
@@ -134,21 +192,51 @@ final class AppModel: ObservableObject {
         // captured, never confirmed: audio-only (transcription pending) or
         // transcript awaiting review
         if let rows = try? store.db.query(
-            "SELECT id, transcript FROM event WHERE lifecycle='captured' ORDER BY captured_at") {
+            "SELECT id, transcript, captured_at FROM event WHERE lifecycle='captured' ORDER BY captured_at") {
             for r in rows {
                 guard let id = r.text("id") else { continue }
                 out.append(WaitingMemo(
                     id: id,
-                    stage: r.text("transcript") == nil ? .needsTranscription : .needsTranscriptReview))
+                    stage: r.text("transcript") == nil ? .needsTranscription : .needsTranscriptReview,
+                    capturedAt: r.text("captured_at") ?? ""))
             }
         }
         // confirmed but never synced (J-11)
         if let rows = try? store.db.query(
-            "SELECT e.id FROM event e WHERE e.lifecycle='confirmed' " +
+            "SELECT e.id, e.confirmed_at FROM event e WHERE e.lifecycle='confirmed' " +
             "AND NOT EXISTS (SELECT 1 FROM sync_run s WHERE s.event_id = e.id) " +
             "ORDER BY e.confirmed_at") {
             for r in rows {
-                if let id = r.text("id") { out.append(WaitingMemo(id: id, stage: .needsSync)) }
+                if let id = r.text("id") {
+                    out.append(WaitingMemo(id: id, stage: .needsSync,
+                                           capturedAt: r.text("confirmed_at") ?? ""))
+                }
+            }
+        }
+        // extracted, proposals never answered: `setAsideCount` only counts
+        // 'deferred', so a run left in 'pending' (app killed mid-review, or the
+        // working screen collapsed while extraction finished) had no way back.
+        if let rows = try? store.db.query(
+            """
+            SELECT s.event_id AS id, s.id AS run, e.confirmed_at AS at
+            FROM sync_run s JOIN event e ON e.id = s.event_id
+            WHERE EXISTS (SELECT 1 FROM proposal p
+                          WHERE p.sync_run_id = s.id AND p.state='pending')
+            ORDER BY e.confirmed_at, s.created_at
+            """) {
+            // One row per sync RUN, and re-extraction is a supported thing
+            // (`openSyncRun` always creates a new one, `extractionVersion`
+            // exists, INV-7 exists to suppress the repeat claims) — so an event
+            // extracted twice appeared twice here, as two memos with the same
+            // WaitingMemo.id. Identical rows in the list, and duplicate ids in a
+            // ForEach on top of that. One memo is one entry; the oldest
+            // unanswered run is the one to open.
+            var seen = Set<String>()
+            for r in rows {
+                guard let id = r.text("id"), let run = r.text("run"),
+                      seen.insert(id).inserted else { continue }
+                out.append(WaitingMemo(id: id, stage: .needsProposalReview(syncRunID: run),
+                                       capturedAt: r.text("at") ?? ""))
             }
         }
         return out
@@ -170,6 +258,8 @@ final class AppModel: ObservableObject {
                 matcher: NameMatcher(knownNames: primer), app: self))
         case .needsSync:
             syncLater(eventID: memo.id)
+        case .needsProposalReview(let runID):
+            pendingCapture = .reviewingProposals(ReviewViewModel(syncRunID: runID, app: self))
         }
     }
 
@@ -253,6 +343,7 @@ final class AppModel: ObservableObject {
         do {
             try recorder.begin()
             micFailure = nil
+            workCollapsed = false    // a new capture is his attention, freshly given
             pendingCapture = .recording
             return true
         } catch {
@@ -296,7 +387,7 @@ final class AppModel: ObservableObject {
             let vm = TranscriptReviewViewModel(
                 eventID: event, text: result.text, usedFullModel: result.usedFullModel,
                 matcher: NameMatcher(knownNames: primer), app: self)
-            pendingCapture = .reviewingTranscript(vm)
+            present(.reviewingTranscript(vm))
         } catch {
             // P3: capture never hard-fails. The recording is kept as a captured
             // event (audio only, no transcript) and resumes from the home
@@ -316,6 +407,9 @@ final class AppModel: ObservableObject {
         switch error {
         case TranscriptionError.speechDenied: return Copy.speechDenied
         case TranscriptionError.onDeviceUnavailable: return Copy.transcriptionOffDeviceRefused
+        case TranscriptionError.noSpeechFound: return Copy.transcriptionNoSpeech
+        case TranscriptionError.audioUnreadable: return Copy.transcriptionAudioUnreadable
+        case TranscriptionError.recognizerFailed(let detail): return Copy.transcriptionFailed(detail)
         default: return Copy.transcriptionUnavailable
         }
     }
@@ -331,6 +425,7 @@ final class AppModel: ObservableObject {
             return
         }
         captureNotice = nil
+        workCollapsed = false        // he just asked for this one; show him the result
         pendingCapture = .transcribing(audioRef: audioRef)
         let primer = knownNamesPrimer()
         do {
@@ -339,7 +434,7 @@ final class AppModel: ObservableObject {
             let vm = TranscriptReviewViewModel(
                 eventID: eventID, text: result.text, usedFullModel: result.usedFullModel,
                 matcher: NameMatcher(knownNames: primer), app: self)
-            pendingCapture = .reviewingTranscript(vm)
+            present(.reviewingTranscript(vm))
         } catch {
             pendingCapture = nil   // still waiting; still resumable (P10: no nag)
             captureNotice = Self.notice(for: error)
@@ -354,6 +449,7 @@ final class AppModel: ObservableObject {
     }
 
     func startExtraction(eventID: String) {
+        workCollapsed = false        // confirming a transcript is a fresh ask
         pendingCapture = .extracting(eventID: eventID)
         guard autoExtract else { return }
         Task { await runExtraction(eventID: eventID) }
@@ -366,12 +462,39 @@ final class AppModel: ObservableObject {
             let extractor = makeExtractor()
             let result = try await extractor.extract(transcript: transcript, context: context)
             let outcome = try sync.sync(event: eventID, extractionVersion: 1, result: result)
-            pendingCapture = .reviewingProposals(ReviewViewModel(syncRunID: outcome.syncRunID, app: self))
+            // A run can legitimately produce nothing: INV-7 drops every claim he
+            // has already saved, and some memos hold no facts at all. Asking
+            // "Does this look right?" over an empty screen is not a question.
+            // The event is `fully_resolved` either way (Store.syncStatus with
+            // total == 0), so nothing is stranded by not showing it.
+            guard !outcome.proposalIDs.isEmpty else {
+                pendingCapture = nil
+                captureNotice = outcome.suppressedCount > 0
+                    ? Copy.nothingNewInCapture : Copy.nothingToStructure
+                refreshAmbient()
+                return
+            }
+            present(.reviewingProposals(ReviewViewModel(syncRunID: outcome.syncRunID, app: self)))
         } catch {
             // Sync-later: the event stays confirmed+unsynced, resumable from the
             // home footer (J-11). No nagging (P10).
             pendingCapture = nil
         }
+    }
+
+    /// Let a waiting memo go. The ledger is append-only, so this is a lifecycle
+    /// transition to `discarded` (never a row delete) — and the write layer
+    /// takes the audio file with it, which is the whole point when the file is
+    /// the thing that's broken.
+    func discard(_ memo: WaitingMemo) {
+        guard memo.canDiscard else { return }
+        do {
+            try edits.discardEvent(memo.id)
+            captureNotice = nil
+        } catch {
+            captureNotice = Copy.memoDiscardFailed
+        }
+        refreshAmbient()
     }
 
     /// Resume an unsynced event later (J-11) — proposals identical to immediate sync.
@@ -404,9 +527,18 @@ final class AppModel: ObservableObject {
         let primer = knownNamesPrimer()
         for row in rows {
             guard let event = row.text("id"), let audio = row.text("raw_audio_ref") else { continue }
+            // The ceiling really can vanish mid-pass (the file is deletable), and
+            // there is no point re-transcribing the rest through the floor when it
+            // has — but that is a question about the model, not about this row, so
+            // ask it directly instead of inferring it from one row's result.
+            guard whisper.models.ceilingURL != nil else { return }
             do {
                 let result = try await transcription.transcribe(audioAt: audio, primedWith: primer)
-                guard result.usedFullModel else { return }   // ceiling vanished mid-pass
+                // A floor-model transcript must never amend-and-delete (§7.5). One
+                // recording the ceiling can't read (corrupt, truncated) is that
+                // recording's problem: it stays retained and the pass moves on
+                // rather than stranding every memo behind it.
+                guard result.usedFullModel else { continue }
                 try edits.amendEvent(event, field: "transcript", newValue: result.text,
                                      reason: "full-model re-listen (§6) — recording deleted")
                 try edits.deleteAudioAfterUpgrade(event: event)
