@@ -81,3 +81,9 @@ missing column in minutes.
    HuggingFace URL but does not yet verify a checksum after download. Registered
    as hardening work; ratify the pinned-URL-only posture for now or ask for the
    checksum gate before first device install.
+11. **Four surfaces built but never designed** (DESIGN §14, "Surfaces built that
+   this document does not describe") — the Keys sheet, the store-failure
+   screen, Home's resume doors, and the review edit sheet. Each exists because
+   the app could not function without it, each is rendered in the ratified
+   tokens with both room forms, and none went through design ratification.
+   Ratify as-is, or send any of them back for a designed treatment.

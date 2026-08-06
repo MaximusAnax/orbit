@@ -2,7 +2,7 @@
 
 **Personal Relationship Memory System**
 
-- **Status:** Planning complete — data model ([docs/DATA-MODEL.md](docs/DATA-MODEL.md)), design language ([docs/DESIGN.md](docs/DESIGN.md)), and evaluation framework ([docs/EVALS.md](docs/EVALS.md)) all ratified. Next phase: build.
+- **Status:** Built. The data model ([docs/DATA-MODEL.md](docs/DATA-MODEL.md)), design language ([docs/DESIGN.md](docs/DESIGN.md)), and evaluation framework ([docs/EVALS.md](docs/EVALS.md)) are ratified and unchanged; all six milestones (M0–M5) are implemented on `feature/initial_build` with both CI workflows green. What remains is device bring-up and the ◊ ratification queue — see [docs/BUILD.md §8](docs/BUILD.md) and [docs/evals/RATIFICATION.md](docs/evals/RATIFICATION.md). **This document is the constitution: the build conforms to it, never the reverse.** Divergences found during the build are registered in RATIFICATION.md for Abdoul, never silently coded around.
 - **Primary user:** Abdoul
 - **Core idea:** An AI-powered external memory for the people in Abdoul's life.
 

@@ -1,10 +1,10 @@
 # Privacy audit — PRIV-1…5 (EVALS §4.4)
 
-State as of 2026-07-29, end of the in-session build. Each promise is listed
+State as of 2026-07-31 (CI green, post-review-pass). Each promise is listed
 with what is **mechanically enforced in code today**, what is **tested**, and
 what still needs a **device run** to close. Verification tiers per BUILD.md
-§1.4 (T1 = executed locally this session; T2 = CI, currently blocked by repo
-push access; T3 = device/secret-gated).
+§1.4 (T1 = executed locally; T2 = CI, now green on both workflows;
+T3 = device/secret-gated).
 
 ## PRIV-1 — Audio never egresses (absolute)
 
@@ -12,8 +12,12 @@ push access; T3 = device/secret-gated).
 - `TranscriptionService` and `AudioRecording` are protocols with **no network
   implementation** (Transcription.swift states this as a contract; whisper.cpp
   runs in-process; `ModelManager` downloads models *in*, never uploads).
-- The only `URLSession` use in the entire codebase is `RemoteExtractor`
-  (text JSON body). `scripts/lint-writepath.sh` + design review keep it that way.
+- `URLSession` appears in exactly three places, none of which can carry audio:
+  `RemoteExtractor` and `OpenAIExtractor` (text JSON bodies — the single
+  content egress, PRIV-2), and `ModelManager`'s **inbound-only** model
+  download (a GET of a pinned HuggingFace artifact; it has no request body).
+  `scripts/lint-writepath.sh` + design review keep it that way; any fourth
+  network call is a PRIV-1 review item by house rule.
 **Tested:** §7.5 gating at the DB level (J-1 model tests, both branches).
 **Open (T3):** network interception during a real capture on device — zero
 requests containing audio bytes. Runbook: proxy the device, run J-1, inspect.
@@ -56,12 +60,16 @@ any diff touching it cites PRIV-4 in the commit).
 
 ## PRIV-5 — Export: complete, human-readable, restore passes INV-4
 
-**Enforced + tested (this phase):** `Export.dump` archives the full log
+**Enforced + tested (T2 green):** `Export.dump` archives the full log
 (pretty-printed JSON, verbatims in the clear, rm_* excluded by design);
-`Export.restore` into a fresh schema rebuilds read models; `ExportTests`
-asserts fingerprint equivalence and log row-count round-trip.
-**Open (T2):** run in CI once push access returns. UI entry point for export
-is a deferred surface (registered in BUILD.md §8) — the capability ships first.
+`Export.restore` runs as a single transaction with deferred foreign keys, so a
+failed restore leaves nothing half-written; `ExportTests` asserts fingerprint
+equivalence and log row-count round-trip on a simple archive, and — since the
+review pass — on a richer one carrying first-met pointers, contact points, and
+a merge. Both run in CI.
+**Open:** the UI entry point for export is a deferred surface (registered in
+BUILD.md §8) — the capability ships first, so today the archive is reachable
+only from code.
 
 ## Residual risks
 

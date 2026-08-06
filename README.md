@@ -1,6 +1,6 @@
 # orbit
 
-A personal AI memory for relationships. Design ratified; **all six milestones (M0–M5) built** on `feature/initial_build` — see [docs/BUILD.md §8](docs/BUILD.md) for the state of the build, verification tiers, and the ratification queue ([docs/evals/RATIFICATION.md](docs/evals/RATIFICATION.md)).
+A personal AI memory for relationships. Design ratified; **all six milestones (M0–M5) built and CI-green** on `feature/initial_build` — Linux core suite (ledger, pipeline, recall, search, export) and macOS iOS-app build + hosted tests both pass on every push. What's left is device bring-up on Abdoul's Mac/iPhone and the ◊ ratification queue: see [docs/BUILD.md §8](docs/BUILD.md) for the state of the build and verification tiers, [docs/evals/RATIFICATION.md](docs/evals/RATIFICATION.md) for what awaits his decision.
 
 - [ORBIT.md](ORBIT.md) — the product: what Orbit is, its use cases, and the 12-principle constitution
 - [docs/DATA-MODEL.md](docs/DATA-MODEL.md) — the schema: bitemporal assertions, events, threads, and why

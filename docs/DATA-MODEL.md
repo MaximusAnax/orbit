@@ -108,6 +108,8 @@ Duplicate people are inevitable: imported from Contacts, added manually, met aga
 
 Merging sets `merged_into` on the loser and leaves every assertion pointing at its original subject. Resolution follows the pointer at read time.
 
+*As built:* merging a person who is already a merge target re-points to that target's canonical row, and any earlier losers pointing at the new loser are re-pointed with it — so the pointer graph stays one hop deep and unmerge still means clearing one field. Reads do not trust that flatness: `canonicalPerson` follows the chain to a fixpoint with a cycle guard rather than returning a merged row. Merging the `is_self` row (either side) is refused outright (INV-22).
+
 - Unmerge is trivial — clear one field
 - Provenance survives — you can still see which facts came from which record
 - No cascade of rewrites across thousands of rows

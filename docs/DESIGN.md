@@ -330,21 +330,36 @@ The brief is the flagship; every other surface inherits:
 
 ### Deferred surfaces — designed later, deliberately, not forgotten
 
-These have data-model support and inventoried use cases but no designed screen yet. Each is profile-reached or rare-tier, so deferral costs little now — but every one must eventually exist:
+These have data-model support and inventoried use cases but no designed screen yet. Each is profile-reached or rare-tier, so deferral costs little now — but every one must eventually exist.
 
-- **Timeline mini-page** — the §6.1 collapse row's destination. Chronological events for one person; the §6 "how this person changed" view lives here.
-- **Contact mini-page ("Reach her")** — the other collapse row: contact points with tap-to-act affordances and the §7.8 unverified-until-used rendering for voice-derived handles.
+*Build state (2026-07-31, recorded here so the register stays honest — this list is the design intent, not a status board; BUILD.md §8 is the status board):* the two mini-pages below shipped in M3; portrait onboarding shipped in M5; Export's capability exists without its UI entry.
+
+- **Timeline mini-page** — the §6.1 collapse row's destination. Chronological events for one person; the §6 "how this person changed" view lives here. **Built (M3).**
+- **Contact mini-page ("Reach her")** — the other collapse row: contact points with tap-to-act affordances and the §7.8 unverified-until-used rendering for voice-derived handles. **Built (M3), minus the tap-to-act affordances** — the handles render (unverified state included); acting on them is still deferred.
 - **Orbit-gardening session** — the occasional deliberate pass over relationship states (§12 ORBIT.md): narratives, orbits, cadences. Explicitly a *session* the user enters, never a prompt.
 - **Merge flow** — "these two Sarahs are the same person": candidate surfacing, pointer-merge confirmation, unmerge (DATA-MODEL Decision 6).
 - **Set-aside triage** — re-entering deferred proposals at leisure; currently assumed to reuse the review screen, needs its own entry design.
-- **Export** — the whole memory out, readable (trust-tier use case).
+- **Export** — the whole memory out, readable (trust-tier use case). **Capability built and tested (PRIV-5); no screen yet** — the archive is reachable only from code today.
 - **Brokering/hosting** — "who should come to dinner?" / "who should Maria meet?" A multi-person *selection* surface, not a lookup — the one genuinely new interaction pattern in the deferred set. Hold until the core loop is built and the need is felt in practice.
-- **Backfill portrait onboarding** — the guided first-run capture of long-standing relationships. Fully specified at the data-model level (DATA-MODEL §7.11: subject-participants, skippable serif prompts, pausable sessions, never queued, episodic/semantic history split); golden exists and is ground truth. Flow design proceeds alongside the build; PIPE-12's accuracy number against the production extractor is the remaining gate.
+- **Backfill portrait onboarding** — the guided first-run capture of long-standing relationships. Fully specified at the data-model level (DATA-MODEL §7.11: subject-participants, skippable serif prompts, pausable sessions, never queued, episodic/semantic history split); golden exists and is ground truth. **Built (M5)** — skippable serif prompts, genuinely pausable recording, never queued. PIPE-12's accuracy number against the production extractor remains the open gate.
 - **Usage journal** — the owner's private reflection surface (EVALS.md §8): local-only, feature-level never person-level, questions never goals. Periodic, quiet, probably a mini-page under settings — never a dashboard.
+
+### Surfaces built that this document does not describe
+
+Shipped during the build because the app could not function without them, each
+rendered in the ratified tokens and both room forms, none of them yet ratified
+as design. They are listed for Abdoul's ratify-or-redesign call (RATIFICATION §4):
+
+- **Keys sheet** — the one quiet drawer (faint key glyph on Home): two secure fields writing to this phone's keychain. Without it there is no way to give the device an extraction key.
+- **Store-failure screen** — plain-ink, no red (D-1): shown when the database cannot open, so the app never looks normal while writing memories to nowhere.
+- **Home resume doors** — plain footer lines for memos parked mid-flow (needs transcription / needs transcript review / needs sync), matching the set-aside line's grammar: a true count in words, tappable, never a badge (D-2/D-9).
+- **Review edit sheet** — P5's "accept with edits" made real: the mapped value, the since-date, or the suggested orbit are editable; the verbatim quote is shown and untouchable.
 
 ### Open questions
 
 - **Real-photo portrait treatment** — masking, night dimming, and what the print border does with low-quality contact photos. Needs real photos to design against.
 - **App icon** — candidate: the night portrait ring (ember circle on indigo). Unexplored.
 - **Sound** — capture start/stop earcons, if any. Default: silence.
-- **`ink-faint` contrast resolution** — decide bump-size vs darken at first build (§11.1).
+- **`ink-faint` contrast resolution** — ~~decide bump-size vs darken at first build (§11.1)~~ **resolved at M2: darken.** Section tags render at ≥11pt in `ink-muted`; `ink-faint` is reserved for genuinely secondary lines. Enforced by design_lint's ≥11pt rule.
+- **Undo on settled review lines** (§12 flagged it to "re-verify feel during build") — **not built.** Accept/reject is final in the UI today; the ledger records everything, so a wrong accept is correctable via amend and a wrong reject via new evidence. Registered for ratification (RATIFICATION §4.8).
+- **§10.5 pronouns** — the ratified copy ("Reach her") assumes a known pronoun. The build never infers one from a name: where no pronoun has been recorded, the person's name is used ("Reach Sana"). A user-entered pronoun field is deferred. Registered for ratification (RATIFICATION §4.9).

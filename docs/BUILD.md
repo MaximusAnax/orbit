@@ -46,8 +46,8 @@ Every component carries one of three verification tiers, recorded here and in WO
 
 | Tier | Meaning | Components |
 | --- | --- | --- |
-| **T1 — locally verifiable** | Runs in any Linux/macOS dev environment with no Apple toolchain: the SQL fast-loop (`scripts/dev/sql_check.py`, same SQLite engine) and any Python/Node tooling | Schema DDL, triggers, read-model SQL, golden compilation, fixtures |
-| **T2 — CI-verifiable** | Compiled + tested by GitHub Actions (`core.yml` on Linux for the whole SPM package incl. L0/L1; `app.yml` on macOS for the app target, snapshots, journeys) | All Swift targets, SwiftUI app, XCUITest journeys, design-lint |
+| **T1 — locally verifiable** | Runs in any Linux/macOS dev environment with no Apple toolchain: the SQL fast-loop (`scripts/dev/sql_check.py` + `sql_properties.py`, same SQLite engine), the embedded-SQL prepare rig, `design_lint.py`, and `measure.py` (the Python twin of the replay measurement) | Schema DDL, triggers, read-model SQL, embedded Swift SQL, design-law statics, golden compilation, fixtures |
+| **T2 — CI-verifiable** | Compiled + tested by GitHub Actions (`core.yml` on Linux for the whole SPM package incl. L0/L1; `app.yml` on macOS for the iOS app build + hosted tests each push, journeys on dispatch) | All Swift targets, SwiftUI app, hosted model-level journeys, XCUITest tap budgets (dispatch) |
 | **T3 — device/secret-gated** | Needs Abdoul's hardware or credentials; ships as a runnable harness + instructions | Transcription quality (PIPE-1/1b/2 — audio fixtures live only on Abdoul's devices, by design), on-device PERF budgets, **live** extraction runs (API key) |
 
 Nothing is reported as "verified" above its tier. T3 items produce their numbers the first time Abdoul runs the provided harness on real hardware; the ◊ thresholds ratify then.
@@ -175,32 +175,58 @@ New, registered here:
 
 ---
 
-## 8. State of the build — 2026-07-29 (end of in-session moonshot)
+## 8. State of the build — 2026-07-31 (CI green, post-review-pass)
 
-All six milestones M0–M5 are **built and committed** on `feature/initial_build`,
-with verification tiered honestly (§1.4). One-line status per milestone; detail
-in docs/build/WORKLOG.md.
+All six milestones M0–M5 are **built, pushed, and CI-green** on
+`feature/initial_build`. Verification is tiered honestly (§1.4); everything
+below marked T2 is verified by a workflow run, not by assertion. Detail in
+docs/build/WORKLOG.md.
 
 | Milestone | Status | Verified |
 | --- | --- | --- |
-| M0 Ledger | Built | **T1 green** (49 SQL property checks + embedded-SQL prepare rig) + full Swift L0 suite authored (T2-pending) |
-| M1 Pipeline | Built | **T1**: provisional PIPE report, criticals 0 (fixtures in-session model, labeled); Swift harness T2-pending |
-| M2 Loop | Built | design-lint **T1 green**; J-1…J-5, J-11, J-12 model+UI suites authored; PERF-3/4/5 = T3 |
-| M3 Desk & Deck | Built | PIPE-14 ×5 + J-6/J-7 suites authored; ranking SQL T1-prepared |
-| M4 Search | Built | Goldens S-1…S-10 authored FIRST; FTS retrieval assumptions **T1-verified**; embeddings: deferred (recorded) |
-| M5 Portraits | Built | INV-22/23/24 through-the-UI suites authored; PIPE-12 machinery wired E2E (live number needs API key) |
-| PRIV | Audited | docs/build/PRIV-AUDIT.md — PRIV-5 export/restore built+tested this session; PRIV-1/3 device halves = T3 |
+| M0 Ledger | Built | **T1+T2 green**: 50 SQL property checks + embedded-SQL prepare rig (T1); full Swift L0 invariant suite passing in CI (T2) |
+| M1 Pipeline | Built | **T1+T2 green**: provisional PIPE report (criticals 0, recall 100% on the 11-memo replay corpus; fixtures from the in-session model, labeled as such); Swift replay harness runs in CI; live number still needs a key (T3) |
+| M2 Loop | Built | design-lint **T1 green** (0 violations); J-1…J-5, J-11, J-12 model suites **T2 green**; XCUI tap-budget halves dispatch-only; PERF-3/4/5 = T3 |
+| M3 Desk & Deck | Built | PIPE-14 ×5 + J-6/J-7 suites **T2 green**; ranking SQL T1-prepared |
+| M4 Search | Built | Goldens S-1…S-10 authored FIRST, **T2 green**; embeddings: deferred (recorded, no golden demands them) |
+| M5 Portraits | Built | INV-22/23/24 through-the-UI suites **T2 green**; PIPE-12 machinery wired E2E (live number needs a key, T3) |
+| PRIV | Audited | docs/build/PRIV-AUDIT.md — PRIV-5 export/restore and PRIV-3's filesystem half built + tested in CI; PRIV-1/3 device halves = T3 |
 
-**Standing blockers (not code):** repo push access 403 (every phase gate
-retried); no `ANTHROPIC_API_KEY` (live PIPE numbers); no Apple toolchain in
-this environment (all Swift is T2-pending until CI runs).
+**CI shape:** `core` (Linux) runs `scripts/check.sh` — write-path lint, SQL
+fast-loop + property suite, design lint, provisional PIPE measurement, full
+build, full test suite, replay measurement — on every push. `app` (macOS) runs
+the iOS-simulator build plus the hosted `OrbitAppTests` suite on every push
+touching `apps/**` or `Sources/**`. The **XCUI journey suite is dispatch-only**
+(Actions → app → Run workflow → journeys: true): a cold simulator boot blows
+the 30-minute push budget. That cadence diverges from EVALS §L2's "every PR"
+and is registered for ratification (RATIFICATION §4.7).
+
+**Post-M5 work landed since the milestone table was first written:**
+OpenAI as a second extraction provider behind the unchanged §7.9 seam; the real
+whisper.cpp bridge (inactive until `scripts/build-whisper.sh` vendors the
+xcframework); ceiling-model download; Security.framework keychain + the Keys
+sheet; PRIV-3's filesystem deletion; the `ORBIT_TEAM` signing knob; and a
+full-build review pass (WORKLOG 2026-07-31) that fixed 176 confirmed findings
+across every layer and added six regression pins.
+
+**Standing blockers:** none in code. Repo push access and CI are both working;
+the OpenAI key is in the environment (its org data-retention posture still
+needs Abdoul's check per §1.3). What remains is **device bring-up on Abdoul's
+Mac** — Xcode + XcodeGen, `scripts/build-whisper.sh`, signing team, install,
+first capture — and the ◊ ratification queue. No Apple toolchain and no Swift
+toolchain exist in the build agent's environment (`download.swift.org` is
+blocked by the egress policy), so Swift compilation is verified exclusively by
+CI; every T1 claim above is from the Python/SQL rigs that do run locally.
 
 **Deferred surfaces register (post-M5, by felt need — DESIGN §14):**
 merge/unmerge review flow UI (ledger op is built + tested), gardening session,
 export UI entry point (capability built, PRIV-5), brokering/hosting search
 recipes, groups & saved lists UI, rejection-reason picker surfacing
 (`RejectionReason` wired in the funnel), Deck reachability actions
-(tap-to-call/text). (Settings/key entry shipped post-CI-green: real keychain +
-the Keys sheet.)
+(tap-to-call/text), set-aside triage as its own surface (today it reuses
+review), undo on settled review lines, usage journal. Built and **not** in
+DESIGN's ratified list — awaiting ratification (RATIFICATION §4): the Keys
+sheet, the store-failure screen, Home's resume doors, and the review edit
+sheet.
 
 **Ratification queue:** docs/evals/RATIFICATION.md.

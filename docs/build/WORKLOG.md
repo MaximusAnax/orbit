@@ -172,3 +172,51 @@ over every confirmed finding worth its diff. The load-bearing fixes:
 - Session note: the container restored from a stale snapshot mid-pass; local
   state was re-synced from `origin/feature/initial_build` (nothing pushed was
   lost) before the fixes landed.
+
+## 2026-07-31 · Documentation currency pass
+
+Abdoul flagged ORBIT.md as out of date; a sweep of every doc followed. The rule
+applied throughout: **the ratified specs are the constitution — the build
+conforms to them, not the reverse.** So normative text was not rewritten to
+match code anywhere. What changed was status metadata, registers that had
+become factually wrong about what exists, and honesty about where checks
+actually run.
+
+- **ORBIT.md** — the one genuinely stale line: "Planning complete… Next phase:
+  build" became a built/CI-green status, plus an explicit restatement that the
+  document is the constitution and divergences go to RATIFICATION. No
+  constitutional text touched.
+- **README.md** — built → built *and CI-green*, with what actually remains
+  (device bring-up, the ◊ queue).
+- **BUILD.md** — §8 rewritten against reality: T2-green per milestone instead
+  of "T2-pending", 50 SQL checks (was 49), the CI shape spelled out (what runs
+  per push vs on dispatch), post-M5 work recorded (OpenAI provider, whisper
+  bridge, model download, keychain + Keys sheet, PRIV-3 file deletion, signing
+  knob, review pass), and the standing-blockers block replaced: no code
+  blockers remain; the honest constraint now is that this environment has
+  neither an Apple nor a Swift toolchain (`download.swift.org` is blocked by
+  the egress policy), so **all Swift verification is CI's**. §1.4's T2 row no
+  longer claims a snapshot job exists; the T1 row now lists what actually runs.
+- **PRIV-AUDIT.md** — header re-tiered (T2 is green, not blocked). PRIV-1's
+  "the only URLSession use is RemoteExtractor" was factually wrong once the
+  OpenAI client and the model download landed: now enumerated as exactly three
+  call sites, two text-only egress and one inbound-only GET with no body, with
+  a house rule that a fourth is a review item. PRIV-5 updated for the
+  transactional restore and the richer round-trip test.
+- **DESIGN.md** — §14's deferred register claimed screens that shipped in M3/M5
+  (timeline and contact mini-pages, portrait onboarding) and omitted four
+  surfaces that shipped without design ratification (Keys sheet, store-failure
+  screen, Home resume doors, review edit sheet); both corrected, the latter in
+  a clearly-labeled section pointing at RATIFICATION §4.11. The `ink-faint`
+  open question is marked resolved (darken, at M2). Undo-on-settled-lines and
+  §10.5 pronouns are recorded as open with their registered decisions.
+- **EVALS.md** — the four-layer table keeps its spec; an "as built" note now
+  records where the rigs sit against it: no nightly job exists (per-push
+  instead), the XCUI halves of L2 are dispatch-only, and the rendered-pixel
+  design checks have **no automated tier at all** — they are device-graded,
+  which is what design_lint now prints instead of naming a snapshot job that
+  was never built.
+- **DATA-MODEL.md** — Decision 6 gains an "as built" note: write-time chain
+  flattening keeps the pointer graph one hop deep, reads still resolve to a
+  fixpoint with a cycle guard, self-row merges are refused.
+- **RATIFICATION.md** — item 11 added (the four undesigned surfaces).
