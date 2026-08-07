@@ -18,7 +18,7 @@ Findings from the 2026-08-06/07 device sessions — one entry each, in number
 order, status stated in the heading. How a fix was actually made lives in
 WORKLOG.md, which is the chronology.
 
-### FN-1 · Assertions may be dropping their entity — **needs re-checking** · T3
+### FN-1 · Assertions may be dropping their entity — **closed 2026-08-07 (was the display)**
 
 **Original note (2026-08-06 17:xx):** "he went to Harvard and he graduated in
 2022" rendered as `education · graduated in 2022 (2022)`, read as the extractor
@@ -43,6 +43,16 @@ absent, it is prompt work + golden run (BUILD.md §1.3).
 
 *Lesson worth keeping: a display that silently drops a field produces
 false bug reports about the layer underneath it.*
+
+**Resolved by evidence rather than a device run.** Every education assertion in
+the fixture corpus carries an entity ref — `e_cmu` twice, `e_umich`, `e_tartan` —
+so the extractor links schools reliably and has all along. The original reading
+("Harvard absent entirely") was the review card choosing `object_value` *or* the
+entity and never both, which is fixed. No prompt work is owed here.
+
+What remains from the original note is the `object_value` *phrasing* — "graduated
+in 2022" restating the date rather than naming a degree — and that is FN-10's
+subject, not a separate finding. Folded there.
 
 ### FN-2 · `location` is doing three different jobs — **closed 2026-08-07 (option B: controlled qualifier)** · T3
 
@@ -116,7 +126,7 @@ current failure path is a silent `catch` that retries next launch.
 connection? Then decide whether a failure that persists across N launches
 deserves a line the user can see.
 
-### FN-6 · This session's UI changes are build-verified only — open · T3
+### FN-6 · This session's UI changes are build-verified only — **mostly closed 2026-08-07** · T3
 
 Shipped without a device run: the working/collapse screen, the waiting-list
 long-press sheet, the mapped-fact card line, and the ref-name resolution. All
@@ -134,6 +144,25 @@ Highest-risk of the four, in order:
 **To close:** one deliberate pass on device.
 
 ---
+
+**Verified on simulator 2026-08-07**, running the real app against a seeded
+database rather than reading the code:
+
+- **Long-press → waiting list** — fires. This was the one flagged highest-risk,
+  because `simultaneousGesture` vs `onLongPressGesture` compiles identically and
+  only the device can tell them apart.
+- **"Let it go"** — writes: the event became `discarded` with its audio ref
+  nulled, and the memo beside it was untouched.
+- **Sheet-to-cover handoff** — resuming from the list dismissed the sheet and
+  raised the working screen cleanly, no race, no stuck state.
+- Incidentally exercised: the working screen renders and returns, the failure
+  produced exactly the `audioUnreadable` line (FN-31's classification working on
+  a real failure), and the footer count fell to a true "1 memo waiting" (D-9).
+
+**Still owed:** the collapse *action* — tapping "Leave it running" and confirming
+the result lands in the footer instead of seizing the screen. The simulator's
+transcription fails too fast to hold the screen long enough to press it. Needs
+either a real slow transcription on device, or a test seam.
 
 ### FN-7 · Entity cards can be rejected but not corrected — **closed 2026-08-06**
 
@@ -373,7 +402,7 @@ bound to, so accepting the person card no longer makes the old name reappear on
 every other card in the run. That was a genuine propagation bug; the
 `object_value` half remains and belongs to FN-10.
 
-### FN-15 · Review is the only moment anything can be corrected — **mostly closed 2026-08-06** · write path
+### FN-15 · Review is the only moment anything can be corrected — **closed 2026-08-07**
 
 Raised as "should I confirm now and fix it later, or edit the entry manually?"
 The honest answer is that the second option does not exist.
@@ -402,6 +431,16 @@ is undiscoverable.
 fact can be corrected in place, through the write funnel with an amendment row
 (INV-1 keeps the original). (b) Decide whether the waiting list deserves a
 visible affordance instead of a hidden gesture.
+
+**Both halves now done.** (a) The Desk carries rename-a-person and fix-a-fact,
+so review stopped being the only moment anything could be corrected. (b) The
+waiting list is no longer behind an invisible gesture: the footer opens the list
+when more than one memo is waiting and resumes directly when only one is, which
+is what its own copy already said — "tap to pick it **up**" versus "pick **one**
+up". The long-press still works, and the VoiceOver action remains.
+
+The evidence that settled (b): the list was proposed back to us as a missing
+feature the same evening it shipped. A gesture nobody can find is not a door.
 
 ### FN-16 · Nothing dedupes facts across two captures of the same thing — **closed 2026-08-06 (as a note, not a merge)**
 
@@ -684,7 +723,7 @@ rooms: exact match, and star dust present at night only.
 *Worth keeping: "it looks dark, so dark mode works" is not a check. Pure black
 and `#101423` are indistinguishable at a glance and differ at every pixel.*
 
-### FN-25 · The settings glyph and the mockup's footer word disagree — open · design
+### FN-25 · The settings glyph and the mockup's footer word disagree — **closed 2026-08-07 (footer word wins)**
 
 DESIGN §353 ratifies "a faint key glyph on Home" as the door to the Keys sheet.
 The home mockup (`prototype/home-search-mockup.html`) has no glyph: its footer
@@ -696,6 +735,11 @@ the mockup on 2026-08-07 — footer word, glyph removed — because the brief wa
 now disagree in the other direction.
 
 **To close:** pick one, make the other match.
+
+**Decided by Abdoul 2026-08-07: the footer word.** DESIGN §353 now describes
+the Keys sheet as reached from Home's footer row as `settings`, and records that
+this supersedes the earlier "faint key glyph" wording, which the mockup predates.
+Build and document agree.
 
 ### Home structure, brought to the mockup — closed 2026-08-07
 
@@ -799,6 +843,39 @@ true erase.
 *Worth keeping: the ledger refused to be deleted from, at the storage engine,
 without anyone having to remember the rule. That is the constitution working —
 the design cost showed up as twelve failing triggers rather than as a regret.*
+
+### FN-30 · Adding an associated value silently withdrew an Equatable conformance — closed 2026-08-07
+
+*(Numbered FN-25 in commit `fa98c87`'s message, colliding with the
+settings-glyph note already published under that number; renumbered here.
+Dropped entirely by a botched stash-pop conflict resolution on 2026-08-07
+and restored — see FN-34.)*
+
+`WaitingMemo.Stage` gained `needsProposalReview(syncRunID: String)`. Swift
+synthesises `==` for an enum **only while it has no associated values**, so that
+one addition quietly removed the conformance, and
+`XCTAssertEqual(memo.stage, .needsTranscription)` in `CaptureFailureTests`
+stopped compiling. The app target went red and stayed red across five commits.
+
+Two things worth keeping:
+
+1. **The failure was invisible from the cloud session.** `check.sh` here skips
+   the app target entirely (no Xcode), and it now says so out loud — but saying
+   so is not the same as catching it. Every app-layer change made from this
+   environment is unverified until a Mac or CI compiles it, and five commits of
+   red proved the gap is real rather than theoretical.
+2. **The break was at a distance.** The enum and the test were changed by
+   different people in different commits, and neither change was wrong on its
+   own. `Stage` now declares `Equatable` explicitly, which is the durable fix:
+   the conformance no longer depends on the enum happening to stay
+   value-free.
+
+*Related, and already fixed by Abdoul before I saw it:* the same commit pair
+broke `testResidenceSupersedesResidence` for a similar
+change-at-a-distance reason. Putting the qualifier (`residence`) into
+`object_value` made two different residences share an object value, so the
+"same object, not a contradiction" check swallowed them. `objectValueNamesTheObject`
+now distinguishes a value that *names* the object from one that *classifies* it.
 
 ### FN-31 · An inferred date rendered as though it had been stated — closed 2026-08-07 (display); extraction half open
 
@@ -912,6 +989,28 @@ fix, since these two had already diverged once.
 next finding. Every one of them was a case-analysis miss — entity vs literal,
 winner vs identity — not a coding error. Where a value can play two roles, the
 question has to select the role, and a test has to pin each role separately.*
+
+### FN-34 · A conflict resolution silently deleted a field note — closed 2026-08-07
+
+Resolving the stash-pop conflict in this file on 2026-08-07 ended with
+`git checkout --theirs .` as a tidy-up step. During a stash pop `--theirs` means
+the *stashed* side, so it discarded the upstream half of a conflict I had just
+merged by hand — taking FN-30 (the `Equatable` note from `fa98c87`) with it. The
+commit went out with a field note that had existed an hour earlier simply gone,
+and nobody noticed until the notes were enumerated for closure.
+
+Restored from `fa98c87`.
+
+Two things worth keeping:
+
+1. **The earlier restructure of this same file was verified and the later edit
+   was not.** When the file was rebuilt into one-entry-per-finding, a check
+   asserted that zero content lines were lost. The conflict resolution an hour
+   later had no such check, and that is exactly where the loss happened. The
+   guard was written for the risky-looking operation, not the risky one.
+2. **`--theirs`/`--ours` invert during a stash pop**, and reaching for either
+   after hand-merging a file discards the hand-merge. The habit that would have
+   caught it: after resolving, diff against both parents before staging.
 
 ---
 

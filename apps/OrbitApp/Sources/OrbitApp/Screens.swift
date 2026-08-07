@@ -138,7 +138,16 @@ struct HomeView: View {
                     // long-press opens the list, which is where a memo that can
                     // never be picked up can be let go instead of sitting here.
                     if let memo = app.waitingMemos.first {
-                        Button { app.resume(memo) } label: {
+                        // FN-15: the list existed behind a long-press and was
+                        // proposed back to us as a missing feature the same
+                        // evening it shipped — undiscoverable. The copy already
+                        // says which case is which ("tap to pick it UP" vs
+                        // "pick ONE up"), so the behaviour now matches the
+                        // words: one memo resumes, several offer the choice.
+                        Button {
+                            if app.waitingMemos.count > 1 { showWaitingList = true }
+                            else { app.resume(memo) }
+                        } label: {
                             FooterLink(Copy.waitingFooter(app.waitingMemos.count))
                         }
                         .accessibilityIdentifier("home.waitingFooter")
