@@ -98,10 +98,13 @@ struct BriefScreen: View {
                         PaperTile {
                             VStack(alignment: .leading, spacing: 7) {
                                 SectionTag(Copy.sinceTag(brief.header.name))
-                                ForEach(brief.changed, id: \.assertionID) { change in
-                                    Text(change.line)
+                                ForEach(Array(brief.changed.enumerated()), id: \.element.assertionID) { pair in
+                                    // §5.6: dashes separate memory items — never
+                                    // interface elements, and never above the first
+                                    if pair.offset > 0 { DashedDivider() }
+                                    Text(pair.element.line)
                                         .memoryVoice(size: 13)
-                                        .foregroundStyle(change.isClose
+                                        .foregroundStyle(pair.element.isClose
                                             ? Tokens.inkMuted(room) : Tokens.ink(room))
                                 }
                             }
@@ -117,17 +120,19 @@ struct BriefScreen: View {
                                     ForEach(eraGroups(brief.forgotten), id: \.era) { group in
                                         Text(group.era).interfaceVoice(size: 10.5, weight: .semibold)
                                             .foregroundStyle(Tokens.inkFaint(room))
-                                        ForEach(group.items, id: \.assertionID) { item in
-                                            Text(item.claim).memoryVoice(size: 13)
+                                        ForEach(Array(group.items.enumerated()), id: \.element.assertionID) { pair in
+                                            if pair.offset > 0 { DashedDivider() }   // §5.6
+                                            Text(pair.element.claim).memoryVoice(size: 13)
                                                 .foregroundStyle(Tokens.ink(room))
                                         }
                                     }
                                 } else {
-                                    ForEach(brief.forgotten, id: \.assertionID) { item in
+                                    ForEach(Array(brief.forgotten.enumerated()), id: \.element.assertionID) { pair in
+                                        if pair.offset > 0 { DashedDivider() }   // §5.6
                                         VStack(alignment: .leading, spacing: 2) {
-                                            Text(item.claim).memoryVoice(size: 13)
+                                            Text(pair.element.claim).memoryVoice(size: 13)
                                                 .foregroundStyle(Tokens.ink(room))
-                                            if let teller = item.teller {
+                                            if let teller = pair.element.teller {
                                                 Text(Copy.toldYou(teller)).interfaceVoice(size: 10.5)
                                                     .foregroundStyle(Tokens.inkFaint(room))
                                             }

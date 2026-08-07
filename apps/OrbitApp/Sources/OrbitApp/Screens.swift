@@ -12,6 +12,12 @@ struct HomeView: View {
     @State private var showCapture = false
     @State private var showSettings = false
     @State private var showWaitingList = false
+    /// Which query shape the search pill is teaching right now (§12).
+    @State private var placeholderIndex = 0
+    /// Slow enough to read, never animated into a carousel — motion in Orbit is
+    /// a cut, not a slide (§8).
+    private let placeholderRotation = Timer.publish(every: 4.5, on: .main, in: .common)
+        .autoconnect()
 
     var body: some View {
         VStack(spacing: 14) {
@@ -20,9 +26,14 @@ struct HomeView: View {
                 SearchView(initialQuery: searchText)
             } label: {
                 HStack {
-                    Text(Copy.searchPlaceholders[0])
+                    // DESIGN §12: the placeholder ROTATES through the three real
+                    // query shapes — a name, a question, a fragment. The rotation
+                    // is the teaching ("one box, three shapes"); a fixed string
+                    // teaches only the first of them.
+                    Text(Copy.searchPlaceholders[placeholderIndex])
                         .interfaceVoice(size: 13)
                         .foregroundStyle(Tokens.inkFaint(room))
+                        .id(placeholderIndex)
                     Spacer()
                 }
                 .padding(.vertical, 12).padding(.horizontal, 16)
@@ -136,6 +147,9 @@ struct HomeView: View {
         .fullScreenCover(item: homeTranscriptBinding) { vm in TranscriptReviewView(vm: vm) }
         .fullScreenCover(item: homeReviewBinding) { vm in ReviewView(vm: vm) }
         .onAppear { app.refreshAmbient() }
+        .onReceive(placeholderRotation) { _ in
+            placeholderIndex = (placeholderIndex + 1) % Copy.searchPlaceholders.count
+        }
     }
 
     /// Read-only: collapsing is the only way out, and it goes through the model

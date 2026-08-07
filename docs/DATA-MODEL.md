@@ -212,6 +212,17 @@ The center of the model.
 
 `employment` · `education` · `location` · `interest` · `skill` · `goal` · `concern` · `relation` (person↔person: sibling, colleague, introduced_by) · `life_event` · `preference` · `trait`
 
+*As built (2026-08-07, FIELD-NOTES FN-2):* `location` was carrying three
+different jobs — origin, residence, and (wrongly) the venue of a meeting. Rather
+than split the predicate, its `object_value` now carries a controlled qualifier:
+**`origin`** (birthplace, where they grew up) or **`residence`** (where they
+live, or lived during a stated period), with the place itself as the entity ref.
+This is the same shape `education` uses for status (`alumni`/`undergrad`/…), and
+it makes supersession exact: only a residence can close a residence, so a
+birthplace is never ended by a move. Facts written before this fall back to the
+date heuristic. A meeting's venue is not an assertion at all — it belongs to
+`event.location_entity_id`.
+
 `concern` deserves note — it is inherently time-bound, urgent-then-poignant. "Nervous about her interview" is Principle 9's entire worked example.
 
 ### Event

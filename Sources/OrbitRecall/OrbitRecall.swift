@@ -375,8 +375,11 @@ public struct Deck: Sendable {
             cards.append(Card(tag: "Worth having back", main: item.claim,
                               sub: sub, surfacedAssertionID: item.assertionID))
         }
+        // DESIGN §7: the end card is always this, serif, the tool's one sentence
+        // in the memory voice — and its sub links back to the full profile.
         cards.append(Card(tag: "That's everything", main: "Go be present.",
-                          sub: "", surfacedAssertionID: nil, isEnd: true))
+                          sub: "Back to \(brief.header.name)'s desk",
+                          surfacedAssertionID: nil, isEnd: true))
         return Deck(cards: cards)
     }
 }

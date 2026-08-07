@@ -133,3 +133,14 @@ missing column in minutes.
    it means a new card type, a schema change, and a golden run; the field note
    asks whether it deserves its own kind, and that is a design call rather than
    a defect. It was left for you, not silently half-built.
+18. **FN-2 resolved as a controlled qualifier, not a new predicate** (your call,
+   2026-08-07) — `location.object_value` is now `origin` or `residence`, the
+   same shape `education` uses for status. Supersession became exact: only a
+   residence closes a residence. Prompt v3 carries the rule and was promoted
+   under the same waiver as v2, so it is **also unmeasured** — one live run now
+   clears both. A separate `origin` predicate remains available and is no longer
+   blocked (FN-17), if querying origin structurally turns out to matter.
+19. **FN-11 resolved as "not yet"** (your call, 2026-08-07) — entity
+   disambiguation gets no card type; correcting an entity stays typing rather
+   than asking. Revisit when you notice yourself typing the same expansion more
+   than once or twice.

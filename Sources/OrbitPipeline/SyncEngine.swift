@@ -236,14 +236,18 @@ public struct SyncEngine {
                     .filter { fact in
                         guard fact.text("predicate") == draft.predicate else { return false }
                         guard !matchesExisting(fact) else { return false }   // same fact, not a rival
-                        // FIELD-NOTES FN-2: `location` carries origin AND residence.
-                        // A birthplace is not superseded by a move, so a location
-                        // fact only closes another when BOTH sides state a start —
-                        // a dated residence replacing a dated residence. Undated
-                        // location facts ("born and raised in New York") read as
-                        // background and are left open.
+                        // FIELD-NOTES FN-2: `location` carries origin AND
+                        // residence, and a birthplace is never superseded by a
+                        // move. The qualifier says which is which (prompt v3:
+                        // object_value is `origin` or `residence`), so only a
+                        // residence can close a residence. Dates are the
+                        // fallback for facts written before the qualifier
+                        // existed — undated location facts read as background.
                         if draft.predicate == "location" {
-                            return fact.text("valid_from") != nil && draft.validFrom != nil
+                            return Self.isResidence(value: draft.objectValue,
+                                                    hasStart: draft.validFrom != nil)
+                                && Self.isResidence(value: fact.text("object_value"),
+                                                    hasStart: fact.text("valid_from") != nil)
                         }
                         return true
                     }
@@ -407,6 +411,21 @@ public struct SyncEngine {
             ?? ""
     }
 
+    /// Is this `location` fact about where someone *lives* (FIELD-NOTES FN-2)?
+    ///
+    /// The qualifier is the answer when it is there. Facts written before
+    /// prompt v3 carry no qualifier, so they fall back to the older heuristic:
+    /// a stated start means a residence, and no dates at all reads as
+    /// background. `origin` is never a residence however it is dated — a
+    /// birthplace with a year is still a birthplace.
+    static func isResidence(value: String?, hasStart: Bool) -> Bool {
+        switch value?.lowercased() {
+        case "residence": return true
+        case "origin": return false
+        default: return hasStart
+        }
+    }
+
     /// What one draft says about another *in the same memo* (FIELD-NOTES FN-9).
     struct WithinRunSupersession {
         let closedAt: String       // the superseding claim's start date
@@ -443,6 +462,13 @@ public struct SyncEngine {
                       later.subjectRef == earlier.subjectRef,
                       let laterFrom = later.validFrom,
                       laterFrom > earlierFrom else { continue }
+                // FN-2: an origin claim is never superseded, and never
+                // supersedes — a birthplace and a move are both true.
+                if earlier.predicate == "location" {
+                    guard Self.isResidence(value: earlier.objectValue, hasStart: true),
+                          Self.isResidence(value: later.objectValue, hasStart: true)
+                    else { continue }
+                }
                 // same object = the same fact restated, not a contradiction
                 let sameEntity = later.objectEntityRef != nil
                     && later.objectEntityRef == earlier.objectEntityRef

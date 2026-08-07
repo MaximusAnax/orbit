@@ -42,7 +42,7 @@ absent, it is prompt work + golden run (BUILD.md §1.3).
 *Lesson worth keeping: a display that silently drops a field produces
 false bug reports about the layer underneath it.*
 
-### FN-2 · `location` is doing three different jobs — **contradiction half closed 2026-08-06; modelling question open** · T3
+### FN-2 · `location` is doing three different jobs — **closed 2026-08-07 (option B: controlled qualifier)** · T3
 
 One memo produced three `location` assertions: born and raised in New York,
 from the Upper East Side, in San Francisco since 2022. The first two are origin,
@@ -287,6 +287,8 @@ conference" to "ColorStack StackedUp Summit '26" at review now writes the real
 name while `aliases` keeps the spoken form, so the next voice note saying it the
 short way still resolves to the same entity — §7.10 guarantee 3, working as
 designed, with the missing seed step supplied.
+
+**Decided 2026-08-07 — not building it (option A).** Left as typing, not asking; the tell that would change this is finding yourself typing the same expansion repeatedly. Recorded in RATIFICATION §4.17. Original note below.
 
 **Still open, and genuinely separate:** "CMU" → "Carnegie Mellon University" is
 better *asked* than typed, and `Ambiguity.kind` is `subject | self_collision |
@@ -620,3 +622,59 @@ payload + prompt + a golden run.
 *And the note's own argument stands: `location` has now been asked to do three
 different jobs — origin, residence, and venue. That is the strongest case yet
 for settling FN-2's modelling question rather than narrowing the rule again.*
+
+---
+
+## 2026-08-07 · Session 4 — design conformance audit
+
+Abdoul's read: "the app isn't fully built — it diverged from how it was mocked."
+Audit method: every ratified surface in DESIGN §6/§7/§12 checked against the
+built screens, plus a mechanical sweep for design components that exist and are
+never used (a component with no call sites is a design decision that was
+specified and then not built).
+
+**The structure is all there.** Desk tiles 0–8 render in the ratified fixed
+order with the right spans, empty sections collapse rather than placeholder,
+counts are real, the Deck's anatomy (progress bars → ember caps tag → serif 24
+main → sans sub) matches, both rooms translate, and the three search shapes
+exist. The divergences were in the **signature moves** — the small things §5
+says carry the whole feeling.
+
+### FN-21 · The search placeholder never rotated — closed 2026-08-07
+
+§12 ratifies "an omnisearch pill whose placeholder **rotates** through real
+query shapes (a name, a company, a fragment — teaching that they're one box)".
+The build rendered `searchPlaceholders[0]` and nothing else, so the box taught
+only "type a name" — the one shape a user would already assume. All three
+shapes now rotate on a 4.5s cut (no slide: §8 motion is a cut, not a carousel).
+
+### FN-22 · `DashedDivider` was built and never used — closed 2026-08-07
+
+§5.6: "dashes separate memory items, never interface elements." The component
+existed in OrbitDesign with **zero call sites** anywhere in the app, so the two
+memory lists — "Since you last saw them" and "Worth having back" — ran their
+items together with plain spacing, which is how an interface list looks, not
+how a memory list looks. Dashes now separate items in both (and inside era
+groups), never above the first item and never between interface elements.
+
+### FN-23 · The Deck's end card had no way back — closed 2026-08-07
+
+§7: "The end card is always `That's everything · Go be present.` — serif, the
+tool's one sentence in the memory voice. **Sub links to the full profile.**"
+The serif sentence was right; the sub was empty and the only affordance was a
+tertiary button repeating the tag it sat under. The sub now names the way back.
+
+**Not divergences, checked and confirmed correct:** hero is exactly one item;
+`N more ›` on threads; the owe-sticky flips its tag and tilts by day only;
+"Worth having back" grows era-grouped past 6 rather than truncating (the
+ratified unbounded decision, which reads as a contradiction with the same
+row's "2–3 items" phrasing — the unbounded clause is the later ratification);
+star dust at night only; the portrait's print border by day and ember ring by
+night.
+
+**Still not built, and now recorded rather than assumed:** every surface in
+§14's deferred register (gardening session, merge flow, brokering, groups,
+export UI, set-aside triage as its own screen, usage journal). Those are
+deliberate deferrals with data-model support, not gaps — but "the app isn't
+fully built" is a fair description of them, and they are the honest answer to
+that reading.

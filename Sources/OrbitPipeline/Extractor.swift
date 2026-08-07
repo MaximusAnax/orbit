@@ -124,7 +124,7 @@ public struct RemoteExtractor: Extractor {
 
     /// The active prompt version.
     ///
-    /// **v2 was promoted without its golden run** — BUILD §1.3 requires one on
+    /// **v2 and v3 were promoted without their golden runs** — BUILD §1.3 requires one on
     /// the same commit, and Abdoul waived it explicitly (2026-08-06, in chat;
     /// registered in WORKLOG and RATIFICATION §4.16). The waiver is recorded
     /// rather than quietly taken, because the consequence is real: the
@@ -133,8 +133,8 @@ public struct RemoteExtractor: Extractor {
     ///
     /// `ORBIT_PROMPT_VERSION=v1` restores the measured prompt for comparison.
     public static var promptVersion: String {
-        let requested = ProcessInfo.processInfo.environment["ORBIT_PROMPT_VERSION"] ?? "v2"
-        return ["v1", "v2"].contains(requested) ? requested : "v2"
+        let requested = ProcessInfo.processInfo.environment["ORBIT_PROMPT_VERSION"] ?? "v3"
+        return ["v1", "v2", "v3"].contains(requested) ? requested : "v3"
     }
 
     public init(apiKey: String, model: String = "claude-opus-5",

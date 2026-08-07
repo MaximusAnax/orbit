@@ -113,4 +113,35 @@ final class ContradictionTests: XCTestCase {
         XCTAssertTrue(engine.withinRunSupersessions(drafts).isEmpty,
                       "it already carries its end date; nothing to infer")
     }
+
+    // MARK: FN-2 — the qualifier decides, not the dates
+
+    func testOriginIsNeverSupersededEvenWhenDated() {
+        let drafts = [
+            draft("p1", "location", value: "origin", from: "1998",
+                  verbatim: "born in New York in 1998"),
+            draft("p1", "location", value: "residence", from: "2022",
+                  verbatim: "moved to San Francisco in 2022"),
+        ]
+        XCTAssertTrue(engine.withinRunSupersessions(drafts).isEmpty,
+                      "a birthplace with a year is still a birthplace")
+    }
+
+    func testResidenceSupersedesResidence() {
+        let drafts = [
+            draft("p1", "location", value: "residence", from: "2015", verbatim: "lived in NY"),
+            draft("p1", "location", value: "residence", from: "2022", verbatim: "now in SF"),
+        ]
+        XCTAssertEqual(engine.withinRunSupersessions(drafts)[0]?.closedAt, "2022")
+    }
+
+    func testIsResidenceFallsBackToDatesForPreQualifierFacts() {
+        // written before prompt v3: no qualifier, so the old heuristic applies
+        XCTAssertTrue(SyncEngine.isResidence(value: nil, hasStart: true))
+        XCTAssertFalse(SyncEngine.isResidence(value: nil, hasStart: false))
+        XCTAssertFalse(SyncEngine.isResidence(value: "New York", hasStart: false))
+        // and the qualifier always wins over the dates
+        XCTAssertFalse(SyncEngine.isResidence(value: "origin", hasStart: true))
+        XCTAssertTrue(SyncEngine.isResidence(value: "residence", hasStart: false))
+    }
 }
