@@ -110,7 +110,7 @@ reaches the device.
 already has a skip path (`\(` → excluded), so the same escape applies. Expect
 real failures on first run; that is the point.
 
-### FN-5 · Whisper ceiling model is a 547MB first-run download — **visibility added 2026-08-06; device observation still owed** · T3
+### FN-5 · Whisper ceiling model is a 547MB first-run download — **state now visible 2026-08-07; observation still owed** · T3
 
 `ModelManager.downloadCeilingIfNeeded()` fetches `large-v3-turbo-q5_0` (547MB)
 during onboarding dead time, unmetered and unannounced. Until it lands, every
@@ -125,6 +125,21 @@ current failure path is a silent `catch` that retries next launch.
 **To close:** device observation first — does it complete on a normal
 connection? Then decide whether a failure that persists across N launches
 deserves a line the user can see.
+
+**2026-08-07 — Abdoul cannot say whether the download finished, which is the
+finding.** The only signal was a notice that requires three consecutive failures
+before it appears, so "is the model here, and what is waiting on it" had no
+answer short of reading the filesystem. State you can only infer is state you
+cannot check.
+
+Settings now carries a plain line: whether the full model is on the phone, how
+many recordings are being kept until it arrives, and how many download attempts
+have failed. That turns the §7.5 retention gate from something invisible into
+something answerable at a glance.
+
+**Still owed:** the observation itself, now that it can be made — open Settings
+on the device and read it. If the model is absent with failures climbing, this
+escalates, because every recording is being retained with no user-visible cause.
 
 ### FN-6 · This session's UI changes are build-verified only — **mostly closed 2026-08-07** · T3
 
@@ -196,7 +211,7 @@ Two properties worth keeping in mind if this is revisited:
 - Only refs *introduced in this run* are renameable. Correcting an already-saved
   person still needs `UserEditService.renamePerson`, which has no UI here.
 
-### FN-8 · "Map places to real-world locations" runs into PRIV-2 — **route (1) taken 2026-08-06** · privacy
+### FN-8 · "Map places to real-world locations" runs into PRIV-2 — **closed 2026-08-07 (route 1)**
 
 Asked during testing: could New York / Upper East Side / Harvard resolve to real
 geographic entities rather than free-standing strings?
@@ -218,6 +233,16 @@ Privacy-safe routes, roughly in order of cost:
 
 **To close:** confirm whether (1) plus a prompt nudge toward `part_of` covers the
 real need before considering (2).
+
+**Closed on Abdoul's call 2026-08-07: route (1) is enough.** `part_of` already
+expresses "Upper East Side is in New York", and §7.10's alias convergence already
+collapses spoken variants onto one entity — between them that is most of what
+"map to real-world locations" was reaching for.
+
+The offline gazetteer (route 2) stays recorded rather than built, with the reason
+it would ever be revisited: a need that `part_of` cannot express, not a wish for
+tidier names. Route 3 — any network lookup — remains refused, since it would open
+a second content-carrying egress and PRIV-2 permits exactly one.
 
 ### FN-9 · Contradictions inside a single memo are never detected — **closed 2026-08-06** · T1 testable
 

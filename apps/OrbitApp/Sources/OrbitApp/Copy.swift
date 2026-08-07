@@ -172,6 +172,22 @@ enum Copy {
     static let saveKeys = "Save"
     static let keySaved = "Saved to the keychain"
 
+    /// FN-5: whether the full-model listener is actually here was inferable only
+    /// from a stalled-download notice that needs three failures to appear. State
+    /// you can only infer is state you cannot check.
+    static let modelSectionTitle = "The listener"
+    static let modelPresent = "The full model is on this phone. Recordings are deleted once it has heard them."
+    static func modelAbsent(_ retained: Int, failures: Int) -> String {
+        let kept = retained == 1 ? "1 recording is being kept"
+                                 : "\(retained) recordings are being kept"
+        let why = failures == 0
+            ? "It downloads quietly in the background."
+            : (failures == 1 ? "One attempt has failed so far."
+                             : "\(failures) attempts have failed so far.")
+        return "Still downloading the full model, so \(kept) until it can hear them. \(why)"
+    }
+    static let modelAbsentNothingKept = "The full model isn't here yet. Nothing is waiting on it."
+
     // Resume doors (J-11) — plain lines, never badges
     static func waitingFooter(_ n: Int) -> String {
         n == 1 ? "1 memo waiting · tap to pick it up"
@@ -282,6 +298,8 @@ enum Copy {
             stateCardTag, suggestedPrefix, onboardingNamePrompt, onboardingBegin,
             onboardingPortraitInvite,
             settingsTitle, settingsHint, anthropicKeyLabel, openAIKeyLabel,
+            modelSectionTitle, modelPresent, modelAbsent(3, failures: 2),
+            modelAbsentNothingKept,
             saveKeys, keySaved,
             waitingFooter(1), waitingFooter(3), keepNote, micUnavailable, micDenied,
             waitingListTitle, waitingListHint, letGo, waitingStageNeedsTranscription,

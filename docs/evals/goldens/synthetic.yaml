@@ -134,3 +134,41 @@
   forbidden:
     - {kind: correction, contains: stripe,
        why: "nothing says Stripe was never true — this is supersession, not retraction"}
+
+# FIELD-NOTES FN-10 / FN-12 / FN-14 / FN-20 / FN-31 — the tag-discipline memo.
+#
+# Every one of those notes is the same failure wearing a different hat:
+# `object_value` used as a free-text summary instead of the tag DATA-MODEL §2
+# defines ("tag the concept, keep the sentence"). One memo exercises all of them,
+# because a fix for one that breaks another is exactly what kept happening.
+- memo: tag-discipline
+  source: docs/evals/corpus/synthetic/tag-discipline.txt
+  status: draft
+  required_people:
+    - {key: priya, name_like: priya}
+  required_entities:
+    - {key: anthropic, name_like: anthropic}
+    - {key: cmu, name_like: carnegie}
+    - {key: oakland, name_like: oakland}
+  required_assertions:
+    # FN-10: the employer is the ENTITY; the role is a short literal beside it.
+    - {subject: priya, predicate: employment, entity: anthropic,
+       why: "FN-10: the org belongs in object_entity_ref, never as prose"}
+    # FN-12: education carries the school as entity and the status as a literal.
+    - {subject: priya, predicate: education, entity: cmu,
+       why: "FN-12: 'alumna' is a status qualifier, not the object"}
+    # FN-2/FN-20: origin and residence are both true and must not close each other.
+    - {subject: priya, predicate: location, contains: residence,
+       why: "FN-2 option B: the qualifier says which kind of location this is"}
+  forbidden:
+    # FN-10's headline symptom: the rambling clause landing in the tag slot.
+    - {kind: object_value_longer_than, predicate: skill, words: 12,
+       why: "FN-10: a paragraph in object_value defeats having two fields — §17 queries traverse tags"}
+    - {kind: object_value_longer_than, predicate: employment, words: 8,
+       why: "FN-10: a role title is short; the sentence lives in verbatim"}
+    # FN-14: a person's name inside object_value cannot be corrected by renaming.
+    - {kind: object_value_contains_person_name, predicate: relation,
+       why: "FN-14: the related person belongs in object_person_ref, not spelled into prose"}
+    # FN-31: dates must not claim more precision than the source gave.
+    - {kind: date_precision_exceeds_source, contains: march,
+       why: "FN-31: 'started in March' is month precision — a day was never said"}

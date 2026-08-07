@@ -218,6 +218,19 @@ final class AppModel: ObservableObject {
                                   newValue: trimmed, reason: "corrected on the desk")
     }
 
+    /// What the transcription ceiling is doing, in words rather than by
+    /// inference (FIELD-NOTES FN-5). Until this existed the only signal was a
+    /// notice that needs three consecutive failures before it says anything, so
+    /// "is the model here, and what is waiting on it" had no answer.
+    var modelStatusLine: String {
+        let models = whisperTranscriber?.models ?? ModelManager()
+        if models.ceilingURL != nil { return Copy.modelPresent }
+        let retained = Int((try? store.db.scalar(
+            "SELECT COUNT(*) FROM event WHERE raw_audio_ref IS NOT NULL").intValue) ?? 0)
+        guard retained > 0 else { return Copy.modelAbsentNothingKept }
+        return Copy.modelAbsent(retained, failures: models.consecutiveDownloadFailures)
+    }
+
     /// Add a handle by hand. ORBIT.md §Contact Points lists these across
     /// platforms, and they are the one kind of data voice capture is worst at:
     /// "@ j dash smith underscore 92" survives no transcriber, and unlike a
@@ -630,8 +643,8 @@ final class AppModel: ObservableObject {
     /// needed the model stays quiet (P10).
     func noteStalledModelDownload(_ models: ModelManager) {
         guard models.ceilingURL == nil, models.consecutiveDownloadFailures >= 3 else { return }
-        let retained = (try? store.db.scalar(
-            "SELECT COUNT(*) FROM event WHERE raw_audio_ref IS NOT NULL").intValue) ?? 0
+        let retained = Int((try? store.db.scalar(
+            "SELECT COUNT(*) FROM event WHERE raw_audio_ref IS NOT NULL").intValue) ?? 0)
         guard retained > 0 else { return }
         captureNotice = Copy.modelDownloadStalled
     }

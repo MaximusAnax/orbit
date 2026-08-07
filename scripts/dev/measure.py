@@ -347,7 +347,13 @@ def main():
     rows = []
     all_criticals = []
     pipe11 = [0, 0]
+    # EVALS practice is goldens-first: a golden may exist before the fixture that
+    # answers it, because some fixtures can only come from a live extraction run.
+    # Those are reported by name, never silently skipped ("no silent gaps").
+    awaiting = [m for m in goldens if not (FIX / f"{m}.json").exists()]
     for memo, golden in goldens.items():
+        if memo in awaiting:
+            continue
         fixture = json.loads((FIX / f"{memo}.json").read_text())
         grader = Grader(memo, golden, fixture)
         grader.grade()
@@ -363,6 +369,8 @@ def main():
     frag = 0
     frag_pairs = []
     for memo in goldens:
+        if memo in awaiting:
+            continue
         fixture = json.loads((FIX / f"{memo}.json").read_text())
         for e in fixture["payload"]["entities"]:
             names = {norm(e["name_as_heard"])} | {norm(a) for a in e["aliases"]}
@@ -382,6 +390,11 @@ def main():
     lines.append("# Provisional PIPE measurement — 2026-07-29")
     lines.append("")
     lines.append(f"Extractor: `claude-fable-5(in-session)` · prompt v1 · corpus: 4 real + 7 synthetic memos.")
+    if awaiting:
+        lines.append("")
+        lines.append("**Goldens awaiting a fixture** (authored first, measured once a live "
+                     "extraction produces one — `orbit-evals measure --live`): "
+                     + ", ".join(f"`{m}`" for m in sorted(awaiting)))
     lines.append("**Provisional by definition** — the ratified PIPE-12 number awaits the production")
     lines.append("extractor (EVALS §9). Deterministic contract matching (structured fields +")
     lines.append("containment); no LLM judge in this path.")

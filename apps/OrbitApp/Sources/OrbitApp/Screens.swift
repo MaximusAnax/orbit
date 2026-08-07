@@ -346,6 +346,7 @@ struct WaitingListView: View {
 }
 
 struct SettingsView: View {
+    @EnvironmentObject var app: AppModel
     @Environment(\.room) var room
     @Environment(\.dismiss) var dismiss
     @State private var anthropicKey = KeychainLite.read("anthropic-api-key") ?? ""
@@ -375,6 +376,15 @@ struct SettingsView: View {
                     Text(Copy.keySaved).interfaceVoice(size: 11.5)
                         .foregroundStyle(Tokens.inkMuted(room))
                 }
+
+                // FN-5: the §7.5 audio-retention gate is invisible otherwise —
+                // you cannot tell whether recordings are piling up waiting for a
+                // model that never arrived.
+                SectionTag(Copy.modelSectionTitle)
+                    .padding(.top, 10)
+                Text(app.modelStatusLine).interfaceVoice(size: 11.5)
+                    .foregroundStyle(Tokens.inkMuted(room))
+                    .accessibilityIdentifier("settings.modelStatus")
                 Spacer()
             }
             .padding(.horizontal, Tokens.screenPaddingSide)
