@@ -332,10 +332,10 @@ The brief is the flagship; every other surface inherits:
 
 These have data-model support and inventoried use cases but no designed screen yet. Each is profile-reached or rare-tier, so deferral costs little now — but every one must eventually exist.
 
-*Build state (2026-07-31, recorded here so the register stays honest — this list is the design intent, not a status board; BUILD.md §8 is the status board):* the two mini-pages below shipped in M3; portrait onboarding shipped in M5; Export's capability exists without its UI entry.
+*This list is design intent, not a status board — BUILD.md §8 is the status board. Build state is noted per item and kept current.*
 
 - **Timeline mini-page** — the §6.1 collapse row's destination. Chronological events for one person; the §6 "how this person changed" view lives here. **Built (M3).**
-- **Contact mini-page ("Reach her")** — the other collapse row: contact points with tap-to-act affordances and the §7.8 unverified-until-used rendering for voice-derived handles. **Built (M3), minus the tap-to-act affordances** — the handles render (unverified state included); acting on them is still deferred.
+- **Contact mini-page ("Reach her")** — the other collapse row: contact points with tap-to-act affordances and the §7.8 unverified-until-used rendering for voice-derived handles. **Built (M3); handles can be entered by hand since 2026-08-07** (FN-26 — a handle is the one field voice capture reliably ruins, so `source: manual` skips the unverified mark). **Tap-to-act is still deferred.**
 - **Orbit-gardening session** — the occasional deliberate pass over relationship states (§12 ORBIT.md): narratives, orbits, cadences. Explicitly a *session* the user enters, never a prompt.
 - **Merge flow** — "these two Sarahs are the same person": candidate surfacing, pointer-merge confirmation, unmerge (DATA-MODEL Decision 6).
 - **Set-aside triage** — re-entering deferred proposals at leisure; currently assumed to reuse the review screen, needs its own entry design.
@@ -350,10 +350,16 @@ Shipped during the build because the app could not function without them, each
 rendered in the ratified tokens and both room forms, none of them yet ratified
 as design. They are listed for Abdoul's ratify-or-redesign call (RATIFICATION §4):
 
-- **Keys sheet** — the one quiet drawer (faint key glyph on Home): two secure fields writing to this phone's keychain. Without it there is no way to give the device an extraction key.
+- **Keys sheet** — the one quiet drawer: two secure fields writing to this phone's keychain. Without it there is no way to give the device an extraction key. Reached from Home's footer row as the word `settings`, per `prototype/home-search-mockup.html` — **ratified 2026-08-07 over the earlier "faint key glyph" wording**, which the mockup predates (FN-25).
 - **Store-failure screen** — plain-ink, no red (D-1): shown when the database cannot open, so the app never looks normal while writing memories to nowhere.
 - **Home resume doors** — plain footer lines for memos parked mid-flow (needs transcription / needs transcript review / needs sync), matching the set-aside line's grammar: a true count in words, tappable, never a badge (D-2/D-9).
 - **Review edit sheet** — P5's "accept with edits" made real: the mapped value, the since-date, or the suggested orbit are editable; the verbatim quote is shown and untouchable.
+- **Working screen** — transcription and extraction are the two steps slow enough to look like nothing is happening. One ember indicator, the step named, and "Leave it running": the work continues and its result lands in the waiting footer rather than seizing whatever screen he moved on to (P10).
+- **Waiting-memo list** — long-press the resume footer for every parked memo, each with the stage it waits on and, where the write layer permits it, a way to let it go. Exists because a recording that never saved could otherwise sit in the footer forever with no exit.
+- **Roster** — Search's empty state lists everyone saved, A–Z. Search answers "where is this person"; nothing answered "who do I have", and the names you have forgotten are exactly the ones you cannot type. Alphabetical is deliberate: P6 forbids people lists sorted by anything implying rank, and recency or closeness are scores wearing an order.
+- **Inline renaming during review** — correcting a misheard name or a spoken shorthand once, on the card that introduces it, updating every card in the run because they all resolve through the same ref. For entities the spoken form survives as an alias (§7.10 guarantee 3).
+- **Desk corrections** — renaming a person and fixing a saved fact's value, so review is no longer the only moment anything can be corrected. Amendments, never overwrites: the verbatim stays (INV-1).
+- **Person retirement** — "Remove this person" withdraws them from the roster, search, the whisper primer and the extraction context while the ledger keeps everything they anchor. Reversible. A hard erase was designed and dropped (FN-29): it would have cost a named exception in all twelve append-only triggers, and the case that motivated it was a mis-extracted row, for which hiding is enough.
 
 ### Open questions
 

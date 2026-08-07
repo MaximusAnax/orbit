@@ -65,10 +65,13 @@ missing column in minutes.
 6. **Deployment target: iOS 17, diverging from BUILD §"iOS 26 minimum"** — a
    registered doc conflict, not a silent one. iOS 17 lets the app build and run
    on today's simulators/CI and any reasonably recent device; the one thing
-   iOS 26 buys (SpeechTranscriber as the ratified low-storage fallback,
-   DATA-MODEL §6) is currently unused — whisper.cpp is the only transcription
-   path wired. Ratify iOS 17 (and amend BUILD), or veto and I raise the target
-   the moment you confirm your device runs iOS 26.
+   iOS 26 buys — `SpeechTranscriber` as the ratified low-storage fallback
+   (DATA-MODEL §6) — is served on iOS 17 by `SFSpeechRecognizer` with
+   `requiresOnDeviceRecognition`, which is what `AppleSpeechTranscriber` runs.
+   Both transcription paths are wired: whisper.cpp as the ceiling, Apple's
+   on-device recognizer as the floor that keeps capture working from first
+   launch. BUILD's stack table now states iOS 17. Ratify it, or veto and I
+   raise the target the moment you confirm your device runs iOS 26.
 7. **UI-journey cadence** — the XCUI journey suite is a dispatch-only CI job
    (app workflow → journeys: true), not per-push, because a cold simulator
    boot blows the 30-minute push budget. EVALS reads as if journeys gate every
@@ -86,8 +89,9 @@ missing column in minutes.
    A pronoun field (user-entered, never inferred) is deferred surface work.
 10. **Model download integrity** — the ceiling-model download pins an exact
    HuggingFace URL but does not yet verify a checksum after download. Registered
-   as hardening work; ratify the pinned-URL-only posture for now or ask for the
-   checksum gate before first device install.
+   as hardening work. First device install has since happened (2026-08-06) on
+   the pinned-URL-only posture; ratify it, or ask for the checksum gate before
+   the model is re-fetched on any other device.
 11. **Four surfaces built but never designed** (DESIGN §14, "Surfaces built that
    this document does not describe") — the Keys sheet, the store-failure
    screen, Home's resume doors, and the review edit sheet. Each exists because

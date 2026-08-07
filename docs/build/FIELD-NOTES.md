@@ -14,7 +14,9 @@ Status: `open` · `in progress` · `closed (→ WORKLOG date)` · `won't fix (re
 
 ---
 
-## 2026-08-06 · Session 1 — first device run, whisper vendored mid-session
+Findings from the 2026-08-06/07 device sessions — one entry each, in number
+order, status stated in the heading. How a fix was actually made lives in
+WORKLOG.md, which is the chronology.
 
 ### FN-1 · Assertions may be dropping their entity — **needs re-checking** · T3
 
@@ -114,127 +116,115 @@ current failure path is a silent `catch` that retries next launch.
 connection? Then decide whether a failure that persists across N launches
 deserves a line the user can see.
 
-### FN-16 · Nothing dedupes facts across two captures of the same thing — **closed 2026-08-06 (as a note, not a merge)**
+### FN-6 · This session's UI changes are build-verified only — open · T3
 
-Two "Memos waiting" rows looked identical, and going through one surfaced what
-appeared to be the same memo again. Two separate things were going on:
+Shipped without a device run: the working/collapse screen, the waiting-list
+long-press sheet, the mapped-fact card line, and the ref-name resolution. All
+compile and pass the static design tier; none has been touched on hardware.
 
-**A bug (fixed same day):** the `needsProposalReview` query returned one row per
-*sync run*. Re-extraction is supported — `openSyncRun` always creates a new run,
-`extractionVersion` exists — so an event extracted twice appeared twice, as two
-`WaitingMemo`s sharing one id (also a duplicate-id `ForEach`). Now deduped by
-event, opening the oldest unanswered run.
+Highest-risk of the four, in order:
+1. **Collapse** — record, collapse, wait: the result must land in the waiting
+   footer, not jump back over whatever you moved on to.
+2. **Long-press** — needed `simultaneousGesture` because a `Button` swallows a
+   plain long-press modifier. It compiled fine either way; only the device can
+   say whether it fires.
+3. **Sheet-to-cover handoff** — resuming from the waiting list sets
+   `pendingCapture` while that sheet is still dismissing.
 
-**The open issue:** INV-7 suppression is narrower than it sounds. It drops a
-claim only when *the same claim was previously **rejected** for the same event*
-(`p.state = 'rejected'` AND `s1.event_id = s2.event_id`). It does not suppress
-claims that were **accepted**, and it does not reach across events at all.
+**To close:** one deliberate pass on device.
 
-So recording the same conversation twice produces two full reviews of the same
-facts, and accepting both writes **two assertions for one truth**. Nothing in the
-pipeline notices. The ledger is not wrong — both are honestly-sourced
-observations — but recall will surface the same fact twice, and no merge path
-exists for assertions (people and entities merge by pointer; assertions do not).
+---
 
-**To close:** decide whether duplicate-claim detection belongs at propose time
-(compare against `rm_current_state` for an identical live claim and mark the
-proposal as a repeat rather than a new fact) or is better left to a dedupe pass
-in recall. Note the honest tension: two independent observations of the same
-fact *are* evidence, and collapsing them silently would lose that.
+### FN-7 · Entity cards can be rejected but not corrected — **closed 2026-08-06**
 
-*Correction to an earlier note in this session: the empty-review screen (FN
-entry below) was attributed to INV-7 "dropping every claim already saved." That
-was wrong — INV-7 only drops previously rejected claims. The user-facing copy has
-been corrected to match.*
+A LINK card offers Yes / No / Later. `ProposalCardView` gates Edit on
+`op == .assert || op == .proposeState`, so if the extractor calls Harvard an
+`organization` instead of a `school`, or misses a `part_of` edge, the only move
+is No — which throws away a correct entity to avoid a wrong classification.
 
-### FN-15 · Review is the only moment anything can be corrected — **mostly closed 2026-08-06** · write path
+DESIGN §356 lists what the edit sheet covers: "the mapped value, the since-date,
+or the suggested orbit." Entity `kind` and `part_of` are not in that list, so
+adding them is a **design extension, not a bug fix** — it needs a decision about
+whether classification is something Abdoul curates or something the system owns
+and heals later (§7.10 guarantee 4: duplicates merge by pointer, retroactively,
+so a wrong entity is recoverable without an edit affordance).
 
-Raised as "should I confirm now and fix it later, or edit the entry manually?"
-The honest answer is that the second option does not exist.
+Worth weighing against: the merge path already makes mistakes healable, which is
+an argument for keeping review cheap and *not* adding another editable surface.
 
-`UserEditService.amendAssertion`, `setPinned`, and `setMuted` are implemented and
-wired to **zero** UI. Nothing in the app edits a saved fact. The typed-note box
-creates a new event; it does not edit an existing one. Combined with FN-13 (no
-rename after save), the rule today is: **say yes and the fact is frozen** — the
-only correction path is recording another memo about it.
+**Resolved 2026-08-06** — and the design question answered itself once the right
+shape appeared. Rather than adding entity fields to the assert edit sheet, the
+correction attaches to the **ref**: tap the name on a CREATE_PERSON or LINK card,
+fix it once, and every card in the run that mentions that ref updates, because
+they all resolve names through the same map. The correction rides to the ledger
+via `acceptEdited` on acceptance, so nothing is written until he says yes (P5),
+and verbatim quotes stay untouchable (assert cards carry no ref, so they never
+become tappable).
 
-For a memory system whose whole premise is that details matter, "you get one
-chance to get it right, at review, or you re-record" is a real constraint.
+Two properties worth keeping in mind if this is revisited:
+- Renames are **display-only until accepted**. Set the card aside and the
+  correction goes with it, unwritten.
+- Only refs *introduced in this run* are renameable. Correcting an already-saved
+  person still needs `UserEditService.renamePerson`, which has no UI here.
 
-Mitigations that already exist and should be pointed at first:
-- **Per-card "Later" (`setAside`)** is a per-fact defer, not a whole-memo one —
-  accept what is certain, set aside only the doubtful card. Returns via the
-  set-aside footer.
-- **Out-of-order pick-up** exists via long-press on the waiting footer.
+### FN-8 · "Map places to real-world locations" runs into PRIV-2 — **route (1) taken 2026-08-06** · privacy
 
-Both are invisible. The set-aside footer at least announces itself; the
-long-press has no affordance at all, and was proposed back to us as a missing
-feature the same evening it shipped — which is the clearest possible evidence it
-is undiscoverable.
+Asked during testing: could New York / Upper East Side / Harvard resolve to real
+geographic entities rather than free-standing strings?
 
-**To close:** two separable pieces. (a) Surface amend on the Desk so a saved
-fact can be corrected in place, through the write funnel with an amendment row
-(INV-1 keeps the original). (b) Decide whether the waiting list deserves a
-visible affordance instead of a hidden gesture.
+The obvious implementations are all **content egress**. A geocoder, a places API,
+or any gazetteer lookup over the network sends the user's spoken place names to a
+third party — and PRIV-2 permits exactly one content-carrying egress, the
+extraction endpoint. A second one is not a config change; it is a change to the
+privacy promise.
 
-### FN-14 · A name inside `object_value` cannot be corrected by renaming — **fix written, golden run owed**
+Privacy-safe routes, roughly in order of cost:
+1. **Nothing new.** `part_of` already expresses "Upper East Side is in New York"
+   when the extractor emits it, and §7.10's alias convergence already collapses
+   spoken variants. This may be most of what was actually wanted.
+2. **Bundled offline gazetteer.** A shipped dataset of cities/regions, resolved
+   on device. No egress. Costs app size and staleness, and needs a decision about
+   scope (cities only? neighborhoods? worldwide?).
+3. **Network lookup.** Would require re-opening PRIV-2. Not recommended.
 
-`relation · Amaad — really good friends with Ahmad`. Correcting the person fixed
-the first half and left the second, because a name lives in up to three places
-per card and a ref-rename only reaches one:
+**To close:** confirm whether (1) plus a prompt nudge toward `part_of` covers the
+real need before considering (2).
 
-| Where | Reached by rename? | Should it be? |
-| --- | --- | --- |
-| The resolved ref (subject, object person/entity) | **yes** | yes |
-| `object_value` free text | no | **it should not exist there at all** |
-| `verbatim` quote | no | no — the quote is the record (P5) |
+### FN-9 · Contradictions inside a single memo are never detected — **closed 2026-08-06** · T1 testable
 
-The `verbatim` column is correct and must stay untouched. The middle row is the
-defect, and it is **FN-10 wearing a different shirt**: `object_value` on a
-`relation` should be the person link plus at most a literal like "close friend",
-not the sentence "really good friends with Ahmad". A ref-rename cannot rewrite
-transcript prose, and should not try — prose belongs in `verbatim`.
+Asked during review: "born and raised in New York" and "in San Francisco since
+2022" both landed as open `location` facts — how does that resolve? It doesn't.
+Two guards in `SyncEngine.swift:186` each independently prevent it:
 
-So this closes with FN-10 rather than separately: fix `object_value` to hold a
-tag and the stale name disappears from it, because the name will no longer be in
-it. Recorded separately only because the *symptom* is a rename problem and would
-otherwise be re-diagnosed as one.
+1. **`if case .id(let subjectID) = subject`.** A person who is new in this memo
+   is a `.ref`, never an `.id`, so the whole contradiction block is skipped.
+   **The first memo about anyone can never raise a CLOSE proposal**, by
+   construction — and the first memo about someone is exactly where a life story
+   gets told, contradictions and all.
+2. **`store.reader.currentState(of:)` reads stored facts.** Both claims are
+   proposals in the same run, neither committed. So even for a person who
+   already exists, two contradicting claims *inside one memo* never see each
+   other; only claims contradicting an already-saved fact do.
 
-**Partially addressed 2026-08-06:** renames now also answer under the id a ref is
-bound to, so accepting the person card no longer makes the old name reappear on
-every other card in the run. That was a genuine propagation bug; the
-`object_value` half remains and belongs to FN-10.
+`rm_current_state` is keyed by `assertion_id` with no uniqueness on
+(subject, predicate), so both rows sit open and recall reports both.
 
-### FN-13 · Nothing already saved can be renamed — **closed 2026-08-06** · write path
+For David the outcome happens to be right — origin and residence are both true —
+but that is luck, not judgement: the check was skipped, not passed. Change the
+memo to "he lived in New York, then moved to San Francisco in 2022" and the same
+two guards leave two open residence facts, so "where does David live" answers
+with two cities and no way to tell which is current.
 
-Found by asking what happens to a rename *after* it lands. Three separate holes,
-all in the same direction:
+Note this interacts with FN-2: if origin and residence had distinct predicates,
+there would be no contradiction to resolve here at all. Fixing FN-2 may shrink
+this problem without solving it — guard 1 still means a new person's first memo
+is never checked against itself.
 
-1. **`UserEditService.renamePerson` exists and is wired to no UI.** Grep finds
-   the definition and zero call sites. A person whose name is wrong after
-   acceptance cannot be corrected anywhere in the app.
-2. **Entities have no rename method at all.** There is no `UPDATE entity SET
-   canonical_name` anywhere in OrbitWrite — not unwired, absent.
-3. Consequently the inline rename shipped 2026-08-06 only applies to refs that
-   *create* a row. A LINK card that matched an existing entity applies through
-   the `if let existing = p.existingEntityID` branch, which reuses the row and
-   ignores `canonical_name` entirely.
-
-(3) briefly shipped as a silent no-op — the sheet appeared, the review re-rendered
-with the corrected name, and acceptance wrote nothing. Fixed the same day by
-withholding the affordance where it cannot be honoured, which is honest but
-leaves the underlying gap: **the second time a shorthand comes up, it matches the
-existing entity and can no longer be corrected.** So a name has exactly one
-moment where it can be fixed — the capture that introduces it.
-
-Note this is asymmetric with the alias machinery, which works properly: aliases
-accumulate on every subsequent mention, so *matching* keeps improving while the
-*canonical name* is frozen after first write.
-
-**To close:** an entity rename through the write funnel (INV-5), probably
-alongside an amendment row so the change is auditable like every other
-correction; then surface both it and `renamePerson` somewhere — the Desk is the
-natural home, not the review screen.
+**To close:** decide whether within-run contradiction detection is wanted at all
+(it means comparing drafts against each other before anything is stored, which is
+a real change to how sync sequences). If yes, guard 1 needs the ref case handled
+too. Testable at T1 with a two-contradicting-facts fixture through the replay
+harness — no device needed.
 
 ### FN-10 · `object_value` is absorbing whole transcript spans — **fix written, golden run owed** · prompt
 
@@ -324,171 +314,127 @@ Options, cheapest first:
 
 **To close:** try (1), see whether the ambiguity actually bites in practice.
 
-### FN-9 · Contradictions inside a single memo are never detected — **closed 2026-08-06** · T1 testable
+### FN-13 · Nothing already saved can be renamed — **closed 2026-08-06** · write path
 
-Asked during review: "born and raised in New York" and "in San Francisco since
-2022" both landed as open `location` facts — how does that resolve? It doesn't.
-Two guards in `SyncEngine.swift:186` each independently prevent it:
+Found by asking what happens to a rename *after* it lands. Three separate holes,
+all in the same direction:
 
-1. **`if case .id(let subjectID) = subject`.** A person who is new in this memo
-   is a `.ref`, never an `.id`, so the whole contradiction block is skipped.
-   **The first memo about anyone can never raise a CLOSE proposal**, by
-   construction — and the first memo about someone is exactly where a life story
-   gets told, contradictions and all.
-2. **`store.reader.currentState(of:)` reads stored facts.** Both claims are
-   proposals in the same run, neither committed. So even for a person who
-   already exists, two contradicting claims *inside one memo* never see each
-   other; only claims contradicting an already-saved fact do.
+1. **`UserEditService.renamePerson` exists and is wired to no UI.** Grep finds
+   the definition and zero call sites. A person whose name is wrong after
+   acceptance cannot be corrected anywhere in the app.
+2. **Entities have no rename method at all.** There is no `UPDATE entity SET
+   canonical_name` anywhere in OrbitWrite — not unwired, absent.
+3. Consequently the inline rename shipped 2026-08-06 only applies to refs that
+   *create* a row. A LINK card that matched an existing entity applies through
+   the `if let existing = p.existingEntityID` branch, which reuses the row and
+   ignores `canonical_name` entirely.
 
-`rm_current_state` is keyed by `assertion_id` with no uniqueness on
-(subject, predicate), so both rows sit open and recall reports both.
+(3) briefly shipped as a silent no-op — the sheet appeared, the review re-rendered
+with the corrected name, and acceptance wrote nothing. Fixed the same day by
+withholding the affordance where it cannot be honoured, which is honest but
+leaves the underlying gap: **the second time a shorthand comes up, it matches the
+existing entity and can no longer be corrected.** So a name has exactly one
+moment where it can be fixed — the capture that introduces it.
 
-For David the outcome happens to be right — origin and residence are both true —
-but that is luck, not judgement: the check was skipped, not passed. Change the
-memo to "he lived in New York, then moved to San Francisco in 2022" and the same
-two guards leave two open residence facts, so "where does David live" answers
-with two cities and no way to tell which is current.
+Note this is asymmetric with the alias machinery, which works properly: aliases
+accumulate on every subsequent mention, so *matching* keeps improving while the
+*canonical name* is frozen after first write.
 
-Note this interacts with FN-2: if origin and residence had distinct predicates,
-there would be no contradiction to resolve here at all. Fixing FN-2 may shrink
-this problem without solving it — guard 1 still means a new person's first memo
-is never checked against itself.
+**To close:** an entity rename through the write funnel (INV-5), probably
+alongside an amendment row so the change is auditable like every other
+correction; then surface both it and `renamePerson` somewhere — the Desk is the
+natural home, not the review screen.
 
-**To close:** decide whether within-run contradiction detection is wanted at all
-(it means comparing drafts against each other before anything is stored, which is
-a real change to how sync sequences). If yes, guard 1 needs the ref case handled
-too. Testable at T1 with a two-contradicting-facts fixture through the replay
-harness — no device needed.
+### FN-14 · A name inside `object_value` cannot be corrected by renaming — **fix written, golden run owed**
 
-### FN-7 · Entity cards can be rejected but not corrected — **closed 2026-08-06**
+`relation · Amaad — really good friends with Ahmad`. Correcting the person fixed
+the first half and left the second, because a name lives in up to three places
+per card and a ref-rename only reaches one:
 
-A LINK card offers Yes / No / Later. `ProposalCardView` gates Edit on
-`op == .assert || op == .proposeState`, so if the extractor calls Harvard an
-`organization` instead of a `school`, or misses a `part_of` edge, the only move
-is No — which throws away a correct entity to avoid a wrong classification.
+| Where | Reached by rename? | Should it be? |
+| --- | --- | --- |
+| The resolved ref (subject, object person/entity) | **yes** | yes |
+| `object_value` free text | no | **it should not exist there at all** |
+| `verbatim` quote | no | no — the quote is the record (P5) |
 
-DESIGN §356 lists what the edit sheet covers: "the mapped value, the since-date,
-or the suggested orbit." Entity `kind` and `part_of` are not in that list, so
-adding them is a **design extension, not a bug fix** — it needs a decision about
-whether classification is something Abdoul curates or something the system owns
-and heals later (§7.10 guarantee 4: duplicates merge by pointer, retroactively,
-so a wrong entity is recoverable without an edit affordance).
+The `verbatim` column is correct and must stay untouched. The middle row is the
+defect, and it is **FN-10 wearing a different shirt**: `object_value` on a
+`relation` should be the person link plus at most a literal like "close friend",
+not the sentence "really good friends with Ahmad". A ref-rename cannot rewrite
+transcript prose, and should not try — prose belongs in `verbatim`.
 
-Worth weighing against: the merge path already makes mistakes healable, which is
-an argument for keeping review cheap and *not* adding another editable surface.
+So this closes with FN-10 rather than separately: fix `object_value` to hold a
+tag and the stale name disappears from it, because the name will no longer be in
+it. Recorded separately only because the *symptom* is a rename problem and would
+otherwise be re-diagnosed as one.
 
-**Resolved 2026-08-06** — and the design question answered itself once the right
-shape appeared. Rather than adding entity fields to the assert edit sheet, the
-correction attaches to the **ref**: tap the name on a CREATE_PERSON or LINK card,
-fix it once, and every card in the run that mentions that ref updates, because
-they all resolve names through the same map. The correction rides to the ledger
-via `acceptEdited` on acceptance, so nothing is written until he says yes (P5),
-and verbatim quotes stay untouchable (assert cards carry no ref, so they never
-become tappable).
+**Partially addressed 2026-08-06:** renames now also answer under the id a ref is
+bound to, so accepting the person card no longer makes the old name reappear on
+every other card in the run. That was a genuine propagation bug; the
+`object_value` half remains and belongs to FN-10.
 
-Two properties worth keeping in mind if this is revisited:
-- Renames are **display-only until accepted**. Set the card aside and the
-  correction goes with it, unwritten.
-- Only refs *introduced in this run* are renameable. Correcting an already-saved
-  person still needs `UserEditService.renamePerson`, which has no UI here.
+### FN-15 · Review is the only moment anything can be corrected — **mostly closed 2026-08-06** · write path
 
-### FN-8 · "Map places to real-world locations" runs into PRIV-2 — **route (1) taken 2026-08-06** · privacy
+Raised as "should I confirm now and fix it later, or edit the entry manually?"
+The honest answer is that the second option does not exist.
 
-Asked during testing: could New York / Upper East Side / Harvard resolve to real
-geographic entities rather than free-standing strings?
+`UserEditService.amendAssertion`, `setPinned`, and `setMuted` are implemented and
+wired to **zero** UI. Nothing in the app edits a saved fact. The typed-note box
+creates a new event; it does not edit an existing one. Combined with FN-13 (no
+rename after save), the rule today is: **say yes and the fact is frozen** — the
+only correction path is recording another memo about it.
 
-The obvious implementations are all **content egress**. A geocoder, a places API,
-or any gazetteer lookup over the network sends the user's spoken place names to a
-third party — and PRIV-2 permits exactly one content-carrying egress, the
-extraction endpoint. A second one is not a config change; it is a change to the
-privacy promise.
+For a memory system whose whole premise is that details matter, "you get one
+chance to get it right, at review, or you re-record" is a real constraint.
 
-Privacy-safe routes, roughly in order of cost:
-1. **Nothing new.** `part_of` already expresses "Upper East Side is in New York"
-   when the extractor emits it, and §7.10's alias convergence already collapses
-   spoken variants. This may be most of what was actually wanted.
-2. **Bundled offline gazetteer.** A shipped dataset of cities/regions, resolved
-   on device. No egress. Costs app size and staleness, and needs a decision about
-   scope (cities only? neighborhoods? worldwide?).
-3. **Network lookup.** Would require re-opening PRIV-2. Not recommended.
+Mitigations that already exist and should be pointed at first:
+- **Per-card "Later" (`setAside`)** is a per-fact defer, not a whole-memo one —
+  accept what is certain, set aside only the doubtful card. Returns via the
+  set-aside footer.
+- **Out-of-order pick-up** exists via long-press on the waiting footer.
 
-**To close:** confirm whether (1) plus a prompt nudge toward `part_of` covers the
-real need before considering (2).
+Both are invisible. The set-aside footer at least announces itself; the
+long-press has no affordance at all, and was proposed back to us as a missing
+feature the same evening it shipped — which is the clearest possible evidence it
+is undiscoverable.
 
-### FN-19 · A person can be named by their relationship, and the name then carries identity — **closed 2026-08-07**
+**To close:** two separable pieces. (a) Surface amend on the Desk so a saved
+fact can be corrected in place, through the write funnel with an amendment row
+(INV-1 keeps the original). (b) Decide whether the waiting list deserves a
+visible affordance instead of a hidden gesture.
 
-A capture produced a person whose `display_name` is **"his brother"**, with a
-group header and cards to match.
+### FN-16 · Nothing dedupes facts across two captures of the same thing — **closed 2026-08-06 (as a note, not a merge)**
 
-That string is not a name; it is a pointer that only resolves inside the sentence
-that produced it. Three consequences, in worsening order:
+Two "Memos waiting" rows looked identical, and going through one surfaced what
+appeared to be the same memo again. Two separate things were going on:
 
-1. Two different people's brothers both become "his brother", and person matching
-   is by `display_name` — there is no `person_alias` table (see FN-13's notes).
-   So the *second* memo's brother can match the *first* one's, silently merging
-   two unrelated people.
-2. One person with two brothers cannot be represented at all.
-3. "his brother" enters `knownNamesPrimer`, so it is fed to whisper as a name to
-   listen for and to the extractor as an existing contact to match against.
+**A bug (fixed same day):** the `needsProposalReview` query returned one row per
+*sync run*. Re-extraction is supported — `openSyncRun` always creates a new run,
+`extractionVersion` exists — so an event extracted twice appeared twice, as two
+`WaitingMemo`s sharing one id (also a duplicate-id `ForEach`). Now deduped by
+event, opening the oldest unanswered run.
 
-DATA-MODEL §7.10 states the principle for entities — *strings never carry
-identity* — and this is the same failure on the person side, where there is no
-alias/merge safety net at capture time.
+**The open issue:** INV-7 suppression is narrower than it sounds. It drops a
+claim only when *the same claim was previously **rejected** for the same event*
+(`p.state = 'rejected'` AND `s1.event_id = s2.event_id`). It does not suppress
+claims that were **accepted**, and it does not reach across events at all.
 
-The model already has the right shape: `relation` is a person↔person predicate
-(sibling, colleague, introduced_by), and §7.3 has `known_of` for people known
-only through others. So the correct output is an **unnamed** known-of person
-joined by `relation(John, sibling, ·)` — not a person literally called "his
-brother".
+So recording the same conversation twice produces two full reviews of the same
+facts, and accepting both writes **two assertions for one truth**. Nothing in the
+pipeline notices. The ledger is not wrong — both are honestly-sourced
+observations — but recall will surface the same fact twice, and no merge path
+exists for assertions (people and entities merge by pointer; assertions do not).
 
-**To close:** decide how an unnamed person is represented and displayed (a
-placeholder that reads honestly — "John's brother" as *rendering*, not as a
-stored name), then prompt work so relationship phrases stop becoming
-`display_name`. Until then, matching on such names should probably be refused
-outright — a wrong merge is worse than a duplicate.
+**To close:** decide whether duplicate-claim detection belongs at propose time
+(compare against `rm_current_state` for an identical live claim and mark the
+proposal as a repeat rather than a new fact) or is better left to a dedupe pass
+in recall. Note the honest tension: two independent observations of the same
+fact *are* evidence, and collapsing them silently would lose that.
 
-### FN-20 · Where an event happened is being stored as where a person lives — **prompt half closed 2026-08-07; routing still open**
-
-"met John at a coffee shop in Pittsburgh" produced `location · Pittsburgh —
-coffee shop` **as an assertion about John**.
-
-Meeting someone in a city is close to no evidence about where they live, and the
-schema already has the right home for it: `event.location_entity_id` (DATA-MODEL
-§2, Event). A meeting place belongs to the event; a residence belongs to the
-person. Conflating them pollutes the one predicate that recall trusts for "where
-is this person now", and it does so with a fact the speaker never asserted.
-
-This is the third distinct job `location` has been asked to do (FN-2: origin vs
-residence; now venue), which strengthens the case that the modelling question in
-FN-2 is the real one and should be settled before more prompt patches.
-
-Also note `object_value: "coffee shop"` alongside `object_entity: Pittsburgh`
-reads as "Pittsburgh — coffee shop", which is not a fact about anything: the
-venue is not a qualifier of the city.
-
-**To close:** with FN-2. Decide the predicate split, and route venues to
-`event.location_entity_id` where they belong.
-
-### FN-6 · This session's UI changes are build-verified only — open · T3
-
-Shipped without a device run: the working/collapse screen, the waiting-list
-long-press sheet, the mapped-fact card line, and the ref-name resolution. All
-compile and pass the static design tier; none has been touched on hardware.
-
-Highest-risk of the four, in order:
-1. **Collapse** — record, collapse, wait: the result must land in the waiting
-   footer, not jump back over whatever you moved on to.
-2. **Long-press** — needed `simultaneousGesture` because a `Button` swallows a
-   plain long-press modifier. It compiled fine either way; only the device can
-   say whether it fires.
-3. **Sheet-to-cover handoff** — resuming from the waiting list sets
-   `pendingCapture` while that sheet is still dismissing.
-
-**To close:** one deliberate pass on device.
-
----
-
-## 2026-08-06 · Session 2 — implementing the session-1 queue
+*Correction to an earlier note in this session: the empty-review screen (FN
+entry below) was attributed to INV-7 "dropping every claim already saved." That
+was wrong — INV-7 only drops previously rejected claims. The user-facing copy has
+been corrected to match.*
 
 ### FN-17 · There is no migration path for a database that already has data — **closed 2026-08-07** · unblocks FN-2/FN-11
 
@@ -515,6 +461,29 @@ ambiguity kind, and for anything else the field notes eventually want.
 migrates a populated v1 database and re-runs the INV-4 rebuild equivalence
 check afterwards. Cheap to build now, expensive to retrofit after the second
 schema change.
+
+
+A versioned migration runner now exists. `orbit_meta.schema_version` is read as
+well as written, `Schema.migrate` applies numbered `migration_XXX.sql` files in
+order, and each runs **in one transaction with its own version bump**, so a
+failure leaves the database exactly where it was rather than half-migrated.
+`Schema.ensure` migrates an existing database instead of skipping it; a fresh
+one is born at `latestVersion`, because `001_schema` already contains
+everything the migrations add.
+
+Migration 002 adds `person_alias` — the table FN-19 noticed was missing on the
+person side, where entities have had one since 001.
+
+The T1 rig checks each migration three ways: it **applies to a database that
+does not have it** (the objects are dropped first, standing in for the older
+database it will actually meet), it is **idempotent** (a failed version bump
+gets retried on next launch), and the **INV-4 rebuild still works afterwards**.
+Swift tests cover the populated-database path directly.
+
+*What this unblocks:* FN-2's `origin` predicate and FN-11's entity-ambiguity
+kind both need schema changes against a database holding real memos. That is
+now a solved problem rather than a reason to defer, so both are decisions again
+rather than blockers.
 
 ### FN-18 · `warmModels` silently stopped working when the cascade shipped — closed 2026-08-06
 
@@ -554,33 +523,38 @@ gate on every commit, so the specific defect v2 targets cannot silently return.
 
 ---
 
-## 2026-08-07 · Session 3 — closing FN-17, FN-19, and half of FN-20
+### FN-19 · A person can be named by their relationship, and the name then carries identity — **closed 2026-08-07**
 
-### FN-17 — closed
+A capture produced a person whose `display_name` is **"his brother"**, with a
+group header and cards to match.
 
-A versioned migration runner now exists. `orbit_meta.schema_version` is read as
-well as written, `Schema.migrate` applies numbered `migration_XXX.sql` files in
-order, and each runs **in one transaction with its own version bump**, so a
-failure leaves the database exactly where it was rather than half-migrated.
-`Schema.ensure` migrates an existing database instead of skipping it; a fresh
-one is born at `latestVersion`, because `001_schema` already contains
-everything the migrations add.
+That string is not a name; it is a pointer that only resolves inside the sentence
+that produced it. Three consequences, in worsening order:
 
-Migration 002 adds `person_alias` — the table FN-19 noticed was missing on the
-person side, where entities have had one since 001.
+1. Two different people's brothers both become "his brother", and person matching
+   is by `display_name` — there is no `person_alias` table (see FN-13's notes).
+   So the *second* memo's brother can match the *first* one's, silently merging
+   two unrelated people.
+2. One person with two brothers cannot be represented at all.
+3. "his brother" enters `knownNamesPrimer`, so it is fed to whisper as a name to
+   listen for and to the extractor as an existing contact to match against.
 
-The T1 rig checks each migration three ways: it **applies to a database that
-does not have it** (the objects are dropped first, standing in for the older
-database it will actually meet), it is **idempotent** (a failed version bump
-gets retried on next launch), and the **INV-4 rebuild still works afterwards**.
-Swift tests cover the populated-database path directly.
+DATA-MODEL §7.10 states the principle for entities — *strings never carry
+identity* — and this is the same failure on the person side, where there is no
+alias/merge safety net at capture time.
 
-*What this unblocks:* FN-2's `origin` predicate and FN-11's entity-ambiguity
-kind both need schema changes against a database holding real memos. That is
-now a solved problem rather than a reason to defer, so both are decisions again
-rather than blockers.
+The model already has the right shape: `relation` is a person↔person predicate
+(sibling, colleague, introduced_by), and §7.3 has `known_of` for people known
+only through others. So the correct output is an **unnamed** known-of person
+joined by `relation(John, sibling, ·)` — not a person literally called "his
+brother".
 
-### FN-19 — closed
+**To close:** decide how an unnamed person is represented and displayed (a
+placeholder that reads honestly — "John's brother" as *rendering*, not as a
+stored name), then prompt work so relationship phrases stop becoming
+`display_name`. Until then, matching on such names should probably be refused
+outright — a wrong merge is worse than a duplicate.
+
 
 Two layers, because a prompt is guidance and this is an identity guarantee:
 
@@ -603,7 +577,28 @@ today the honest fallback is a question at review rather than a row. Whether an
 unnamed person deserves a real representation is a modelling decision, and it is
 now cheap to act on (FN-17).
 
-### FN-20 — prompt half closed, routing still open
+### FN-20 · Where an event happened is being stored as where a person lives — **prompt half closed 2026-08-07; routing still open**
+
+"met John at a coffee shop in Pittsburgh" produced `location · Pittsburgh —
+coffee shop` **as an assertion about John**.
+
+Meeting someone in a city is close to no evidence about where they live, and the
+schema already has the right home for it: `event.location_entity_id` (DATA-MODEL
+§2, Event). A meeting place belongs to the event; a residence belongs to the
+person. Conflating them pollutes the one predicate that recall trusts for "where
+is this person now", and it does so with a fact the speaker never asserted.
+
+This is the third distinct job `location` has been asked to do (FN-2: origin vs
+residence; now venue), which strengthens the case that the modelling question in
+FN-2 is the real one and should be settled before more prompt patches.
+
+Also note `object_value: "coffee shop"` alongside `object_entity: Pittsburgh`
+reads as "Pittsburgh — coffee shop", which is not a fact about anything: the
+venue is not a qualifier of the city.
+
+**To close:** with FN-2. Decide the predicate split, and route venues to
+`event.location_entity_id` where they belong.
+
 
 v2 rule 20 tells the extractor that a meeting place is not a fact about the
 person: only "lives / moved / is from / is based / grew up" produce a
@@ -624,21 +619,6 @@ different jobs — origin, residence, and venue. That is the strongest case yet
 for settling FN-2's modelling question rather than narrowing the rule again.*
 
 ---
-
-## 2026-08-07 · Session 4 — design conformance audit
-
-Abdoul's read: "the app isn't fully built — it diverged from how it was mocked."
-Audit method: every ratified surface in DESIGN §6/§7/§12 checked against the
-built screens, plus a mechanical sweep for design components that exist and are
-never used (a component with no call sites is a design decision that was
-specified and then not built).
-
-**The structure is all there.** Desk tiles 0–8 render in the ratified fixed
-order with the right spans, empty sections collapse rather than placeholder,
-counts are real, the Deck's anatomy (progress bars → ember caps tag → serif 24
-main → sans sub) matches, both rooms translate, and the three search shapes
-exist. The divergences were in the **signature moves** — the small things §5
-says carry the whole feeling.
 
 ### FN-21 · The search placeholder never rotated — closed 2026-08-07
 
@@ -680,8 +660,6 @@ fully built" is a fair description of them, and they are the honest answer to
 that reading.
 
 ---
-
-## 2026-08-07 · Session 5 — home against the mockup
 
 ### FN-24 · Home rendered on the system background, not `room` — closed 2026-08-07
 
@@ -791,30 +769,54 @@ Reach page, and Home: `#101423` everywhere.
 by being **almost** right — the screen looks dark, so it passes a glance. Sample
 the pixels.*
 
-### FN-25 · Adding an associated value silently withdrew an Equatable conformance — closed 2026-08-07
+### FN-29 · No way to remove a person — **closed 2026-08-07 (retire only; erase declined)**
 
-`WaitingMemo.Stage` gained `needsProposalReview(syncRunID: String)`. Swift
-synthesises `==` for an enum **only while it has no associated values**, so that
-one addition quietly removed the conformance, and
-`XCTAssertEqual(memo.stage, .needsTranscription)` in `CaptureFailureTests`
-stopped compiling. The app target went red and stayed red across five commits.
+The roster made it visible: a mis-extracted row (`"his brother"`, from before the
+FN-19 guard) sat in the list with no way to remove it. `mergePerson` needs a
+winner to merge into; nothing else touched a person row.
 
-Two things worth keeping:
+**Built:** retirement. `person_retirement` (migration 003) withdraws someone from
+the roster, search, the whisper primer and the extraction context while the
+ledger keeps every fact and event they anchor. Reversible.
 
-1. **The failure was invisible from the cloud session.** `check.sh` here skips
-   the app target entirely (no Xcode), and it now says so out loud — but saying
-   so is not the same as catching it. Every app-layer change made from this
-   environment is unverified until a Mac or CI compiles it, and five commits of
-   red proved the gap is real rather than theoretical.
-2. **The break was at a distance.** The enum and the test were changed by
-   different people in different commits, and neither change was wrong on its
-   own. `Stage` now declares `Equatable` explicitly, which is the durable fix:
-   the conformance no longer depends on the enum happening to stay
-   value-free.
+**Declined, deliberately: the hard erase.** It was designed and half-built before
+the cost became clear — **twelve `BEFORE DELETE` triggers** enforce INV-1 in the
+database itself (`assertion_no_delete`, `event_no_delete`, `person_no_delete`,
+and nine more), so erasing would have required a named exception in every one of
+them. That is INV-1 weakened permanently, and Abdoul's read was the right one:
+the case that motivated it is a *mistake*, and for a mistake hiding is enough.
+Storage was the other argument, and it does not survive either — audio is the
+only large payload, and it is already deleted on the §7.5 full-model gate.
 
-*Related, and already fixed by Abdoul before I saw it:* the same commit pair
-broke `testResidenceSupersedesResidence` for a similar
-change-at-a-distance reason. Putting the qualifier (`residence`) into
-`object_value` made two different residences share an object value, so the
-"same object, not a contradiction" check swallowed them. `objectValueNamesTheObject`
-now distinguishes a value that *names* the object from one that *classifies* it.
+**If it ever comes back** it will be a privacy demand rather than a typo. Three
+mechanisms were costed and are recorded so the work is not redone: gate the
+triggers behind a sanctioned flag; delete only the audio and leave the ledger;
+or rebuild the database by export/restore minus that person, which leaves the
+triggers untouched because a fresh database is built by insertion. The second is
+cheapest, the third is safest for INV-1, the first is the only one that is a
+true erase.
+
+*Worth keeping: the ledger refused to be deleted from, at the storage engine,
+without anyone having to remember the rule. That is the constitution working —
+the design cost showed up as twelve failing triggers rather than as a regret.*
+
+---
+
+## Session notes
+
+Context that belongs to a whole session rather than to one finding.
+
+### 2026-08-07 · Session 4 — design conformance audit
+
+Abdoul's read: "the app isn't fully built — it diverged from how it was mocked."
+Audit method: every ratified surface in DESIGN §6/§7/§12 checked against the
+built screens, plus a mechanical sweep for design components that exist and are
+never used (a component with no call sites is a design decision that was
+specified and then not built).
+
+**The structure is all there.** Desk tiles 0–8 render in the ratified fixed
+order with the right spans, empty sections collapse rather than placeholder,
+counts are real, the Deck's anatomy (progress bars → ember caps tag → serif 24
+main → sans sub) matches, both rooms translate, and the three search shapes
+exist. The divergences were in the **signature moves** — the small things §5
+says carry the whole feeling.

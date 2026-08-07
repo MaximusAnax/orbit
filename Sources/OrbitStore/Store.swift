@@ -15,7 +15,7 @@ public enum Schema {
 
     /// The highest schema version this build knows how to produce. Bumped in the
     /// same commit as the `migration_XXX.sql` that reaches it.
-    public static let latestVersion = 2
+    public static let latestVersion = 3
 
     /// Create a fresh database (schema + triggers + read-model shells).
     ///

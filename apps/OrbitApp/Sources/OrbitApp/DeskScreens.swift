@@ -14,6 +14,7 @@ struct BriefScreen: View {
     @Environment(\.room) var room
     @State private var brief: Brief?
     @State private var addingContact = false
+    @State private var removing = false
     @State private var showDeck = false
     @State private var showPortrait = false
     // FN-13/FN-15: correcting what is already saved
@@ -172,6 +173,8 @@ struct BriefScreen: View {
                     // without this there is no way to add the first one.
                     TertiaryButton(Copy.addContactAction) { addingContact = true }
                         .accessibilityIdentifier("desk.addContact")
+                    TertiaryButton(Copy.removePersonAction) { removing = true }
+                        .accessibilityIdentifier("desk.removePerson")
                 }
                 .padding(.top, Tokens.screenPaddingTop)
                 .padding(.horizontal, Tokens.screenPaddingSide)
@@ -191,6 +194,9 @@ struct BriefScreen: View {
                 app.renamePerson(personID, to: name)
                 brief = try? app.assembleBrief(personID: personID)
             }
+        }
+        .sheet(isPresented: $removing) {
+            RemovePersonSheet(personID: personID, name: brief?.header.name ?? "")
         }
         .sheet(isPresented: $addingContact) {
             AddContactSheet(personID: personID) {
@@ -434,6 +440,38 @@ struct ReachMiniPage: View {
             if let personID {
                 AddContactSheet(personID: personID, onSaved: onAdded)
             }
+        }
+    }
+}
+
+/// Retiring a person (FIELD-NOTES FN-29). Deliberately a sheet rather than a
+/// bare button: "remove" reads as destruction, and this is not — so the screen
+/// that offers it is also the screen that says what it actually does.
+struct RemovePersonSheet: View {
+    let personID: String
+    let name: String
+    @EnvironmentObject var app: AppModel
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.room) var room
+
+    var body: some View {
+        RoomBackground { _ in
+            VStack(alignment: .leading, spacing: 18) {
+                Text(Copy.removePersonTitle(name))
+                    .interfaceVoice(size: 16, weight: .semibold)
+                    .foregroundStyle(Tokens.ink(room))
+                Text(Copy.retirePersonHint).interfaceVoice(size: 12)
+                    .foregroundStyle(Tokens.inkMuted(room))
+                PrimaryButton(Copy.retirePersonAction) {
+                    app.retire(person: personID)
+                    dismiss()
+                }
+                .accessibilityIdentifier("remove.retire")
+                TertiaryButton(Copy.notNow) { dismiss() }
+                Spacer()
+            }
+            .padding(.top, 30)
+            .padding(.horizontal, Tokens.screenPaddingSide)
         }
     }
 }

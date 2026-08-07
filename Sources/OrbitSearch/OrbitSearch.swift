@@ -95,7 +95,11 @@ public struct Searcher {
         let tokens = terms(of: nameQuery)
         guard !tokens.isEmpty, tokens.count <= 3 else { return [] }
         let people = try reader.db.query(
-            "SELECT id, display_name, COALESCE(preferred_name,'') AS pref FROM person WHERE status != 'merged' AND is_self=0")
+            """
+            SELECT id, display_name, COALESCE(preferred_name,'') AS pref FROM person
+            WHERE status != 'merged' AND is_self=0
+              AND NOT EXISTS (SELECT 1 FROM person_retirement r WHERE r.person_id = person.id)
+            """)
         var scored: [(hit: PersonHit, distance: Int)] = []
         for row in people {
             guard let id = row.text("id"), let display = row.text("display_name") else { continue }

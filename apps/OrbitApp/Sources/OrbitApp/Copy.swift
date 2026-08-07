@@ -96,6 +96,14 @@ enum Copy {
     static let rosterEmpty = "Nobody yet. The mic is the way in."
     /// §7.3 in a roster row: said in words, never a badge (D-2).
     static let knownOfShort = "known through others"
+
+    /// Retiring: the whole removal story. Nothing is destroyed, so the copy
+    /// says so plainly rather than borrowing the weight of a delete.
+    static let removePersonAction = "Remove this person"
+    static func removePersonTitle(_ name: String) -> String { "Remove \(name)?" }
+    static let retirePersonAction = "Stop showing them"
+    static let retirePersonHint = "They leave your list and your searches. Everything you recorded about them stays exactly where it is, and you can bring them back whenever you like."
+
     /// Handles are typed, not spoken (ORBIT.md §Contact Points): they span
     /// platforms and a transcriber mangles them.
     static let addContactAction = "Add a way to reach them"
@@ -248,6 +256,8 @@ enum Copy {
             toldYou("Sana"), notYetConfirmed("Sana"), unverifiedContact,
             addContactAction, addContactTitle, addContactHint, addContactSave,
             rosterTitle, rosterEmpty, knownOfShort,
+            removePersonAction, removePersonTitle("Sana"), retirePersonAction,
+            retirePersonHint,
             contactKindLabel("instagram"), reachEmpty,
             extractionFailed, transcriptionFallback,
             portraitTitle, portraitHint, skipPrompt, firstMetAction, firstMetSet,

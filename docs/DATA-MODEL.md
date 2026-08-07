@@ -169,6 +169,7 @@ erDiagram
 | `system_contact_ref` | link to OS contact record, not a copy (§5) |
 | `first_met_event_id` | nullable; the "how we met" anchor for §15 |
 | `created_at` | |
+| *(side table)* `person_retirement` | `person_id` + `retired_at`. Presence, not lifecycle: a retired person leaves the roster, search, the whisper primer and the extraction context while everything they anchor stays in the ledger. Reversible. A side table rather than a `status` value because adding to that CHECK would mean rebuilding a table holding real memos, and because `status` answers *how well is this person known*, not *am I currently looking at them* |
 
 Deliberately **absent**: employer, location, title, interests. Those are all assertions with time intervals. A person row holds only what is genuinely timeless.
 
@@ -242,6 +243,14 @@ date heuristic. A meeting's venue is not an assertion at all — it belongs to
 | `captured_at`, `confirmed_at` | |
 
 Participants live in a join table (`event_id`, `person_id`, `attendance` = `confirmed \| probable \| about`, `role` = e.g. introducer). `about` marks a **subject who was not present** — the person a note concerns (§7.11). **An event requires at least one participant of any attendance kind** — see §7.6.
+
+**No delete, and why.** Removing a person is retiring them (above). A hard
+erase was designed during the 2026-08-07 device session and deliberately
+dropped: the twelve `BEFORE DELETE` triggers that enforce INV-1 would each have
+needed a named exception, permanently weakening the guarantee, and the case that
+motivated it was a mis-extracted row — a mistake, for which hiding is enough. If
+a genuine erase is ever required it will be a privacy demand rather than a typo,
+and that trade is to be made deliberately then, not pre-built.
 
 **Immutability + amendments.** Once confirmed, the row is frozen. Corrections are **Amendment** records (`event_id`, `field`, `new_value`, `reason`, `created_at`) applied in order at read time. Effective event = original + amendments. Ledger semantics: you never erase an entry, you post a correcting one.
 

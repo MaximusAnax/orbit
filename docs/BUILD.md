@@ -18,7 +18,7 @@ The four ratified documents say what Orbit is, what its data means, what it look
 
 | Layer | Decision | Notes |
 | --- | --- | --- |
-| App | Swift / SwiftUI, iOS-only, iOS 26 minimum | Personal device; iOS 26 unlocks `SpeechTranscriber` as the ratified low-storage transcription fallback (DATA-MODEL §6) |
+| App | Swift / SwiftUI, iOS-only, **iOS 17 minimum** | Ratified down from iOS 26 (RATIFICATION §4.6). The floor iOS 26 would have bought — `SpeechTranscriber` — is served on 17 by `SFSpeechRecognizer` with `requiresOnDeviceRecognition`, which is what `AppleSpeechTranscriber` uses |
 | Storage | SQLite via **`OrbitSQLite`**, a thin first-party wrapper over the C API | See §1.2 — no ORM, no third-party dependency in the trust core |
 | Transcription | whisper.cpp `large-v3-turbo`, on-device, bundled-floor/downloaded-ceiling | Ratified in DATA-MODEL §6; decode tuning (`-mc 0`, entropy threshold) is a first-class concern; the **name-match post-pass is the primary correctness mechanism** |
 | Extraction | One LLM API endpoint behind the swappable §7.9 seam: **Anthropic Claude API, `claude-opus-5`, structured outputs (JSON schema)** | See §1.3 |
@@ -39,7 +39,16 @@ The four ratified documents say what Orbit is, what its data means, what it look
 - **Setup prerequisite (Abdoul):** ZDR agreement on the API org; key never committed (injected via device keychain in-app, `ANTHROPIC_API_KEY` env for the harness).
 - **Alternate provider (ratified by Abdoul, 2026-07-29): OpenAI.** `OpenAIExtractor` runs the same versioned prompt + JSON schema through `chat/completions` structured outputs (model via `OPENAI_MODEL`, default `gpt-5.1`; key via keychain `openai-api-key` / `OPENAI_API_KEY`). Provider selection is by which key exists — the Anthropic key wins when both are present. The §7.9 seam means nothing else in the system knows which provider ran; the single-egress budget (PRIV-2) and the retention-posture requirement apply to whichever endpoint is configured — **verify the OpenAI org/project's data-retention settings before production use**, same bar as ZDR.
 - The extraction prompt is a **versioned artifact** (`Sources/OrbitPipeline/Resources/extraction-prompt-v*.md`), bumped only with a golden run attached — the ratchet spirit applied to prompt changes.
-  - **Waived once, deliberately (Abdoul, 2026-08-06):** v2 was promoted to default *without* its golden run, to get the FIELD-NOTES FN-10 fix (`object_value` as a tag, not a summary) onto the device immediately. The rule stands for every future bump; this is a recorded exception, not a precedent, and it carries a debt: **the provisional PIPE numbers in the ratification packet were measured on v1 fixtures and therefore describe the previous prompt.** The first `swift run orbit-evals measure --live` clears it. `ORBIT_PROMPT_VERSION=v1` runs the measured prompt for comparison.
+  - **Waived twice, deliberately (Abdoul, 2026-08-06/07), and now discharged.**
+    v2 was promoted to default without its golden run to get the FN-10 fix
+    (`object_value` as a tag, not a summary) onto the device the same evening;
+    v3 followed under the same waiver for FN-2's origin/residence qualifier.
+    Abdoul ran both live on 2026-08-07 and confirmed v3 — **v3 is the default**
+    (`Extractor.makeExtractor`). The rule stands for every future bump; these
+    are recorded exceptions, not a precedent. `ORBIT_PROMPT_VERSION=v1` still
+    runs the originally-measured prompt for comparison, and the ratification
+    packet's provisional PIPE numbers remain v1-measured until the first
+    `swift run orbit-evals measure --live`.
 
 ### 1.4 Verification tiers
 
@@ -194,8 +203,12 @@ docs/build/WORKLOG.md.
 | PRIV | Audited | docs/build/PRIV-AUDIT.md — PRIV-5 export/restore and PRIV-3's filesystem half built + tested in CI; PRIV-1/3 device halves = T3 |
 
 **CI shape:** `core` (Linux) runs `scripts/check.sh` — write-path lint, SQL
-fast-loop + property suite, design lint, provisional PIPE measurement, full
-build, full test suite, replay measurement — on every push. `app` (macOS) runs
+fast-loop (schema, migrations, and every embedded statement: 208 at last count)
++ property suite, design lint, provisional PIPE measurement, full build, full
+test suite, replay measurement — on every push. Since FN-3 the script also
+builds the **iOS app target** (`xcodegen` + `xcodebuild`) when both tools are
+present, so a Mac runs every stage locally; on Linux that stage is skipped and
+announced, never silently absent. `app` (macOS) runs
 the iOS-simulator build plus the hosted `OrbitAppTests` suite on every push
 touching `apps/**` or `Sources/**`. The **XCUI journey suite is dispatch-only**
 (Actions → app → Run workflow → journeys: true): a cold simulator boot blows
@@ -210,24 +223,34 @@ sheet; PRIV-3's filesystem deletion; the `ORBIT_TEAM` signing knob; and a
 full-build review pass (WORKLOG 2026-07-31) that fixed 176 confirmed findings
 across every layer and added six regression pins.
 
-**Standing blockers:** none in code. Repo push access and CI are both working;
-the OpenAI key is in the environment (its org data-retention posture still
-needs Abdoul's check per §1.3). What remains is **device bring-up on Abdoul's
-Mac** — Xcode + XcodeGen, `scripts/build-whisper.sh`, signing team, install,
-first capture — and the ◊ ratification queue. No Apple toolchain and no Swift
-toolchain exist in the build agent's environment (`download.swift.org` is
-blocked by the egress policy), so Swift compilation is verified exclusively by
-CI; every T1 claim above is from the Python/SQL rigs that do run locally.
+**Standing blockers:** none in code. Device bring-up is **done** (2026-08-06/07):
+Xcode + XcodeGen, `scripts/build-whisper.sh` vendoring the xcframework and both
+model tiers, signing, install, and a run of real captures reviewed end to end on
+Abdoul's phone. What remains is the ◊ ratification queue, the first live PIPE
+measurement, and Abdoul's check of the OpenAI org's data-retention posture (§1.3).
+
+**Where verification runs.** The original build agent had neither Swift nor an
+Apple toolchain, so every Swift claim came from CI. That is no longer the
+constraint: Abdoul's Mac runs `scripts/check.sh` with every stage executing
+locally, including the iOS app build. CI remains the reference — it is what runs
+on push, and it is the only place the Linux core suite is exercised.
 
 **Deferred surfaces register (post-M5, by felt need — DESIGN §14):**
 merge/unmerge review flow UI (ledger op is built + tested), gardening session,
 export UI entry point (capability built, PRIV-5), brokering/hosting search
 recipes, groups & saved lists UI, rejection-reason picker surfacing
 (`RejectionReason` wired in the funnel), Deck reachability actions
-(tap-to-call/text), set-aside triage as its own surface (today it reuses
-review), undo on settled review lines, usage journal. Built and **not** in
-DESIGN's ratified list — awaiting ratification (RATIFICATION §4): the Keys
-sheet, the store-failure screen, Home's resume doors, and the review edit
-sheet.
+(tap-to-call/text — contact points can now be *entered* by hand, FN-26; acting
+on them is still deferred), set-aside triage as its own surface (today it reuses
+review), undo on settled review lines, usage journal, entity-ambiguity ask-cards
+(FN-11), and a real representation for an unnamed person (FN-19).
+
+Built and **not** in DESIGN's ratified list — awaiting ratification
+(RATIFICATION §4): the Keys sheet, the store-failure screen, Home's resume
+doors, the review edit sheet, and — from the 2026-08-06/07 device sessions —
+the working/collapse screen, the waiting-memo list with its discard door, the
+roster (Search's empty state), inline renaming during review, the Desk's
+correction affordances (rename a person, fix a fact), manual contact entry, and
+person retirement.
 
 **Ratification queue:** docs/evals/RATIFICATION.md.

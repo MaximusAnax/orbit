@@ -231,6 +231,12 @@ final class AppModel: ObservableObject {
                                        source: .manual)
     }
 
+    /// Withdraw someone from every surface, keeping everything they anchor.
+    func retire(person id: String) {
+        try? edits.retirePerson(id)
+        refreshAmbient()
+    }
+
     struct RosterEntry: Identifiable {
         let id: String
         let name: String
@@ -251,6 +257,7 @@ final class AppModel: ObservableObject {
             """
             SELECT id, display_name, status FROM person
             WHERE is_self = 0 AND status != 'merged'
+              AND NOT EXISTS (SELECT 1 FROM person_retirement r WHERE r.person_id = person.id)
             ORDER BY display_name COLLATE NOCASE
             """)) ?? []).compactMap { row in
                 guard let id = row.text("id"), let name = row.text("display_name") else { return nil }
@@ -687,7 +694,10 @@ final class AppModel: ObservableObject {
 
     func knownNamesPrimer() -> [String] {
         let names = ((try? store.db.query(
-            "SELECT display_name FROM person WHERE status != 'merged'")) ?? [])
+            """
+            SELECT display_name FROM person WHERE status != 'merged'
+              AND NOT EXISTS (SELECT 1 FROM person_retirement r WHERE r.person_id = person.id)
+            """)) ?? [])
             .compactMap { $0.text("display_name") }
         // FIELD-NOTES FN-19: a pointer-shaped name ("his brother") must never be
         // fed to whisper as a name to listen for, or to the extractor as a
@@ -700,7 +710,10 @@ final class AppModel: ObservableObject {
 
     func extractionContext(eventID: String) -> ExtractionContext {
         let people = ((try? store.db.query(
-            "SELECT id, display_name FROM person WHERE status != 'merged' AND is_self = 0")) ?? [])
+            """
+            SELECT id, display_name FROM person WHERE status != 'merged' AND is_self = 0
+              AND NOT EXISTS (SELECT 1 FROM person_retirement r WHERE r.person_id = person.id)
+            """)) ?? [])
             .compactMap { row -> (String, String)? in
                 guard let id = row.text("id"), let name = row.text("display_name") else { return nil }
                 return (id, name)

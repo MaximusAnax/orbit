@@ -113,6 +113,32 @@ public struct UserEditService {
         try store.rmSearchRebuild()
     }
 
+    // MARK: - Retiring a person (FIELD-NOTES FN-29)
+
+    /// Withdraw someone from every surface, losing nothing. Reversible.
+    ///
+    /// This is the whole removal story, on purpose. A hard erase was designed
+    /// and then dropped: the case that motivated it was a mis-extracted row
+    /// ("his brother"), and for a mistake, hiding is enough. Erasing would have
+    /// cost a named exception in all twelve append-only triggers — INV-1
+    /// weakened permanently to tidy a list. If a real erase is ever needed
+    /// (a privacy demand, not a typo), that trade gets made deliberately then.
+    ///
+    /// The ledger is untouched: their facts, the events they attended and the
+    /// evidence they anchor all stay exactly where they were, which is what
+    /// makes this safe to do on a hunch. What changes is presence — the roster,
+    /// search, the whisper primer and the extraction context all skip them.
+    public func retirePerson(_ id: String) throws {
+        try db.run("INSERT OR REPLACE INTO person_retirement VALUES (?,?)",
+                   [.text(id), .text(now)])
+        try store.rmSearchRebuild()
+    }
+
+    public func unretirePerson(_ id: String) throws {
+        try db.run("DELETE FROM person_retirement WHERE person_id=?", [.text(id)])
+        try store.rmSearchRebuild()
+    }
+
     /// Merge by pointer (Decision 6): the loser's rows are never touched.
     public func mergePerson(loser: String, winner: String) throws {
         // Decision 6 promises one-hop pointer resolution, so merges must keep

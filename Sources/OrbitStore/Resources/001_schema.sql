@@ -278,6 +278,17 @@ CREATE INDEX entity_kind ON entity(kind);
 -- Every confirmed way of saying a person's name (§7.10's guarantee, on the
 -- person side — see FIELD-NOTES FN-19). Matching consults these as well as
 -- display_name, so a name that arrives two ways converges instead of forking.
+-- Retirement: "stop showing me this person", without losing anything they
+-- anchor. A side table rather than a column on `person` because a migration
+-- that adds a column cannot be made idempotent in SQLite (no ADD COLUMN IF NOT
+-- EXISTS), and adding to `status`'s CHECK would mean rebuilding a table that
+-- holds real memos. It also keeps `status` meaning what it means — how well
+-- this person is known, not whether we are currently looking at them.
+CREATE TABLE person_retirement (
+    person_id  TEXT PRIMARY KEY REFERENCES person(id),
+    retired_at TEXT NOT NULL
+);
+
 CREATE TABLE person_alias (
     person_id TEXT NOT NULL REFERENCES person(id),
     alias     TEXT NOT NULL,
