@@ -195,7 +195,8 @@ public struct SyncEngine {
                 let sameEntity = draftEntityID != nil
                     && fact.text("object_entity_id") == draftEntityID
                 let factValue = fact.text("object_value")?.lowercased()
-                let sameValue = factValue != nil && factValue == draftValue
+                let sameValue = Self.objectValueNamesTheObject(draft.predicate, draftValue)
+                    && factValue != nil && factValue == draftValue
                 return sameEntity || sameValue
             }
 
@@ -418,6 +419,23 @@ public struct SyncEngine {
     /// a stated start means a residence, and no dates at all reads as
     /// background. `origin` is never a residence however it is dated — a
     /// birthplace with a year is still a birthplace.
+    /// Does `object_value` name the object, or qualify it?
+    ///
+    /// For `location` since prompt v3 it qualifies: the place is the entity ref
+    /// and the value is `origin` or `residence` (FN-2 option B). Comparing it as
+    /// though it named the object made two residences in different cities look
+    /// like one fact restated — which silently switched supersession off, both
+    /// within a run and against stored facts.
+    /// The qualifier vocabulary is closed (prompt v3), which is what makes this
+    /// decidable: "Berlin" in the value names the place (the pre-v3 shape, still
+    /// on disk), "residence" qualifies it.
+    static let locationQualifiers: Set<String> = ["origin", "residence"]
+
+    static func objectValueNamesTheObject(_ predicate: String, _ value: String?) -> Bool {
+        guard predicate == "location", let value = value?.lowercased() else { return true }
+        return !locationQualifiers.contains(value)
+    }
+
     static func isResidence(value: String?, hasStart: Bool) -> Bool {
         switch value?.lowercased() {
         case "residence": return true
@@ -472,7 +490,8 @@ public struct SyncEngine {
                 // same object = the same fact restated, not a contradiction
                 let sameEntity = later.objectEntityRef != nil
                     && later.objectEntityRef == earlier.objectEntityRef
-                let sameValue = later.objectValue?.lowercased() != nil
+                let sameValue = Self.objectValueNamesTheObject(earlier.predicate, earlier.objectValue)
+                    && later.objectValue?.lowercased() != nil
                     && later.objectValue?.lowercased() == earlier.objectValue?.lowercased()
                 guard !(sameEntity || sameValue) else { continue }
                 // the closest superseding claim wins, so a three-step history

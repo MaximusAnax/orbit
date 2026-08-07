@@ -19,124 +19,170 @@ struct HomeView: View {
     private let placeholderRotation = Timer.publish(every: 4.5, on: .main, in: .common)
         .autoconnect()
 
+    // Structure follows prototype/home-search-mockup.html, top to bottom:
+    // kicker, search pill, teaching hint, the mic block, Today, footer row.
+    // The mic sits ABOVE Today — it is the room's single large object and the
+    // screen's centre of gravity, not something parked under a Spacer.
     var body: some View {
-        VStack(spacing: 14) {
-            // Door 2: one field, three query shapes — no submit affordance exists (J-8)
-            NavigationLink {
-                SearchView(initialQuery: searchText)
-            } label: {
-                HStack {
-                    // DESIGN §12: the placeholder ROTATES through the three real
-                    // query shapes — a name, a question, a fragment. The rotation
-                    // is the teaching ("one box, three shapes"); a fixed string
-                    // teaches only the first of them.
-                    Text(Copy.searchPlaceholders[placeholderIndex])
-                        .interfaceVoice(size: 13)
-                        .foregroundStyle(Tokens.inkFaint(room))
-                        .id(placeholderIndex)
-                    Spacer()
-                }
-                .padding(.vertical, 12).padding(.horizontal, 16)
-                .background(Tokens.pillBg(room))
-                .clipShape(Capsule())
-                .overlay(Capsule().strokeBorder(Tokens.pillEdge(room), lineWidth: 1))
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                // `.kick` is uppercase and letter-spaced in the mockup; 11pt
+                // rather than its 10 because §11.1 sets that as the floor.
+                Text(Copy.homeKicker(app.todayDateLine).uppercased())
+                    .interfaceVoice(size: 11, weight: .semibold)
+                    .kerning(1.3)
+                    .foregroundStyle(Tokens.inkFaint(room))
+                    .padding(.bottom, 14)
+                    .accessibilityIdentifier("home.kicker")
 
-            // "Today" — at most two reasoned items; collapses entirely when empty (D-8)
-            if !app.todayItems.isEmpty {
-                VStack(spacing: Tokens.gridGap) {
-                    ForEach(app.todayItems) { item in
-                        NavigationLink {
-                            DeskView(personID: item.personID)
-                        } label: {
-                            PaperTile {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    SectionTag("Today", ember: true)
-                                    Text(item.personName).memoryVoice(size: 15, weight: .semibold)
-                                        .foregroundStyle(Tokens.ink(room))
-                                    Text(item.reason).interfaceVoice(size: 12)
-                                        .foregroundStyle(Tokens.inkMuted(room))
+                // Door 2: one field, three query shapes — no submit affordance exists (J-8)
+                NavigationLink {
+                    SearchView(initialQuery: searchText)
+                } label: {
+                    HStack(spacing: 9) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Tokens.inkFaint(room))
+                        // DESIGN §12: the placeholder ROTATES through the three real
+                        // query shapes — a name, a question, a fragment. The rotation
+                        // is the teaching ("one box, three shapes"); a fixed string
+                        // teaches only the first of them.
+                        Text(Copy.searchPlaceholders[placeholderIndex])
+                            .interfaceVoice(size: 13)
+                            .foregroundStyle(Tokens.inkFaint(room))
+                            .id(placeholderIndex)
+                        Spacer()
+                    }
+                    .padding(.vertical, 12).padding(.horizontal, 16)
+                    .background(Tokens.paper(room))
+                    .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusPill))
+                    .overlay(RoundedRectangle(cornerRadius: Tokens.radiusPill)
+                        .strokeBorder(Tokens.paperEdge(room), lineWidth: 1))
+                }
+                Text(Copy.searchHint)
+                    .interfaceVoice(size: 10.5)
+                    .foregroundStyle(Tokens.inkFaint(room))
+                    .padding(.horizontal, 6)
+                    .padding(.top, 8)
+                    .padding(.bottom, 14)
+
+                // Door 1: the capture mic — the app's one large ember object (§12),
+                // ringed in note stock the way the mockup lights it.
+                VStack(spacing: 0) {
+                    Button {
+                        showCapture = true
+                    } label: {
+                        ZStack {
+                            Circle().fill(Tokens.note(room)).frame(width: 112, height: 112)
+                            Circle().fill(Tokens.ember(room)).frame(width: 92, height: 92)
+                                .overlay(Image(systemName: "mic.fill")
+                                    .font(.system(size: 34))
+                                    .foregroundStyle(Tokens.emberInk(room)))
+                        }
+                        .shadow(color: .black.opacity(0.18), radius: 11, y: 6)
+                    }
+                    .accessibilityLabel(Copy.captureIdle)
+                    .accessibilityIdentifier("home.mic")
+
+                    Text(Copy.captureIdle)
+                        .interfaceVoice(size: 13, weight: .semibold)
+                        .foregroundStyle(Tokens.ink(room))
+                        .padding(.top, 16)
+                    Text(Copy.captureHint)
+                        .interfaceVoice(size: 11.5)
+                        .foregroundStyle(Tokens.inkFaint(room))
+                        .padding(.top, 3)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 30)
+                .padding(.bottom, 24)
+
+                // "Today" — at most two reasoned items; collapses entirely when
+                // empty (D-8), label included rather than heading nothing.
+                if !app.todayItems.isEmpty {
+                    SectionTag(Copy.todaySection)
+                        .padding(.bottom, 9)
+                    VStack(spacing: Tokens.gridGap) {
+                        ForEach(app.todayItems) { item in
+                            NavigationLink {
+                                DeskView(personID: item.personID)
+                            } label: {
+                                PaperTile {
+                                    HStack(alignment: .top, spacing: 11) {
+                                        PortraitView(initial: item.initial, size: 38)
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(item.reason).memoryVoice(size: 13.5)
+                                                .foregroundStyle(Tokens.ink(room))
+                                                .fixedSize(horizontal: false, vertical: true)
+                                                .multilineTextAlignment(.leading)
+                                            Text(item.sourceLine).interfaceVoice(size: 10.5)
+                                                .foregroundStyle(Tokens.inkFaint(room))
+                                        }
+                                        Spacer(minLength: 0)
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            } else {
-                Text(Copy.todayEmpty)
-                    .interfaceVoice(size: 12)
-                    .foregroundStyle(Tokens.inkFaint(room))
-                    .padding(.top, 6)
-            }
-
-            Spacer()
-
-            // Door 1: the capture mic — the app's one large ember object (§12)
-            Button {
-                showCapture = true
-            } label: {
-                Circle()
-                    .fill(Tokens.ember(room))
-                    .frame(width: 84, height: 84)
-                    .overlay(Image(systemName: "mic.fill")
-                        .font(.system(size: 30))
-                        .foregroundStyle(Tokens.emberInk(room)))
-            }
-            .accessibilityLabel(Copy.captureIdle)
-            .accessibilityIdentifier("home.mic")
-
-            // Waiting memos: the J-11 resume door — a plain line, never a badge (D-2).
-            // Tap resumes the oldest; long-press opens the list, which is where a
-            // memo that can never be picked up (a recording that didn't save) can
-            // be let go instead of sitting here forever.
-            if let memo = app.waitingMemos.first {
-                Button { app.resume(memo) } label: {
-                    Text(Copy.waitingFooter(app.waitingMemos.count))
-                        .interfaceVoice(size: 11)
+                } else {
+                    Text(Copy.todayEmpty)
+                        .interfaceVoice(size: 10.5)
                         .foregroundStyle(Tokens.inkFaint(room))
+                        .padding(.horizontal, 6)
                 }
-                .accessibilityIdentifier("home.waitingFooter")
-                // simultaneousGesture, not onLongPressGesture: a Button's own tap
-                // handling swallows a plain long-press modifier, which would leave
-                // the list unreachable on device while looking correct in source.
-                .simultaneousGesture(LongPressGesture().onEnded { _ in showWaitingList = true })
-                // the long-press is invisible, so VoiceOver gets a named action
-                .accessibilityAction(named: Text(Copy.waitingListTitle)) { showWaitingList = true }
-            }
 
-            // Why the last pick-up didn't get anywhere. Plain ink, no red (D-1),
-            // and it clears the moment something works.
-            if let notice = app.captureNotice {
-                Text(notice)
-                    .interfaceVoice(size: 11)
-                    .foregroundStyle(Tokens.inkMuted(room))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 12)
-                    .accessibilityIdentifier("home.captureNotice")
-            }
+                // The footer row: plain underlined text lines, centred, never
+                // cards and never badges (D-2/D-9).
+                VStack(spacing: 8) {
+                    // Waiting memos: the J-11 resume door. Tap resumes the oldest;
+                    // long-press opens the list, which is where a memo that can
+                    // never be picked up can be let go instead of sitting here.
+                    if let memo = app.waitingMemos.first {
+                        Button { app.resume(memo) } label: {
+                            FooterLink(Copy.waitingFooter(app.waitingMemos.count))
+                        }
+                        .accessibilityIdentifier("home.waitingFooter")
+                        // simultaneousGesture, not onLongPressGesture: a Button's own
+                        // tap handling swallows a plain long-press modifier, which
+                        // would leave the list unreachable on device while looking
+                        // correct in source.
+                        .simultaneousGesture(LongPressGesture().onEnded { _ in showWaitingList = true })
+                        // the long-press is invisible, so VoiceOver gets a named action
+                        .accessibilityAction(named: Text(Copy.waitingListTitle)) { showWaitingList = true }
+                    }
 
-            // Set-asides: a footer text line, never a card, never a badge (D-2);
-            // tapping it reopens them — a footer without a door is a dead end
-            if app.setAsideCount > 0 {
-                Button { app.reopenSetAsides() } label: {
-                    Text(Copy.setAsideFooter(app.setAsideCount))
-                        .interfaceVoice(size: 11)
-                        .foregroundStyle(Tokens.inkFaint(room))
+                    // Why the last pick-up didn't get anywhere. Plain ink, no red
+                    // (D-1), and it clears the moment something works.
+                    if let notice = app.captureNotice {
+                        Text(notice)
+                            .interfaceVoice(size: 11)
+                            .foregroundStyle(Tokens.inkMuted(room))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 12)
+                            .accessibilityIdentifier("home.captureNotice")
+                    }
+
+                    HStack(spacing: 6) {
+                        if app.setAsideCount > 0 {
+                            Button { app.reopenSetAsides() } label: {
+                                FooterLink(Copy.setAsideFooter(app.setAsideCount))
+                            }
+                            .accessibilityIdentifier("home.setAsideFooter")
+                            Text("·").interfaceVoice(size: 11)
+                                .foregroundStyle(Tokens.inkFaint(room))
+                        }
+                        Button { showSettings = true } label: {
+                            FooterLink(Copy.settingsLink)
+                        }
+                        .accessibilityIdentifier("home.settings")
+                    }
                 }
-                .accessibilityIdentifier("home.setAsideFooter")
-                .padding(.bottom, 4)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 22)
             }
-        }
-        .padding(.top, Tokens.screenPaddingTop)
-        .padding(.horizontal, Tokens.screenPaddingSide)
-        .overlay(alignment: .topTrailing) {
-            // the one quiet drawer: key entry (chrome-minimal, faint ink)
-            Button { showSettings = true } label: {
-                Image(systemName: "key")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Tokens.inkFaint(room))
-                    .padding(10)
-            }
-            .accessibilityIdentifier("home.settings")
+            .padding(.top, Tokens.screenPaddingTop)
+            .padding(.horizontal, Tokens.screenPaddingSide)
+            .padding(.bottom, 34)
         }
         .sheet(isPresented: $showCapture) { CaptureView() }
         .sheet(isPresented: $showSettings) { SettingsView() }
@@ -863,7 +909,13 @@ struct OrbitAppMain: App {
                 } else if model.selfID == nil {
                     OnboardingView()          // §7.12: one name, then the room
                 } else {
-                    NavigationStack { HomeView() }
+                    // the backdrop goes INSIDE the stack: a NavigationStack
+                    // paints an opaque system background over whatever sits
+                    // behind it, so Home was rendering on white/black instead
+                    // of `room` while every other surface looked correct.
+                    NavigationStack {
+                        HomeView().background(RoomBackdrop())
+                    }
                 }
             }
             .environmentObject(model)

@@ -61,6 +61,23 @@ public extension View {
 
 // MARK: - The room itself
 
+/// The room itself — the colour field and, at night, its star dust. Separated
+/// from `RoomBackground` so it can be applied as a `.background` to containers
+/// that paint their own: a `NavigationStack` draws an opaque system background
+/// over anything merely stacked *behind* it, which left Home rendering on system
+/// white/black instead of `room` while every non-navigation surface looked right.
+public struct RoomBackdrop: View {
+    @Environment(\.room) var room
+    public init() {}
+    public var body: some View {
+        ZStack(alignment: .top) {
+            Tokens.room(room)
+            if room == .night { StarDust() }               // day: the same layer, empty (§5.3)
+        }
+        .ignoresSafeArea()
+    }
+}
+
 public struct RoomBackground<Content: View>: View {
     @Environment(\.colorScheme) var scheme
     let content: (Room) -> Content
@@ -70,11 +87,10 @@ public struct RoomBackground<Content: View>: View {
     public var body: some View {
         let room: Room = scheme == .dark ? .night : .day   // mode follows the system (§2)
         ZStack(alignment: .top) {
-            Tokens.room(room).ignoresSafeArea()
-            if room == .night { StarDust() }               // day: the same layer, empty (§5.3)
             content(room)
         }
         .environment(\.room, room)
+        .background(RoomBackdrop().environment(\.room, room))
     }
 }
 
@@ -160,6 +176,23 @@ public struct SectionTag: View {
             .interfaceVoice(size: 11, weight: .semibold)  // ≥11pt per §11.1 resolution
             .kerning(1.1)
             .foregroundStyle(ember ? Tokens.ember(room) : Tokens.inkMuted(room))
+    }
+}
+
+/// §5.6: dashes separate memory items, never interface elements.
+/// Home's footer row (§12 mockup `.footrow`): a plain underlined text line in
+/// faint ink. Deliberately not a button tier — §3.6 forbids inventing a fourth,
+/// and these are text lines that happen to be tappable, not actions competing
+/// with the mic.
+public struct FooterLink: View {
+    @Environment(\.room) var room
+    let text: String
+    public init(_ text: String) { self.text = text }
+    public var body: some View {
+        Text(text)
+            .interfaceVoice(size: 11)
+            .foregroundStyle(Tokens.inkFaint(room))
+            .underline(true, pattern: .solid)
     }
 }
 

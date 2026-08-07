@@ -10,6 +10,15 @@ enum Copy {
         "Sarah…", "who do I know at Google?", "the guy from Greece at the picnic",
     ]  // one box, three shapes — teaching by rotation
     static let todayEmpty = "Orbit only speaks here when there's a reason."
+    /// Home, top to bottom, per prototype/home-search-mockup.html: a kicker, the
+    /// one search field with its teaching hint, the mic as the room's single
+    /// large object, then Today, then a footer row.
+    static func homeKicker(_ date: String) -> String { "Orbit · \(date)" }
+    static let searchHint = "A name, a company, or a half-memory — same box."
+    static let captureHint = "Hold nothing back — you'll review everything."
+    static let todaySection = "Today"
+    static let settingsLink = "settings"
+    static func openBrief(_ name: String) -> String { "open \(name)'s brief ›" }
     static func setAsideFooter(_ n: Int) -> String { "\(n) set aside · whenever you want them" }
 
     // Capture
@@ -200,6 +209,8 @@ enum Copy {
     static let allStrings: [String] =
         searchPlaceholders + rejectionReasons + [
             todayEmpty, setAsideFooter(3), captureIdle, captureRecording,
+            homeKicker("Saturday, July 25"), searchHint, captureHint,
+            todaySection, settingsLink, openBrief("Sarah"),
             typedNotePlaceholder, transcriptTitle, transcriptHint,
             audioDeletionNotice, audioRetainedNotice, confirmTranscript, reRecord,
             reviewTitle, contextGroupTitle, entityKindLine("school", partOf: nil),

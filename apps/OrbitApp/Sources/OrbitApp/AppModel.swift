@@ -107,11 +107,28 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// The home kicker's date ("Saturday, July 25"). Read through the store's
+    /// clock rather than `Date()` so a fixed-clock test sees a fixed screen.
+    var todayDateLine: String {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime]
+        let date = iso.date(from: store.clock.now())
+            ?? ISO8601DateFormatter().date(from: store.clock.now())
+            ?? Date()
+        let out = DateFormatter()
+        out.dateFormat = "EEEE, MMMM d"
+        return out.string(from: date)
+    }
+
     struct TodayItem: Identifiable {
         let id: String
         let personID: String
         let personName: String
         let reason: String       // Principle 9: the reason travels with the reminder
+        /// The mockup's second line: where this came from, and the door it opens.
+        var sourceLine: String { Copy.openBrief(personName) }
+        /// The card's portrait initial (mockup `.pav`).
+        var initial: String { String(personName.prefix(1)).uppercased() }
     }
 
     enum CaptureFlowState {

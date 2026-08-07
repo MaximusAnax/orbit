@@ -678,3 +678,52 @@ export UI, set-aside triage as its own screen, usage journal). Those are
 deliberate deferrals with data-model support, not gaps — but "the app isn't
 fully built" is a fair description of them, and they are the honest answer to
 that reading.
+
+---
+
+## 2026-08-07 · Session 5 — home against the mockup
+
+### FN-24 · Home rendered on the system background, not `room` — closed 2026-08-07
+
+Measured, not eyeballed: Home's background sampled `(255,255,255)` in day and
+`(0,0,0)` at night. The tokens were always right — `#f2efe9` / `#101423` — they
+were never reaching the screen.
+
+`NavigationStack` paints an opaque system background over anything merely
+stacked *behind* it, and Home is the only surface that sits inside one.
+Every other surface (review, capture, settings) lives directly in
+`RoomBackground` and looked correct, which is exactly why this survived: the app
+looked plausible everywhere you compared it against itself, and only wrong
+against the mockup.
+
+At night it also cost D-5 outright — star dust renders in that layer, so there
+was none to see.
+
+Fixed by splitting `RoomBackdrop` out of `RoomBackground` so the colour field
+can be applied as a `.background` *inside* the stack. Verified by sampling both
+rooms: exact match, and star dust present at night only.
+
+*Worth keeping: "it looks dark, so dark mode works" is not a check. Pure black
+and `#101423` are indistinguishable at a glance and differ at every pixel.*
+
+### FN-25 · The settings glyph and the mockup's footer word disagree — open · design
+
+DESIGN §353 ratifies "a faint key glyph on Home" as the door to the Keys sheet.
+The home mockup (`prototype/home-search-mockup.html`) has no glyph: its footer
+row reads `2 set aside · settings`, a plain underlined word.
+
+The mockup predates §353, so this is a real conflict rather than drift. Built to
+the mockup on 2026-08-07 — footer word, glyph removed — because the brief was
+"exactly the way it was mocked up". If §353 wins instead, the doc and the build
+now disagree in the other direction.
+
+**To close:** pick one, make the other match.
+
+### Home structure, brought to the mockup — closed 2026-08-07
+
+The mic was parked at the bottom under a `Spacer()` with Today above it; the
+mockup puts the mic in the middle as the room's single large object, with Today
+below. Also added: the kicker, the search glyph and its teaching hint, the mic's
+note-stock ring and label pair, Today's section label and portrait-initial
+cards, and the centred footer row. `Today` with real items is **not** verified —
+the simulator had no data.
