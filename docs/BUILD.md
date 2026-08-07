@@ -21,7 +21,7 @@ The four ratified documents say what Orbit is, what its data means, what it look
 | App | Swift / SwiftUI, iOS-only, **iOS 17 minimum** | Ratified down from iOS 26 (RATIFICATION §4.6). The floor iOS 26 would have bought — `SpeechTranscriber` — is served on 17 by `SFSpeechRecognizer` with `requiresOnDeviceRecognition`, which is what `AppleSpeechTranscriber` uses |
 | Storage | SQLite via **`OrbitSQLite`**, a thin first-party wrapper over the C API | See §1.2 — no ORM, no third-party dependency in the trust core |
 | Transcription | whisper.cpp `large-v3-turbo`, on-device, bundled-floor/downloaded-ceiling | Ratified in DATA-MODEL §6; decode tuning (`-mc 0`, entropy threshold) is a first-class concern; the **name-match post-pass is the primary correctness mechanism** |
-| Extraction | One LLM API endpoint behind the swappable §7.9 seam: **Anthropic Claude API, `claude-opus-5`, structured outputs (JSON schema)** | See §1.3 |
+| Extraction | One LLM API endpoint behind the swappable §7.9 seam: **OpenAI `gpt-5.1`, structured outputs (JSON schema)** | See §1.3 |
 | Eval harness | Swift (`orbit-evals`), exercising the production modules directly | A harness that doesn't run the real pipeline can't gate it |
 | CI | GitHub Actions: `core.yml` (ubuntu, every push) + `app.yml` (macos, app paths + manual) | §4.3 |
 
@@ -34,10 +34,30 @@ The four ratified documents say what Orbit is, what its data means, what it look
 
 ### 1.3 The extraction endpoint
 
-- **Model:** `claude-opus-5` to start — quality ceiling first, so the first PIPE measurements say what the metrics *can* be. `claude-sonnet-5` is measured against the same goldens afterwards and the numbers decide; the seam + `model_id` on every Extraction row makes this a config change.
+- **Model:** `gpt-5.1` (override with `OPENAI_MODEL`). The seam + `model_id` on
+  every Extraction row keeps this a config change; a cheaper tier is measured
+  against the same goldens and the numbers decide.
 - **Zero-data-retention is a hard constraint** (DATA-MODEL §7.9, PRIV-2): the org whose key ships must have a ZDR agreement. Consequence discovered while planning: **Fable-tier models are structurally excluded** — they require 30-day retention and return 400 under ZDR. This is recorded so nobody "upgrades" the extractor into a privacy violation.
-- **Setup prerequisite (Abdoul):** ZDR agreement on the API org; key never committed (injected via device keychain in-app, `ANTHROPIC_API_KEY` env for the harness).
-- **Alternate provider (ratified by Abdoul, 2026-07-29): OpenAI.** `OpenAIExtractor` runs the same versioned prompt + JSON schema through `chat/completions` structured outputs (model via `OPENAI_MODEL`, default `gpt-5.1`; key via keychain `openai-api-key` / `OPENAI_API_KEY`). Provider selection is by which key exists — the Anthropic key wins when both are present. The §7.9 seam means nothing else in the system knows which provider ran; the single-egress budget (PRIV-2) and the retention-posture requirement apply to whichever endpoint is configured — **verify the OpenAI org/project's data-retention settings before production use**, same bar as ZDR.
+- **Setup prerequisite (Abdoul):** verified data-retention posture on the API org; key never committed (injected via device keychain in-app, `OPENAI_API_KEY` env for the harness).
+- **Provider: OpenAI, sole (ratified by Abdoul, 2026-08-07).** This reverses the
+  2026-07-29 arrangement, under which Anthropic was primary and OpenAI the
+  alternate. The reason is plain: Abdoul's API credits are OpenAI, so the
+  Anthropic path could never be measured, and an unmeasurable code path is worse
+  than an absent one — it looks like optionality while being untested surface.
+  `OpenAIExtractor` runs the versioned prompt + JSON schema through
+  `chat/completions` structured outputs (model via `OPENAI_MODEL`, default
+  `gpt-5.1`; key via keychain `openai-api-key` / `OPENAI_API_KEY`). The
+  Anthropic client was **removed**, not disabled — the §7.9 seam is what makes
+  restoring it a one-file change if the credits ever move, and git holds the
+  deleted implementation. The single-egress budget (PRIV-2) and the
+  retention-posture requirement now point at this endpoint — **verify the OpenAI
+  org/project's data-retention settings before production use**, same bar as ZDR.
+- **Decode parameters are pinned and recorded** (EVALS §3.5, implemented
+  2026-08-07): `seed` defaults to a fixed value, `max_completion_tokens` is set,
+  and `ORBIT_TEMPERATURE` / `ORBIT_TOP_P` pin the rest where the model accepts
+  them. Whatever is actually sent — including any parameter the endpoint
+  rejected and we retried without — is recorded on every fixture. Two runs that
+  disagree must be distinguishable from two runs configured differently.
 - The extraction prompt is a **versioned artifact** (`Sources/OrbitPipeline/Resources/extraction-prompt-v*.md`), bumped only with a golden run attached — the ratchet spirit applied to prompt changes.
   - **Waived twice, deliberately (Abdoul, 2026-08-06/07), and now discharged.**
     v2 was promoted to default without its golden run to get the FN-10 fix

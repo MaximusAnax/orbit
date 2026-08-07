@@ -166,8 +166,7 @@ enum Copy {
 
     // Settings — the one quiet drawer; keys live in this phone's keychain only
     static let settingsTitle = "Keys"
-    static let settingsHint = "One extraction endpoint, chosen by whichever key exists. Keys stay in this phone's keychain."
-    static let anthropicKeyLabel = "Anthropic key"
+    static let settingsHint = "One extraction endpoint. The key stays in this phone's keychain."
     static let openAIKeyLabel = "OpenAI key"
     static let saveKeys = "Save"
     static let keySaved = "Saved to the keychain"
@@ -297,7 +296,7 @@ enum Copy {
             portraitPaused, portraitDone,
             stateCardTag, suggestedPrefix, onboardingNamePrompt, onboardingBegin,
             onboardingPortraitInvite,
-            settingsTitle, settingsHint, anthropicKeyLabel, openAIKeyLabel,
+            settingsTitle, settingsHint, openAIKeyLabel,
             modelSectionTitle, modelPresent, modelAbsent(3, failures: 2),
             modelAbsentNothingKept,
             saveKeys, keySaved,

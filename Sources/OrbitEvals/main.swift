@@ -12,7 +12,7 @@ import OrbitPipeline
 // the sync round-trip: fixtures → SyncEngine → real proposals in the real ledger,
 // with the INV suite live underneath. Subcommands:
 //   measure --replay     fixtures → sync → round-trip checks → summary (CI gate)
-//   measure --live       same, via the production endpoint (needs ANTHROPIC_API_KEY)
+//   measure --live       same, via the production endpoint (needs OPENAI_API_KEY)
 //   harvest <db>         review_outcome rows → JSONL eval labels (J-12, EVALS §3.2)
 
 struct EvalFailure: Error, CustomStringConvertible { let description: String }
@@ -211,18 +211,26 @@ func runHarvest(dbPath: String) throws {
 }
 
 
-/// Live measurement (EVALS §9): each corpus memo through the CONFIGURED
-/// production endpoint; results recorded as first-class fixtures (Decision 3)
-/// under docs/evals/fixtures/live-<model>/, then round-tripped through the
-/// real SyncEngine exactly like the replay path. Grade the PIPE table with:
-///   python3 scripts/dev/measure.py --fixtures docs/evals/fixtures/live-<model> --write-report
-func runMeasureLive() async throws {
+/// Live measurement (EVALS §9 · MEASUREMENT-REWORK Phase 0+1).
+///
+/// Collection and grading are deliberately separate. This function only
+/// *collects*: k independent runs of the whole corpus through the production
+/// endpoint, every run persisted with the decode parameters, token usage,
+/// latency and prompt version that produced it. Grading happens afterwards,
+/// offline, from that store — which is what makes a collected run re-gradable
+/// for free when the grader improves, instead of costing another API bill.
+///
+///   orbit-evals measure --live [--runs k] [--out DIR] [--concurrency N]
+///
+/// Checkpointed: an existing, parseable run file is never re-fetched, so a job
+/// killed at run 7 of 10 resumes rather than starting over.
+func runMeasureLive(runs: Int, concurrency: Int, outLabel: String?) async throws {
     let env = ProcessInfo.processInfo.environment
-    guard let extractor = ExtractionProvider.fromEnvironment(
-        anthropicKey: env["ANTHROPIC_API_KEY"], openAIKey: env["OPENAI_API_KEY"]) else {
+    guard let key = env["OPENAI_API_KEY"], !key.isEmpty else {
         throw EvalFailure(description:
-            "measure --live needs ANTHROPIC_API_KEY or OPENAI_API_KEY (data-retention posture per BUILD.md §1.3)")
+            "measure --live needs OPENAI_API_KEY (single provider, BUILD.md §1.3 rev. 2026-08-07)")
     }
+    let extractor = OpenAIExtractor(apiKey: key)
     let root = repoRoot()
     let fixturesDir = root.appendingPathComponent("docs/evals/fixtures")
     let files = try FileManager.default.contentsOfDirectory(at: fixturesDir,
@@ -230,14 +238,21 @@ func runMeasureLive() async throws {
         .filter { $0.pathExtension == "json" }
         .sorted { $0.lastPathComponent < $1.lastPathComponent }
 
-    struct LiveFixture: Encodable {
-        var model_id: String
-        var prompt_version: String
+    struct Memo: Sendable {
+        var name: String
+        var file: String
         var source: String
-        var payload: ExtractionPayload
+        var transcript: String
+        var eventKind: String
+        var seeds: [(id: String, name: String)]
     }
 
-    var liveSubdir: String? = nil
+    // The capture context comes from the fixture metadata, not from a hardcoded
+    // set in this file. FN-36: `eventKind` was pinned to "portrait" for every
+    // memo, which is a false statement to the model (episodes are portraits-only),
+    // and it silently inflated every invention count. Declaring it next to the
+    // golden that grades it is what stops that recurring.
+    var memos: [Memo] = []
     for file in files {
         let meta = try JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any]
         guard let source = meta?["source"] as? String,
@@ -246,53 +261,148 @@ func runMeasureLive() async throws {
             print("  ! \(file.lastPathComponent): no readable source transcript — skipped")
             continue
         }
-        // CLI context is primer-less by design: measuring the extractor cold.
-        // On device the same call carries known-people/entity primers (§7.7).
-        //
-        // The event KIND, though, was hardcoded to "portrait" for every memo,
-        // and that is not a simplification — it is a false statement to the
-        // model. Episodes are portraits-only (rule 11), so labelling an ordinary
-        // capture a portrait invites reconstructed episodes the golden then
-        // counts as inventions. Only Eliah is a portrait; everything else is an
-        // ordinary capture, which is what the app would send.
-        let portraits: Set<String> = ["eliah"]
-        let memoName = file.deletingPathExtension().lastPathComponent
+        let name = file.deletingPathExtension().lastPathComponent
             .lowercased().replacingOccurrences(of: " ", with: "-")
-        // The round-trip seeds a prior ledger for some memos — Priya already
-        // employed at Google, James already at Stripe — and then asked the model
-        // to extract without telling it they exist. Every one of those came back
-        // `match: "new"`, and SyncEngine skips corrections and contradictions
-        // whose subject is an unresolved ref, so CORRECT and CLOSE could not be
-        // emitted no matter how good the extraction was. The harness was seeding
-        // a person and denying them in the same breath. The primer it now sends
-        // is exactly what the app sends on device (§7.7).
-        let seeded = fixtureCases().first { $0.memo == memoName }?.seedPeople ?? []
-        let context = ExtractionContext(
-            eventKind: portraits.contains(memoName) ? "portrait" : "encounter",
-            capturedAt: "2026-07-29T12:00:00Z",
-            knownPeople: seeded.map { (id: $0.id, name: $0.name) },
-            selfName: "Abdoul")
-        let result = try await extractor.extract(transcript: transcript, context: context)
-        let dirName = "live-" + result.modelID.replacingOccurrences(of: "/", with: "-")
-        liveSubdir = "docs/evals/fixtures/" + dirName
-        let outDir = fixturesDir.appendingPathComponent(dirName)
-        try FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        try encoder.encode(LiveFixture(model_id: result.modelID,
-                                       prompt_version: result.promptVersion,
-                                       source: source, payload: result.payload))
-            .write(to: outDir.appendingPathComponent(file.lastPathComponent))
-        print("  ✓ \(file.lastPathComponent) → \(dirName)/ (model \(result.modelID))")
+        memos.append(Memo(name: name,
+                          file: file.lastPathComponent,
+                          source: source,
+                          transcript: transcript,
+                          eventKind: (meta?["event_kind"] as? String) ?? "encounter",
+                          seeds: fixtureCases().first { $0.memo == name }?.seedPeople ?? []))
     }
-    guard let liveSubdir else { throw EvalFailure(description: "no fixtures produced") }
-    print("\n== round-trip over live fixtures ==")
-    try runMeasureReplay(fixturesSubdir: liveSubdir)
+    guard !memos.isEmpty else { throw EvalFailure(description: "no readable corpus memos") }
+
+    let label = outLabel ?? {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd-HHmm"
+        return f.string(from: Date()) + "-" + extractor.model.replacingOccurrences(of: "/", with: "-")
+    }()
+    let runsRoot = root.appendingPathComponent("docs/evals/runs/\(label)")
+    try FileManager.default.createDirectory(at: runsRoot, withIntermediateDirectories: true)
+
+    print("== collecting \(runs) run(s) × \(memos.count) memos → docs/evals/runs/\(label) ==")
+    print("   model \(extractor.model) · prompt \(ExtractionPrompt.version) · concurrency \(concurrency)")
+
+    struct LiveFixture: Encodable {
+        var model_id: String
+        var prompt_version: String
+        var source: String
+        var run_index: Int
+        var telemetry: ExtractionTelemetry?
+        var payload: ExtractionPayload
+    }
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+
+    var totalTokens = 0
+    var totalSeconds = 0.0
+    var failures: [String] = []
+
+    for run in 1...runs {
+        let runDir = runsRoot.appendingPathComponent(String(format: "run-%02d", run))
+        try FileManager.default.createDirectory(at: runDir, withIntermediateDirectories: true)
+
+        // Checkpoint: anything already collected and parseable is left alone.
+        let pending = memos.filter { memo in
+            let out = runDir.appendingPathComponent(memo.file)
+            guard let data = try? Data(contentsOf: out) else { return true }
+            return (try? JSONSerialization.jsonObject(with: data)) == nil
+        }
+        if pending.isEmpty {
+            print("  run \(run): already complete — skipped")
+            continue
+        }
+
+        var done = 0
+        for chunk in stride(from: 0, to: pending.count, by: concurrency).map({
+            Array(pending[$0..<min($0 + concurrency, pending.count)])
+        }) {
+            try await withThrowingTaskGroup(of: (String, Result<ExtractionResult, Error>).self) { group in
+                for memo in chunk {
+                    group.addTask {
+                        let context = ExtractionContext(
+                            eventKind: memo.eventKind,
+                            capturedAt: "2026-07-29T12:00:00Z",
+                            knownPeople: memo.seeds,
+                            selfName: "Abdoul")
+                        do {
+                            return (memo.name, .success(
+                                try await extractor.extract(transcript: memo.transcript,
+                                                            context: context)))
+                        } catch {
+                            return (memo.name, .failure(error))
+                        }
+                    }
+                }
+                for try await (name, outcome) in group {
+                    guard let memo = pending.first(where: { $0.name == name }) else { continue }
+                    switch outcome {
+                    case .success(let result):
+                        let fixture = LiveFixture(model_id: result.modelID,
+                                                  prompt_version: result.promptVersion,
+                                                  source: memo.source,
+                                                  run_index: run,
+                                                  telemetry: result.telemetry,
+                                                  payload: result.payload)
+                        try encoder.encode(fixture)
+                            .write(to: runDir.appendingPathComponent(memo.file))
+                        totalTokens += result.telemetry?.totalTokens ?? 0
+                        totalSeconds += result.telemetry?.latencySeconds ?? 0
+                        done += 1
+                    case .failure(let error):
+                        // Recorded, never silently dropped: a missing memo in a
+                        // run is a hole in the distribution and the aggregator
+                        // must be able to see it.
+                        failures.append("run \(run) · \(name): \(error)")
+                    }
+                }
+            }
+        }
+        print("  run \(run): \(done)/\(pending.count) collected")
+    }
+
+    // The manifest is the run's provenance: without it, two runs that disagree
+    // cannot be told apart from two runs configured differently.
+    let manifest: [String: Any] = [
+        "label": label,
+        "model": extractor.model,
+        "prompt_version": ExtractionPrompt.version,
+        "runs": runs,
+        "memos": memos.map(\.name),
+        "git_sha": (try? shell("git rev-parse --short HEAD")) ?? "unknown",
+        "collected_at": ISO8601DateFormatter().string(from: Date()),
+        "total_tokens": totalTokens,
+        "total_seconds": totalSeconds,
+        "failures": failures,
+    ]
+    try JSONSerialization.data(withJSONObject: manifest, options: [.prettyPrinted, .sortedKeys])
+        .write(to: runsRoot.appendingPathComponent("manifest.json"))
+
     print("""
 
-    Grade the PIPE table:
-      python3 scripts/dev/measure.py --fixtures \(liveSubdir) --write-report
+    collected: \(totalTokens) tokens · \(String(format: "%.0f", totalSeconds))s of model time
     """)
+    if !failures.isEmpty {
+        print("  \(failures.count) extraction failure(s) recorded in manifest.json:")
+        for f in failures.prefix(5) { print("    - \(f)") }
+    }
+    print("""
+
+    Grade and aggregate (collection and grading are separate on purpose):
+      python3 scripts/dev/aggregate.py docs/evals/runs/\(label)
+    """)
+}
+
+func shell(_ command: String) throws -> String {
+    let p = Process()
+    p.executableURL = URL(fileURLWithPath: "/bin/sh")
+    p.arguments = ["-c", command]
+    let pipe = Pipe()
+    p.standardOutput = pipe
+    try p.run()
+    p.waitUntilExit()
+    return String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+        .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 }
 
 let args = Array(CommandLine.arguments.dropFirst())
@@ -300,7 +410,20 @@ do {
     switch args.first {
     case "measure":
         if args.contains("--live") {
-            try await runMeasureLive()
+            func intArg(_ name: String, _ fallback: Int) -> Int {
+                guard let i = args.firstIndex(of: name), args.count > i + 1,
+                      let v = Int(args[i + 1]) else { return fallback }
+                return v
+            }
+            func strArg(_ name: String) -> String? {
+                guard let i = args.firstIndex(of: name), args.count > i + 1 else { return nil }
+                return args[i + 1]
+            }
+            try await runMeasureLive(runs: intArg("--runs", 1),
+                                     concurrency: max(1, intArg("--concurrency", 3)),
+                                     outLabel: strArg("--out"))
+        } else if let i = args.firstIndex(of: "--fixtures"), args.count > i + 1 {
+            try runMeasureReplay(fixturesSubdir: args[i + 1])
         } else {
             try runMeasureReplay()
         }
@@ -310,8 +433,8 @@ do {
     default:
         print("""
         orbit-evals — Orbit evaluation harness (EVALS.md)
-          measure --replay   fixtures → SyncEngine → round-trip checks (CI gate)
-          measure --live     production endpoint (ANTHROPIC_API_KEY or OPENAI_API_KEY)
+          measure --replay [--fixtures dir]\n                     fixtures → SyncEngine → round-trip checks (CI gate)
+          measure --live [--runs k] [--concurrency n] [--out label]\n                     collect k runs via OPENAI_API_KEY → docs/evals/runs/<label>/
           harvest <db>       review outcomes → JSONL eval labels (J-12)
         Payload-level contract grading (the PIPE table): scripts/dev/measure.py (T1 twin).
         """)

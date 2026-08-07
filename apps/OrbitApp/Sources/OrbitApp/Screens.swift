@@ -349,7 +349,6 @@ struct SettingsView: View {
     @EnvironmentObject var app: AppModel
     @Environment(\.room) var room
     @Environment(\.dismiss) var dismiss
-    @State private var anthropicKey = KeychainLite.read("anthropic-api-key") ?? ""
     @State private var openAIKey = KeychainLite.read("openai-api-key") ?? ""
     @State private var saved = false
 
@@ -362,12 +361,9 @@ struct SettingsView: View {
                 Text(Copy.settingsHint).interfaceVoice(size: 12)
                     .foregroundStyle(Tokens.inkMuted(room))
 
-                keyField(Copy.anthropicKeyLabel, text: $anthropicKey, id: "settings.anthropicKey")
                 keyField(Copy.openAIKeyLabel, text: $openAIKey, id: "settings.openAIKey")
 
                 PrimaryButton(Copy.saveKeys) {
-                    KeychainLite.write("anthropic-api-key",
-                                       value: anthropicKey.trimmingCharacters(in: .whitespaces))
                     KeychainLite.write("openai-api-key",
                                        value: openAIKey.trimmingCharacters(in: .whitespaces))
                     saved = true

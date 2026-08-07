@@ -161,7 +161,7 @@ final class AppModel: ObservableObject {
                                               appropriateFor: nil, create: true)
         // Data protection: complete-until-first-auth; DB encrypted at rest by iOS
         // file protection (DATA-MODEL §5). PRIV-2: the only content egress is the
-        // extraction endpoint inside RemoteExtractor.
+        // extraction endpoint inside OpenAIExtractor.
         let store = try WriteStore.at(path: dir.appendingPathComponent("orbit.sqlite").path)
         #if canImport(AVFoundation) && os(iOS)
         let recorder: AudioRecording = DeviceRecorder()
@@ -692,13 +692,12 @@ final class AppModel: ObservableObject {
         if let json = ProcessInfo.processInfo.environment["ORBIT_UITEST_PAYLOAD"] {
             return StaticPayloadExtractor(json: json)
         }
-        // Keys live in the keychain, entered once in settings. Provider is
-        // selected by which key exists (Anthropic wins if both — the ratified
-        // default; OpenAI is the configured alternative, Abdoul 2026-07-29).
-        // Data-retention posture per BUILD.md §1.3 applies to whichever runs.
-        // Nothing outside OrbitPipeline knows which provider ran (§7.9).
+        // The key lives in the keychain, entered once in settings. One
+        // provider now (BUILD §1.3 as revised 2026-08-07 — Abdoul's credits are
+        // OpenAI); data-retention posture per §1.3 applies to it. Nothing
+        // outside OrbitPipeline knows which provider ran (§7.9), which is what
+        // keeps this a one-file change if that ever moves.
         if let extractor = ExtractionProvider.fromEnvironment(
-            anthropicKey: KeychainLite.read("anthropic-api-key"),
             openAIKey: KeychainLite.read("openai-api-key")) {
             return extractor
         }
@@ -784,7 +783,6 @@ enum KeychainLite {
     nonisolated(unsafe) static var overrideForTesting: [String: String] = [:]
     static let service = "dev.abdoul.orbit"
     static let envNames = [
-        "anthropic-api-key": "ANTHROPIC_API_KEY",
         "openai-api-key": "OPENAI_API_KEY",
     ]
 

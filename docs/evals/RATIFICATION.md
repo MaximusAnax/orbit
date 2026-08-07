@@ -30,7 +30,7 @@ on the same fixtures fails) without pretending to be production numbers.
 
 | Check | ◊ item | What produces the number |
 | --- | --- | --- |
-| PIPE-12 | Eliah-portrait episode split quality | `orbit-evals measure --live` with `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` (retention bar per BUILD §1.3) |
+| PIPE-12 | Eliah-portrait episode split quality | `orbit-evals measure --live` with `OPENAI_API_KEY` (retention bar per BUILD §1.3) |
 | PIPE-1/2 | Transcription name accuracy / WER | `scripts/build-whisper.sh` on your Mac + audio fixtures on device |
 | J-1 budget | ≤ 12 taps (measured path exists) | Run JourneyUITests once on CI/device, read the tap count |
 | J-2 budget | ≤ 20 taps | same |
@@ -44,7 +44,7 @@ The provisional pipeline numbers were produced by the same in-session model
 that authored the fixtures (recorded as `claude-fable-5(in-session)` in every
 fixture). The Eliah golden was authored independently by you, which makes the
 grading legitimate — but threshold ratification for the production pipeline
-still requires the production extractor (`claude-opus-5`) run against the
+still requires the production extractor (`gpt-5.1`) run against the
 **live** prompt — which is now v2, not the v1 these fixtures came from — per
 EVALS §9. Add the key; `orbit-evals measure --live` produces the packet's
 missing column in minutes.

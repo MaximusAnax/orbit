@@ -29,3 +29,12 @@ apps/OrbitApp/project-whisper.yml
 # enough to flip round-trip checks, so any one snapshot implies a stability the
 # output does not have. The measurement reports carry the numbers and the spread.
 docs/evals/fixtures/live-*/
+
+# Raw collected runs. The per-run fixtures are the re-gradable evidence store
+# (MEASUREMENT-REWORK: collection is separate from grading), but k=10 over the
+# corpus is ~110 files that change every job. The aggregate report and the
+# manifest are the durable artifacts and stay tracked.
+docs/evals/runs/*/run-*/
+
+__pycache__/
+*.pyc

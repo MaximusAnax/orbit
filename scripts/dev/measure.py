@@ -44,6 +44,7 @@ class Grader:
         self.required_hit = 0
         self.criticals = []       # (check, detail)
         self.misses = []
+        self.hits = []
         # ref → person entry
         self.people = {x["ref"]: x for x in self.p["people"]}
         self.entities = {x["ref"]: x for x in self.p["entities"]}
@@ -94,6 +95,7 @@ class Grader:
         self.required_total += 1
         if hit:
             self.required_hit += 1
+            self.hits.append(label)
         else:
             self.misses.append(label)
             if critical:

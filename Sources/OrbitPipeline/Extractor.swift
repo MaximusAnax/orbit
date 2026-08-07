@@ -26,14 +26,60 @@ public struct ExtractionContext: Sendable {
     }
 }
 
+/// What a single extraction cost and how it was configured.
+///
+/// Recorded on every live fixture because a measurement you cannot reproduce is
+/// an anecdote: without the decode parameters, two runs that disagree cannot be
+/// told apart from two runs that were configured differently. Latency feeds
+/// PERF-5 (≤ 20s for a 3-minute memo) at zero extra cost.
+public struct ExtractionTelemetry: Sendable, Codable {
+    public var promptTokens: Int?
+    public var completionTokens: Int?
+    public var totalTokens: Int?
+    public var latencySeconds: Double
+    public var attempts: Int
+    /// Exactly what was sent, as sent. Not what we intended to send.
+    public var decodeParams: [String: String]
+    /// Parameters the endpoint rejected and we retried without. A silent drop
+    /// here would be the same defect as the prompt-version allow-list (FN-35):
+    /// a configuration that quietly differs from the one you asked for.
+    public var decodeParamsRejected: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case promptTokens = "prompt_tokens"
+        case completionTokens = "completion_tokens"
+        case totalTokens = "total_tokens"
+        case latencySeconds = "latency_seconds"
+        case attempts
+        case decodeParams = "decode_params"
+        case decodeParamsRejected = "decode_params_rejected"
+    }
+
+    public init(promptTokens: Int? = nil, completionTokens: Int? = nil,
+                totalTokens: Int? = nil, latencySeconds: Double = 0,
+                attempts: Int = 1, decodeParams: [String: String] = [:],
+                decodeParamsRejected: [String] = []) {
+        self.promptTokens = promptTokens
+        self.completionTokens = completionTokens
+        self.totalTokens = totalTokens
+        self.latencySeconds = latencySeconds
+        self.attempts = attempts
+        self.decodeParams = decodeParams
+        self.decodeParamsRejected = decodeParamsRejected
+    }
+}
+
 public struct ExtractionResult: Sendable {
     public var payload: ExtractionPayload
     public var modelID: String
     public var promptVersion: String
-    public init(payload: ExtractionPayload, modelID: String, promptVersion: String) {
+    public var telemetry: ExtractionTelemetry?
+    public init(payload: ExtractionPayload, modelID: String, promptVersion: String,
+                telemetry: ExtractionTelemetry? = nil) {
         self.payload = payload
         self.modelID = modelID
         self.promptVersion = promptVersion
+        self.telemetry = telemetry
     }
 }
 
@@ -111,40 +157,29 @@ enum ExtractionMessage {
     }
 }
 
-// MARK: - Remote (the production endpoint)
+// MARK: - The prompt
 
-/// Claude API client. Requirements carried from BUILD.md §1.3: the org runs under
-/// zero data retention (Fable-tier models are structurally excluded — they cannot
-/// run under ZDR); the transcript is the only content that leaves the device;
-/// PRIV-2's single-egress budget points at exactly this host.
-public struct RemoteExtractor: Extractor {
-    public var apiKey: String
-    public var model: String
-    public var baseURL: URL
-
-    /// The active prompt version.
-    ///
-    /// **v2 and v3 were promoted without their golden runs** — BUILD §1.3 requires one on
-    /// the same commit, and Abdoul waived it explicitly (2026-08-06, in chat;
-    /// registered in WORKLOG and RATIFICATION §4.16). The waiver is recorded
-    /// rather than quietly taken, because the consequence is real: the
-    /// provisional PIPE numbers were all measured against v1 fixtures, so they
-    /// describe the *previous* prompt until a live run re-measures this one.
-    ///
-    /// `ORBIT_PROMPT_VERSION=v1` restores the measured prompt for comparison.
-    /// The allow-list this replaces silently downgraded any unrecognised value
-    /// to v3 — so promoting v4 changed the default, the build succeeded, a live
-    /// measurement ran, and every fixture came back stamped `v3`. A validation
-    /// that quietly substitutes a *different* input is worse than none: it
-    /// cannot be told apart from the thing working. An unknown version now
-    /// fails loudly at `systemPrompt()`, where the missing resource is named.
-    public static var promptVersion: String {
-        ProcessInfo.processInfo.environment["ORBIT_PROMPT_VERSION"] ?? Self.latestPromptVersion
+/// The versioned extraction prompt, shared by every extractor.
+///
+/// **v2 and v3 were promoted without their golden runs** — BUILD §1.3 requires one
+/// on the same commit, and Abdoul waived it explicitly (2026-08-06, in chat;
+/// registered in WORKLOG and RATIFICATION §4.16).
+///
+/// `ORBIT_PROMPT_VERSION=v1` restores an earlier prompt for comparison. The
+/// allow-list this replaces silently downgraded any unrecognised value to v3 —
+/// so promoting v4 changed the default, the build succeeded, a live measurement
+/// ran, and every fixture came back stamped `v3` (FN-35). A validation that
+/// quietly substitutes a *different* input is worse than none: it cannot be told
+/// apart from the thing working. An unknown version now fails loudly, naming the
+/// resource it wanted.
+public enum ExtractionPrompt {
+    public static var version: String {
+        ProcessInfo.processInfo.environment["ORBIT_PROMPT_VERSION"] ?? Self.latestVersion
     }
 
     /// Highest `extraction-prompt-vN.md` actually bundled — derived, so adding a
-    /// prompt is one file rather than a file plus two lists to remember.
-    public static var latestPromptVersion: String {
+    /// prompt is one file rather than a file plus a list to remember.
+    public static var latestVersion: String {
         let versions = (Bundle.module.urls(forResourcesWithExtension: "md",
                                            subdirectory: "Resources") ?? [])
             .compactMap { url -> Int? in
@@ -155,99 +190,102 @@ public struct RemoteExtractor: Extractor {
         return "v\(versions.max() ?? 1)"
     }
 
-    public init(apiKey: String, model: String = "claude-opus-5",
-                baseURL: URL = URL(string: "https://api.anthropic.com")!) {
-        self.apiKey = apiKey
-        self.model = model
-        self.baseURL = baseURL
-    }
-
-    static func systemPrompt() throws -> String {
-        guard let url = Bundle.module.url(forResource: "extraction-prompt-\(promptVersion)",
+    public static func system() throws -> String {
+        guard let url = Bundle.module.url(forResource: "extraction-prompt-\(version)",
                                           withExtension: "md", subdirectory: "Resources"),
               let text = try? String(contentsOf: url, encoding: .utf8) else {
             throw ExtractorError.badResponse(
-                "no bundled prompt for ORBIT_PROMPT_VERSION=\(promptVersion) "
-                + "(expected Resources/extraction-prompt-\(promptVersion).md)")
+                "no bundled prompt for ORBIT_PROMPT_VERSION=\(version) "
+                + "(expected Resources/extraction-prompt-\(version).md)")
         }
         return text
     }
+}
 
-    func userMessage(transcript: String, context: ExtractionContext) -> String {
-        ExtractionMessage.user(transcript: transcript, context: context)
+// MARK: - Decode parameters
+
+/// Decode parameters, pinned and recorded.
+///
+/// EVALS §3.5 requires that "model and decode parameters are pinned per release
+/// for CI reproducibility". Until 2026-08-07 only `max_tokens` was set and
+/// temperature was whatever the provider defaulted to — which is the most likely
+/// direct cause of the run-to-run variance in FN-37.
+///
+/// `seed` is the honest lever here: OpenAI documents it as best-effort, not a
+/// guarantee, so pinning it narrows variance without pretending to remove it.
+/// Temperature is deliberately **unset by default** — reasoning-tier models
+/// reject a non-default value outright, and a run that 400s is worse than a run
+/// with provider defaults. Set `ORBIT_TEMPERATURE` to pin it where the model
+/// allows. Whatever is actually sent is recorded on the fixture either way.
+public struct DecodeParams: Sendable {
+    public var temperature: Double?
+    public var topP: Double?
+    public var seed: Int?
+    public var maxTokens: Int
+
+    public static func fromEnvironment() -> DecodeParams {
+        let env = ProcessInfo.processInfo.environment
+        return DecodeParams(
+            temperature: env["ORBIT_TEMPERATURE"].flatMap(Double.init),
+            topP: env["ORBIT_TOP_P"].flatMap(Double.init),
+            seed: env["ORBIT_SEED"].flatMap(Int.init) ?? 20260807,
+            maxTokens: env["ORBIT_MAX_TOKENS"].flatMap(Int.init) ?? 16000)
     }
 
-    public func extract(transcript: String, context: ExtractionContext) async throws -> ExtractionResult {
-        var request = URLRequest(url: baseURL.appendingPathComponent("v1/messages"))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-
-        let body: [String: Any] = [
-            "model": model,
-            "max_tokens": 16000,
-            "system": try Self.systemPrompt(),
-            "messages": [["role": "user", "content": userMessage(transcript: transcript, context: context)]],
-            "output_config": ["format": [
-                "type": "json_schema",
-                "schema": ExtractionSchema.jsonSchema,
-            ]],
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            let text = String(data: data, encoding: .utf8) ?? ""
-            throw ExtractorError.transport("extraction endpoint HTTP error: \(text.prefix(300))")
+    func applied(to body: inout [String: Any], dropping dropped: Set<String>) -> [String: String] {
+        var recorded: [String: String] = [:]
+        func put(_ key: String, _ value: Any?, _ text: String?) {
+            guard let value, let text, !dropped.contains(key) else { return }
+            body[key] = value
+            recorded[key] = text
         }
-        guard let top = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw ExtractorError.badResponse("non-JSON response")
-        }
-        if let stop = top["stop_reason"] as? String, stop == "refusal" {
-            throw ExtractorError.badResponse("endpoint refused the request")
-        }
-        guard let content = top["content"] as? [[String: Any]],
-              let text = content.first(where: { ($0["type"] as? String) == "text" })?["text"] as? String else {
-            throw ExtractorError.badResponse("no text block in response")
-        }
-        let payload = try JSONDecoder().decode(ExtractionPayload.self, from: Data(text.utf8))
-        return ExtractionResult(payload: payload, modelID: model, promptVersion: Self.promptVersion)
+        put("temperature", temperature, temperature.map { "\($0)" })
+        put("top_p", topP, topP.map { "\($0)" })
+        put("seed", seed, seed.map { "\($0)" })
+        put("max_completion_tokens", maxTokens, "\(maxTokens)")
+        return recorded
     }
 }
 
-// MARK: - OpenAI (alternate remote endpoint, §7.9)
+// MARK: - OpenAI (the production endpoint, §7.9)
 
-/// OpenAI-backed extractor — same versioned prompt, same JSON schema, same
-/// single-egress budget (PRIV-2 applies to whichever endpoint is configured;
-/// verify the org's data-retention posture before production use, BUILD §1.3).
-/// The rest of the system cannot tell which provider ran — that is the seam's
-/// whole point.
+/// OpenAI-backed extractor — the sole configured provider (BUILD §1.3, revised
+/// 2026-08-07: Abdoul's API credits are OpenAI, so the alternate became the
+/// primary and the Anthropic path was removed rather than left as dead code
+/// that no measurement would ever cover). PRIV-2's single-egress budget points
+/// at exactly this host. The rest of the system cannot tell which provider ran —
+/// that is the §7.9 seam's whole point, and it is what makes swapping back a
+/// one-file change if the credits ever change.
 public struct OpenAIExtractor: Extractor {
     public var apiKey: String
     public var model: String
     public var baseURL: URL
+    public var decode: DecodeParams
+    /// Attempts per extraction, total. Unattended k-run jobs make a transient
+    /// timeout a certainty rather than a risk — one killed a full run on
+    /// 2026-08-07 and discarded ten completed extractions with it.
+    public var maxAttempts: Int
 
-    public static let promptVersion = RemoteExtractor.promptVersion
+    public static var promptVersion: String { ExtractionPrompt.version }
 
     public init(apiKey: String,
                 model: String = ProcessInfo.processInfo.environment["OPENAI_MODEL"] ?? "gpt-5.1",
-                baseURL: URL = URL(string: "https://api.openai.com")!) {
+                baseURL: URL = URL(string: "https://api.openai.com")!,
+                decode: DecodeParams = .fromEnvironment(),
+                maxAttempts: Int = 4) {
         self.apiKey = apiKey
         self.model = model
         self.baseURL = baseURL
+        self.decode = decode
+        self.maxAttempts = maxAttempts
     }
 
-    public func extract(transcript: String, context: ExtractionContext) async throws -> ExtractionResult {
-        var request = URLRequest(url: baseURL.appendingPathComponent("v1/chat/completions"))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-
-        let body: [String: Any] = [
+    private func body(transcript: String, context: ExtractionContext,
+                      dropping dropped: Set<String>) throws -> ([String: Any], [String: String]) {
+        var body: [String: Any] = [
             "model": model,
             "messages": [
-                ["role": "system", "content": try RemoteExtractor.systemPrompt()],
+                ["role": "system", "content": try ExtractionPrompt.system()],
                 ["role": "user",
                  "content": ExtractionMessage.user(transcript: transcript, context: context)],
             ],
@@ -260,34 +298,105 @@ public struct OpenAIExtractor: Extractor {
                 ],
             ],
         ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let recorded = decode.applied(to: &body, dropping: dropped)
+        return (body, recorded)
+    }
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            let text = String(data: data, encoding: .utf8) ?? ""
-            throw ExtractorError.transport("extraction endpoint HTTP error: \(text.prefix(300))")
+    public func extract(transcript: String, context: ExtractionContext) async throws -> ExtractionResult {
+        let started = Date()
+        var dropped: Set<String> = []
+        var attempt = 0
+        var lastError: Error = ExtractorError.transport("no attempt made")
+
+        while attempt < maxAttempts {
+            attempt += 1
+            let (bodyDict, recorded) = try body(transcript: transcript, context: context,
+                                                dropping: dropped)
+            var request = URLRequest(url: baseURL.appendingPathComponent("v1/chat/completions"))
+            request.httpMethod = "POST"
+            request.timeoutInterval = 300
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+            request.httpBody = try JSONSerialization.data(withJSONObject: bodyDict)
+
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse else {
+                    throw ExtractorError.badResponse("no HTTP response")
+                }
+                if http.statusCode != 200 {
+                    let text = String(data: data, encoding: .utf8) ?? ""
+                    // A rejected decode parameter is retried without it — and
+                    // recorded. Dropping it silently would reproduce FN-35.
+                    if http.statusCode == 400,
+                       let offending = ["temperature", "top_p", "seed", "max_completion_tokens"]
+                        .first(where: { text.contains($0) && !dropped.contains($0) }) {
+                        dropped.insert(offending)
+                        continue
+                    }
+                    let retryable = http.statusCode == 429 || (500...599).contains(http.statusCode)
+                    let err = ExtractorError.transport(
+                        "extraction endpoint HTTP \(http.statusCode): \(text.prefix(300))")
+                    if retryable, attempt < maxAttempts {
+                        lastError = err
+                        try await Self.backoff(attempt)
+                        continue
+                    }
+                    throw err
+                }
+                guard let top = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let choices = top["choices"] as? [[String: Any]],
+                      let message = choices.first?["message"] as? [String: Any] else {
+                    throw ExtractorError.badResponse("no message in response")
+                }
+                if let refusal = message["refusal"] as? String, !refusal.isEmpty {
+                    throw ExtractorError.badResponse("endpoint refused the request")
+                }
+                guard let text = message["content"] as? String else {
+                    throw ExtractorError.badResponse("no message content in response")
+                }
+                let payload = try JSONDecoder().decode(ExtractionPayload.self, from: Data(text.utf8))
+                let usage = top["usage"] as? [String: Any]
+                let telemetry = ExtractionTelemetry(
+                    promptTokens: usage?["prompt_tokens"] as? Int,
+                    completionTokens: usage?["completion_tokens"] as? Int,
+                    totalTokens: usage?["total_tokens"] as? Int,
+                    latencySeconds: Date().timeIntervalSince(started),
+                    attempts: attempt,
+                    decodeParams: recorded,
+                    decodeParamsRejected: dropped.sorted())
+                return ExtractionResult(payload: payload, modelID: model,
+                                        promptVersion: ExtractionPrompt.version,
+                                        telemetry: telemetry)
+            } catch let error as ExtractorError {
+                throw error
+            } catch {
+                // Transport-level: timeouts and connection resets. These are the
+                // ones that killed the 2026-08-07 run.
+                lastError = error
+                if attempt < maxAttempts {
+                    try await Self.backoff(attempt)
+                    continue
+                }
+            }
         }
-        guard let top = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let choices = top["choices"] as? [[String: Any]],
-              let message = choices.first?["message"] as? [String: Any],
-              let text = message["content"] as? String else {
-            throw ExtractorError.badResponse("no message content in response")
-        }
-        if let refusal = message["refusal"] as? String, !refusal.isEmpty {
-            throw ExtractorError.badResponse("endpoint refused the request")
-        }
-        let payload = try JSONDecoder().decode(ExtractionPayload.self, from: Data(text.utf8))
-        return ExtractionResult(payload: payload, modelID: model, promptVersion: Self.promptVersion)
+        throw lastError
+    }
+
+    /// Exponential backoff with jitter, so a rate-limited fleet does not
+    /// synchronise its retries into a second thundering herd.
+    private static func backoff(_ attempt: Int) async throws {
+        let base = pow(2.0, Double(attempt)) * 1.5           // 3s, 6s, 12s
+        let jitter = Double.random(in: 0...(base * 0.25))
+        try await Task.sleep(nanoseconds: UInt64((base + jitter) * 1_000_000_000))
     }
 }
 
-/// Provider selection, in one place: the Anthropic key wins when both exist
-/// (the ratified default endpoint); the OpenAI key is the configured
-/// alternative (Abdoul, 2026-07-29). No key → nil, capture waits for
-/// sync-later.
+/// Provider selection, in one place. One provider, one key (BUILD §1.3 as
+/// revised 2026-08-07). No key → nil, and capture waits for sync-later rather
+/// than hard-failing (P3).
 public enum ExtractionProvider {
-    public static func fromEnvironment(anthropicKey: String?, openAIKey: String?) -> Extractor? {
-        if let key = anthropicKey, !key.isEmpty { return RemoteExtractor(apiKey: key) }
+    public static func fromEnvironment(openAIKey: String?) -> Extractor? {
         if let key = openAIKey, !key.isEmpty { return OpenAIExtractor(apiKey: key) }
         return nil
     }
