@@ -84,6 +84,63 @@ final class FactAnswerTests: XCTestCase {
         XCTAssertEqual(a.factAnswer, "Greece")
     }
 
+    /// The other half of the same predicate: "what is her job" wants the role,
+    /// and preferring the entity unconditionally answered it with the company.
+    /// Found by review of the first fix — one predicate, two questions.
+    func testWhatSomeonesJobIsAnswersTheRoleNotTheEmployer() throws {
+        let eliah = try edits.createPerson(displayName: "Eliah")
+        try entity("e_google", "Google")
+        try fact(subject: eliah, predicate: "employment", value: "intern",
+                 entity: "e_google", verbatim: "she interned at Google")
+
+        let answer = try Searcher(reader: store.reader).search("what is Eliah's job?")
+        guard case .answer(let a) = answer else {
+            return XCTFail("expected an answer band, got \(answer)")
+        }
+        XCTAssertEqual(a.factAnswer, "intern", "the employer is not the job")
+    }
+
+    /// A qualifier is never an answer, whatever was asked — "what" must not
+    /// reach past the entity and return "residence".
+    func testAQualifierIsNeverAnAnswerEvenForAWhatQuestion() throws {
+        let james = try edits.createPerson(displayName: "James")
+        try entity("e_sf", "San Francisco", kind: "place")
+        try fact(subject: james, predicate: "location", value: "residence",
+                 entity: "e_sf", verbatim: "he's been in San Francisco ever since")
+
+        let answer = try Searcher(reader: store.reader).search("what city is James based in?")
+        guard case .answer(let a) = answer else {
+            return XCTFail("expected an answer band, got \(answer)")
+        }
+        XCTAssertEqual(a.factAnswer, "San Francisco")
+    }
+
+    /// After a merge both rows can carry a first-met anchor. Reading "any row
+    /// whose canonical id matches" without an aggregate returns whichever one
+    /// SQLite hands back first, so the line could flip between runs.
+    func testFirstMetIsTheEarliestAcrossAMergeAndIsStable() throws {
+        let winner = try edits.createPerson(displayName: "Sarah")
+        let loser = try edits.createPerson(displayName: "Sara")
+        func meeting(_ person: String, _ when: String) throws -> String {
+            let e = try edits.captureEvent(.init(
+                kind: .encounter, occurredAt: when, transcript: "met",
+                participants: [(person, .confirmed, nil)]))
+            try edits.confirmEvent(e, fullModelTranscribed: true)
+            return e
+        }
+        try edits.setFirstMet(person: winner, event: try meeting(winner, "2025-09-01T10:00:00Z"))
+        try edits.setFirstMet(person: loser, event: try meeting(loser, "2023-03-01T10:00:00Z"))
+        try edits.mergePerson(loser: loser, winner: winner)
+        try store.rmRebuild()
+
+        let answers = try (0..<5).map { _ in
+            try store.reader.firstMetDate(person: winner) ?? ""
+        }
+        XCTAssertEqual(Set(answers).count, 1, "first-met flipped between reads: \(answers)")
+        XCTAssertTrue(answers[0].hasPrefix("2023-03"),
+                      "the earliest meeting is when you met them; got \(answers[0])")
+    }
+
     /// Decision 6 is a pointer merge: the loser's rows are never rewritten, so
     /// every read has to follow the pointer. Recall does this in eight queries;
     /// search's provenance line did not, so the Desk and the search result

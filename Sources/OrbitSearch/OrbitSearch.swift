@@ -127,11 +127,7 @@ public struct Searcher {
     func provenanceAnchor(_ personID: String) throws -> String {
         let db = reader.db
         var parts: [String] = []
-        if let met = try db.scalar(
-            """
-            SELECT e.occurred_at FROM person p JOIN event e ON e.id = p.first_met_event_id
-            WHERE COALESCE(p.merged_into, p.id) = ?
-            """, [.text(personID)]).stringValue {
+        if let met = try reader.firstMetDate(person: personID) {
             parts.append("met \(String(met.prefix(7)))")
         }
         if let via = try db.query(
@@ -226,18 +222,33 @@ public struct Searcher {
     ]
 
     /// "Where does James work?" → the current fact, with its evidence.
-    /// "Where does James work?" wants the place, and the place is the entity.
+    /// Controlled qualifiers: values that describe the *shape* of a fact rather
+    /// than naming its object, so they can never be an answer to anything.
+    /// Prompt v3 put these in `object_value` (FN-2/FN-12) beside an entity that
+    /// holds the actual place or school.
+    static let qualifierValues: Set<String> = [
+        "origin", "residence", "undergrad", "grad", "alumni", "attended",
+    ]
+
+    /// Which half of the fact answers the question that was asked.
     ///
-    /// `object_value` holds the literal *beside* the object (DATA-MODEL §2: "a
-    /// role title, a date, a name"), so reading it alone answers "intern" for
-    /// someone whose employment links Google, and — since prompt v3 put the
-    /// origin/residence qualifier there — answers "residence" for someone who
-    /// lives in San Francisco. The entity is the answer whenever there is one;
-    /// the literal is the fallback for facts that never linked one.
-    static func factAnswer(_ row: Row) -> String? {
-        if let entity = row.text("object_entity_name"), !entity.isEmpty { return entity }
-        if let value = row.text("object_value"), !value.isEmpty { return value }
-        return row.text("verbatim")
+    /// One predicate serves two questions. "Where does Eliah work?" wants the
+    /// employer — the entity. "What is Eliah's job?" wants the role — the
+    /// literal in `object_value`. Preferring either one unconditionally is
+    /// wrong for the other, so the interrogative decides.
+    ///
+    /// A qualifier short-circuits it: "residence" answers nothing, whatever was
+    /// asked, so the entity wins even when the question said "what".
+    static func factAnswer(_ row: Row, asksWhere: Bool) -> String? {
+        let entity = row.text("object_entity_name").flatMap { $0.isEmpty ? nil : $0 }
+        let literal = row.text("object_value").flatMap { $0.isEmpty ? nil : $0 }
+        let literalIsQualifier = literal.map {
+            qualifierValues.contains($0.lowercased())
+        } ?? false
+        if asksWhere || literalIsQualifier {
+            return entity ?? (literalIsQualifier ? nil : literal) ?? row.text("verbatim")
+        }
+        return literal ?? entity ?? row.text("verbatim")
     }
 
     func factLookup(lower: String, query: String) throws -> Answer? {
@@ -282,7 +293,7 @@ public struct Searcher {
             hit.evidence = firsthandRows.map(evidence)
             firsthand = [hit]
             return Answer(firsthand: firsthand, maybe: secondhandMaybe(person, secondhandRows),
-                          factAnswer: Self.factAnswer(top))
+                          factAnswer: Self.factAnswer(top, asksWhere: lower.contains("where")))
         }
         // only hearsay exists: no uncited direct answer — the maybe band
         // carries it with its teller

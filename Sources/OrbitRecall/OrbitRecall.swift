@@ -265,9 +265,7 @@ public struct BriefAssembler {
 
     func metLine(personID: String, person: Row, lastSeen: String?, db: Database) throws -> String {
         var parts: [String] = []
-        if let metEvent = person.text("first_met_event_id"),
-           let when = try db.scalar("SELECT occurred_at FROM event WHERE id=?",
-                                    [.text(metEvent)]).stringValue {
+        if let when = try StoreReader(db).firstMetDate(person: personID) {
             parts.append("met \(String(when.prefix(7)))")
         }
         if let via = try db.query(
@@ -285,9 +283,7 @@ public struct BriefAssembler {
     }
 
     func firstMetYear(personID: String, person: Row, db: Database) throws -> String {
-        if let metEvent = person.text("first_met_event_id"),
-           let when = try db.scalar("SELECT occurred_at FROM event WHERE id=?",
-                                    [.text(metEvent)]).stringValue {
+        if let when = try StoreReader(db).firstMetDate(person: personID) {
             return String(when.prefix(4))
         }
         let earliest = try db.scalar(

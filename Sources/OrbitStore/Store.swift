@@ -114,6 +114,26 @@ public struct StoreReader {
         return current
     }
 
+    /// When this person was first met, across their whole merged identity.
+    ///
+    /// Decision 6 is a pointer merge, so a merged-away row keeps its own
+    /// `first_met_event_id` and the winner keeps a different one. Reading the
+    /// winner's alone loses the earlier meeting; reading "any row whose
+    /// canonical id matches" without an aggregate returns whichever row SQLite
+    /// happens to hand back first. The earliest is both deterministic and the
+    /// true answer to "when did I meet them" — you met the person, not the row.
+    ///
+    /// Lives here rather than in Recall or Search because both ask, and they
+    /// have already disagreed about this once.
+    public func firstMetDate(person id: String) throws -> String? {
+        try db.scalar(
+            """
+            SELECT MIN(e.occurred_at) FROM person p
+            JOIN event e ON e.id = p.first_met_event_id
+            WHERE COALESCE(p.merged_into, p.id) = ?
+            """, [.text(id)]).stringValue
+    }
+
     public func person(_ id: String) throws -> Row? {
         try db.query("SELECT * FROM person WHERE id=?", [.text(id)]).first
     }

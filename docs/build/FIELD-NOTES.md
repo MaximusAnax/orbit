@@ -879,6 +879,40 @@ glued to the previous word and the `first?.isUppercase` guard then rejects the
 pair. A missed suggestion, not a wrong edit — recorded rather than fixed, since
 transcripts from both engines are space-separated prose.*
 
+### FN-33 · Both fixes for FN-32 were half-right — closed 2026-08-07
+
+The second Bugbot pass on `1ffdae4` found two faults, and both were introduced by
+the previous round's fixes rather than by the original code. Worth recording as a
+pair, because they fail the same way: a fix aimed at one case quietly asserted
+itself over a case nobody restated.
+
+**Preferring the entity was right for "where", wrong for "what".** One predicate
+serves two questions — "where does Eliah work?" wants Google, "what is Eliah's
+job?" wants intern. FN-32 made the entity win unconditionally, which fixed the
+first and broke the second. The interrogative decides now, with one override: a
+controlled qualifier (`origin`, `residence`, `undergrad`, `grad`, `alumni`,
+`attended`) is never an answer to anything, so a "what city…" question still
+gets the place rather than the word "residence".
+
+**Resolving the merge pointer made first-met nondeterministic.** `WHERE
+COALESCE(p.merged_into, p.id) = ?` matches the winner *and* every merged loser,
+and it was read with `scalar` — no aggregate, no ORDER BY — so whichever row
+SQLite handed back first won, and the provenance line could differ between reads
+of the same database. Before the fix it was deterministic and merge-blind; after,
+correct-ish and unstable. Now `MIN(occurred_at)`: deterministic, and the honest
+answer, since you met the person rather than the row.
+
+That one also had a third symptom nobody reported: Recall read the winner's
+`first_met_event_id` directly, so Desk and Search could disagree about the same
+person for a *different* reason than FN-32's. Both now call one
+`StoreReader.firstMetDate(person:)` — the shared implementation is the actual
+fix, since these two had already diverged once.
+
+*Pattern: three rounds of review on the same forty lines, each fix creating the
+next finding. Every one of them was a case-analysis miss — entity vs literal,
+winner vs identity — not a coding error. Where a value can play two roles, the
+question has to select the role, and a test has to pin each role separately.*
+
 ---
 
 ## Session notes
