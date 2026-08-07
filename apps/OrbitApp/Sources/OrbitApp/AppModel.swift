@@ -90,8 +90,12 @@ final class AppModel: ObservableObject {
     }
 
     struct WaitingMemo: Identifiable {
-        enum Stage { case needsTranscription, needsTranscriptReview, needsSync,
-                     needsProposalReview(syncRunID: String) }
+        /// Equatable is explicit because `needsProposalReview` carries a value:
+        /// Swift synthesises `==` for free only while an enum has no associated
+        /// values, so adding one silently withdrew the conformance and broke
+        /// every test comparing a stage (FIELD-NOTES FN-25).
+        enum Stage: Equatable { case needsTranscription, needsTranscriptReview, needsSync,
+                                needsProposalReview(syncRunID: String) }
         let id: String          // event id
         let stage: Stage
         /// Before a memo has words, the day it was captured is the only thing

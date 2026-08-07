@@ -790,3 +790,31 @@ Reach page, and Home: `#101423` everywhere.
 *Pattern worth naming, now seen three times: this codebase's backgrounds fail
 by being **almost** right — the screen looks dark, so it passes a glance. Sample
 the pixels.*
+
+### FN-25 · Adding an associated value silently withdrew an Equatable conformance — closed 2026-08-07
+
+`WaitingMemo.Stage` gained `needsProposalReview(syncRunID: String)`. Swift
+synthesises `==` for an enum **only while it has no associated values**, so that
+one addition quietly removed the conformance, and
+`XCTAssertEqual(memo.stage, .needsTranscription)` in `CaptureFailureTests`
+stopped compiling. The app target went red and stayed red across five commits.
+
+Two things worth keeping:
+
+1. **The failure was invisible from the cloud session.** `check.sh` here skips
+   the app target entirely (no Xcode), and it now says so out loud — but saying
+   so is not the same as catching it. Every app-layer change made from this
+   environment is unverified until a Mac or CI compiles it, and five commits of
+   red proved the gap is real rather than theoretical.
+2. **The break was at a distance.** The enum and the test were changed by
+   different people in different commits, and neither change was wrong on its
+   own. `Stage` now declares `Equatable` explicitly, which is the durable fix:
+   the conformance no longer depends on the enum happening to stay
+   value-free.
+
+*Related, and already fixed by Abdoul before I saw it:* the same commit pair
+broke `testResidenceSupersedesResidence` for a similar
+change-at-a-distance reason. Putting the qualifier (`residence`) into
+`object_value` made two different residences share an object value, so the
+"same object, not a contradiction" check swallowed them. `objectValueNamesTheObject`
+now distinguishes a value that *names* the object from one that *classifies* it.
