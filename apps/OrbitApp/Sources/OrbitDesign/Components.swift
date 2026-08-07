@@ -86,11 +86,18 @@ public struct RoomBackground<Content: View>: View {
     }
     public var body: some View {
         let room: Room = scheme == .dark ? .night : .day   // mode follows the system (§2)
+        // The backdrop is a SIBLING in the stack, not a `.background`: a
+        // background is sized to its content and clips `ignoresSafeArea`, so
+        // any screen whose content is narrower than the display gets bars down
+        // the sides. As a sibling the Color expands and carries the stack with
+        // it. `RoomBackdrop` stays separately available for the one place that
+        // cannot use this — inside a NavigationStack, which paints over
+        // anything behind it (FN-24).
         ZStack(alignment: .top) {
+            RoomBackdrop()
             content(room)
         }
         .environment(\.room, room)
-        .background(RoomBackdrop().environment(\.room, room))
     }
 }
 

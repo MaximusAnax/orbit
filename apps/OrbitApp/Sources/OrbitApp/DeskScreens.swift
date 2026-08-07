@@ -340,6 +340,8 @@ struct TimelineMiniPage: View {
     @State private var rows: [(id: String, when: String, kind: String, title: String)] = []
 
     var body: some View {
+        // carries the room itself — see ReachMiniPage
+        RoomBackground { _ in
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.gridGap) {
                 Text(title).interfaceVoice(size: 20, weight: .bold)
@@ -358,6 +360,7 @@ struct TimelineMiniPage: View {
             }
             .padding(.top, Tokens.screenPaddingTop)
             .padding(.horizontal, Tokens.screenPaddingSide)
+        }
         }
         .onAppear {
             rows = ((try? app.store.db.query(
@@ -392,6 +395,10 @@ struct ReachMiniPage: View {
     @State private var adding = false
 
     var body: some View {
+        // Pushed into the NavigationStack, which paints its own opaque
+        // background — a mini-page that does not carry the room renders on
+        // system black/white (see FN-24).
+        RoomBackground { _ in
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.gridGap) {
                 Text(title).interfaceVoice(size: 20, weight: .bold)
@@ -421,6 +428,7 @@ struct ReachMiniPage: View {
             }
             .padding(.top, Tokens.screenPaddingTop)
             .padding(.horizontal, Tokens.screenPaddingSide)
+        }
         }
         .sheet(isPresented: $adding) {
             if let personID {

@@ -766,3 +766,27 @@ implies ranking — recency, frequency, closeness are all scores wearing an orde
 Alphabetical is an index: it carries no judgement and is the one order that says
 nothing about anybody. Merged rows are excluded (pointers, not people) and so is
 the self row (§7.12).
+
+### FN-28 · The room field stopped filling the screen — closed 2026-08-07
+
+Two bugs, one root, and the second was a regression from fixing the first.
+
+FN-24 moved the room from a ZStack **sibling** into a `.background(...)`. A
+background is sized to its content and clips `ignoresSafeArea`, so any screen
+whose content is narrower than the display got bars down both sides — visible
+first on the portrait screen. A `Color` sibling expands and carries the stack
+with it, which is why the original shape worked; restored, with `RoomBackdrop`
+kept separately available for the one place that cannot use a sibling (inside a
+`NavigationStack`, which paints over anything behind it).
+
+Second: `ReachMiniPage` and `TimelineMiniPage` are pushed straight into the
+NavigationStack and never carried the room at all, so both rendered on system
+black. `DeskView` and `SearchView` are wrappers that do carry it, which is why
+the screens either side of them looked right and these two did not.
+
+Verified by sampling all four edges plus the centre of the portrait screen, the
+Reach page, and Home: `#101423` everywhere.
+
+*Pattern worth naming, now seen three times: this codebase's backgrounds fail
+by being **almost** right — the screen looks dark, so it passes a glance. Sample
+the pixels.*
