@@ -366,3 +366,40 @@ owner took deliberately with the cost stated, not a precedent that the gate is
 optional. The narrower protection still runs on every commit — PIPE-17 grades
 tag discipline in `check.sh`, so the specific defect v2 targets cannot return
 unnoticed even without a live run.
+
+## 2026-08-07 · Session 3 · FN-17, FN-19, and half of FN-20
+
+- **FN-17 (migration runner) — closed, and it unblocks two others.** `ensure`
+  created the schema only when the database was empty, and `schema_version` was
+  written once and never read, so every schema change reached fresh installs
+  only. `Schema.migrate` now applies numbered `migration_XXX.sql` files in
+  order, each **in one transaction with its own version bump** — a failure
+  leaves the database where it was, and the retry on next launch is safe
+  because migrations are idempotent. Migration 002 adds `person_alias`, the
+  table FN-19 found missing on the person side. The T1 rig proves each
+  migration applies to a database *without* it (objects dropped first, standing
+  in for the older database it will meet), re-runs cleanly, and leaves the
+  INV-4 rebuild intact; Swift tests cover the populated-database path. FN-2's
+  `origin` predicate and FN-11's entity-ambiguity kind are decisions again
+  rather than blockers.
+- **FN-19 (pointer-shaped names) — closed at two layers.** The funnel refuses a
+  possessed relationship word, including the name-possessive form ("John's
+  friend from work") that a pronoun-only check would have missed — I caught
+  that one by running the heuristic against its own test cases rather than
+  trusting it. Bare relationship words are deliberately left alone: "Mother
+  Teresa", "Brother Ali" and "Dad" are names people are called. v2 rule 19
+  tells the extractor to ask instead of inventing a label, and
+  `knownNamesPrimer` filters pointer names so one that predates the guard is
+  never fed back to whisper or the extractor.
+- **FN-20 — prompt half done.** v2 rule 20: a meeting place is not a fact about
+  the person. The routing half is still open and now recorded precisely —
+  `event.location_entity_id` exists and no extraction path ever sets it, so the
+  venue is currently dropped rather than misfiled. That is a payload + prompt
+  change, no schema work.
+- Left open deliberately: FN-1 and FN-6 (device), FN-2's modelling question and
+  FN-11's card type (both now unblocked, both his call), and the
+  `person.display_name NOT NULL` question FN-19 surfaced — an unnamed known-of
+  person cannot currently be represented as a row.
+- **Tier honesty unchanged:** T1 rigs and negative controls are green here; no
+  Swift compiled in this environment and Actions has still not picked up a job
+  since 07-31, so the Swift halves are unbuilt until his Mac runs them.

@@ -413,7 +413,7 @@ Privacy-safe routes, roughly in order of cost:
 **To close:** confirm whether (1) plus a prompt nudge toward `part_of` covers the
 real need before considering (2).
 
-### FN-19 · A person can be named by their relationship, and the name then carries identity — open
+### FN-19 · A person can be named by their relationship, and the name then carries identity — **closed 2026-08-07**
 
 A capture produced a person whose `display_name` is **"his brother"**, with a
 group header and cards to match.
@@ -445,7 +445,7 @@ stored name), then prompt work so relationship phrases stop becoming
 `display_name`. Until then, matching on such names should probably be refused
 outright — a wrong merge is worse than a duplicate.
 
-### FN-20 · Where an event happened is being stored as where a person lives — open
+### FN-20 · Where an event happened is being stored as where a person lives — **prompt half closed 2026-08-07; routing still open**
 
 "met John at a coffee shop in Pittsburgh" produced `location · Pittsburgh —
 coffee shop` **as an assertion about John**.
@@ -488,7 +488,7 @@ Highest-risk of the four, in order:
 
 ## 2026-08-06 · Session 2 — implementing the session-1 queue
 
-### FN-17 · There is no migration path for a database that already has data — open · **blocks FN-2**
+### FN-17 · There is no migration path for a database that already has data — **closed 2026-08-07** · unblocks FN-2/FN-11
 
 Found while looking for somewhere to record an entity rename. `Schema.ensure`
 creates the schema **only when the database is empty**:
@@ -549,3 +549,74 @@ remains is measurement, and it is tracked rather than forgotten:
 
 The one check that *is* live for this: **PIPE-17** (tag discipline) runs in the
 gate on every commit, so the specific defect v2 targets cannot silently return.
+
+---
+
+## 2026-08-07 · Session 3 — closing FN-17, FN-19, and half of FN-20
+
+### FN-17 — closed
+
+A versioned migration runner now exists. `orbit_meta.schema_version` is read as
+well as written, `Schema.migrate` applies numbered `migration_XXX.sql` files in
+order, and each runs **in one transaction with its own version bump**, so a
+failure leaves the database exactly where it was rather than half-migrated.
+`Schema.ensure` migrates an existing database instead of skipping it; a fresh
+one is born at `latestVersion`, because `001_schema` already contains
+everything the migrations add.
+
+Migration 002 adds `person_alias` — the table FN-19 noticed was missing on the
+person side, where entities have had one since 001.
+
+The T1 rig checks each migration three ways: it **applies to a database that
+does not have it** (the objects are dropped first, standing in for the older
+database it will actually meet), it is **idempotent** (a failed version bump
+gets retried on next launch), and the **INV-4 rebuild still works afterwards**.
+Swift tests cover the populated-database path directly.
+
+*What this unblocks:* FN-2's `origin` predicate and FN-11's entity-ambiguity
+kind both need schema changes against a database holding real memos. That is
+now a solved problem rather than a reason to defer, so both are decisions again
+rather than blockers.
+
+### FN-19 — closed
+
+Two layers, because a prompt is guidance and this is an identity guarantee:
+
+- **The funnel refuses it.** `createPerson` rejects a possessed relationship
+  word — "his brother", "her boss", **"John's friend from work"** (a
+  name-possessive points exactly as hard as a pronoun). A bare relationship
+  word is left alone: "Mother Teresa", "Brother Ali" and "Dad" are names people
+  are actually called, and a guard that ate them would be doing harm.
+- **The prompt is told** (v2 rule 19): use the spoken name; if none was spoken,
+  emit `match: "ambiguous"` with an `ambiguities` entry asking who they are,
+  and carry the connection as a `relation` assertion on the person who *does*
+  have a name.
+- **The primer no longer spreads it.** `knownNamesPrimer` filters
+  pointer-shaped names, so one that predates this guard is never fed back to
+  whisper as a name to listen for or to the extractor as a contact to match.
+
+**Still open, and worth naming:** `person.display_name` is `NOT NULL`, so the
+"unnamed known-of person" the note asks for cannot be represented as such —
+today the honest fallback is a question at review rather than a row. Whether an
+unnamed person deserves a real representation is a modelling decision, and it is
+now cheap to act on (FN-17).
+
+### FN-20 — prompt half closed, routing still open
+
+v2 rule 20 tells the extractor that a meeting place is not a fact about the
+person: only "lives / moved / is from / is based / grew up" produce a
+`location` assertion. That stops the invention.
+
+**Still open:** nothing *routes* the place to where it belongs.
+`event.location_entity_id` exists in the schema and no extraction path ever
+sets it, so "met John at a coffee shop in Pittsburgh" now correctly produces no
+location assertion — and also records nothing about where the meeting was. The
+payload has no field for it outside portrait episodes.
+
+**To close:** add an event-location to the extraction payload and set
+`event.location_entity_id` on confirm. Schema-free (the column exists); it is
+payload + prompt + a golden run.
+
+*And the note's own argument stands: `location` has now been asked to do three
+different jobs — origin, residence, and venue. That is the strongest case yet
+for settling FN-2's modelling question rather than narrowing the rule again.*

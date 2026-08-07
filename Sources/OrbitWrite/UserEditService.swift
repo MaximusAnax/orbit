@@ -19,12 +19,63 @@ public struct UserEditService {
     @discardableResult
     public func createPerson(displayName: String, status: PersonStatus = .active,
                              isSelf: Bool = false) throws -> String {
+        let name = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { throw WriteError.invalidState("a person needs a name") }
+        if let pointer = Self.relationshipPointer(in: name) {
+            throw WriteError.constitutionViolation(
+                "\"\(name)\" is a pointer, not a name (§7.10: strings never carry identity). "
+                + "Two people's \(pointer) collide under it and one person's two \(pointer)s "
+                + "cannot both exist. Create the person unnamed and record the relationship "
+                + "as a `relation` assertion instead.")
+        }
         let id = OrbitID.make()
         try db.run(
             "INSERT INTO person (id, display_name, status, is_self, created_at) VALUES (?,?,?,?,?)",
-            [.text(id), .text(displayName), .text(status.rawValue), .from(isSelf), .text(now)])
+            [.text(id), .text(name), .text(status.rawValue), .from(isSelf), .text(now)])
         try store.rmSearchRebuild()
         return id
+    }
+
+    /// Kinship and role words that only resolve inside the sentence that
+    /// produced them (FIELD-NOTES FN-19: a person arrived named "his brother").
+    ///
+    /// The prompt is told not to do this, but a prompt is guidance and this is
+    /// an identity guarantee, so the funnel enforces it too: person matching
+    /// runs on the name, so a pointer-shaped name does not duplicate people —
+    /// it *merges strangers*, which is the one failure the ledger cannot undo
+    /// by adding evidence.
+    public static let relationshipWords: Set<String> = [
+        "brother", "sister", "sibling", "mother", "father", "mom", "dad", "parent",
+        "son", "daughter", "child", "kid", "wife", "husband", "spouse", "partner",
+        "girlfriend", "boyfriend", "cousin", "aunt", "uncle", "nephew", "niece",
+        "grandmother", "grandfather", "grandma", "grandpa", "roommate", "neighbor",
+        "neighbour", "boss", "manager", "coworker", "colleague", "friend", "ex",
+        "landlord", "teammate", "classmate", "professor", "advisor", "therapist",
+    ]
+
+    /// The possessive is what makes it a pointer: "his brother", "her boss",
+    /// "my roommate", **and "John's friend from work"** — a name-possessive
+    /// points just as hard as a pronoun does. A bare relationship word is not a
+    /// pointer: "Mother Teresa", "Brother Ali" and "Dad" are all names someone
+    /// is actually called, and refusing them would be the guard doing harm.
+    public static func relationshipPointer(in name: String) -> String? {
+        let pronouns: Set<String> = ["his", "her", "their", "my", "our", "your", "its"]
+        let trim = CharacterSet(charactersIn: ".,!?;:()\"“”")
+        var possessed = false
+        for raw in name.lowercased().split(whereSeparator: { $0 == " " || $0 == "\t" || $0 == "\n" }) {
+            let token = String(raw).trimmingCharacters(in: trim)
+            if token.hasSuffix("'s") || token.hasSuffix("\u{2019}s") {
+                possessed = true                       // "john's", "sarah's"
+                continue
+            }
+            let bare = token.trimmingCharacters(in: CharacterSet(charactersIn: "'\u{2019}"))
+            if pronouns.contains(bare) {
+                possessed = true                       // "his", "her", "their"
+                continue
+            }
+            if possessed, relationshipWords.contains(bare) { return bare }
+        }
+        return nil
     }
 
     public func renamePerson(_ id: String, displayName: String, preferredName: String? = nil) throws {

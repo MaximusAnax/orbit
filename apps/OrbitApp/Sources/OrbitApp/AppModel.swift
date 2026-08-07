@@ -624,8 +624,16 @@ final class AppModel: ObservableObject {
     }
 
     func knownNamesPrimer() -> [String] {
-        ((try? store.db.query("SELECT display_name FROM person WHERE status != 'merged'")) ?? [])
+        let names = ((try? store.db.query(
+            "SELECT display_name FROM person WHERE status != 'merged'")) ?? [])
             .compactMap { $0.text("display_name") }
+        // FIELD-NOTES FN-19: a pointer-shaped name ("his brother") must never be
+        // fed to whisper as a name to listen for, or to the extractor as a
+        // contact to match against — that is how the string spreads. The write
+        // funnel refuses to create them now, but older rows may already hold one.
+        let aliases = ((try? store.db.query("SELECT alias FROM person_alias")) ?? [])
+            .compactMap { $0.text("alias") }
+        return (names + aliases).filter { UserEditService.relationshipPointer(in: $0) == nil }
     }
 
     func extractionContext(eventID: String) -> ExtractionContext {

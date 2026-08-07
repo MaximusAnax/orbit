@@ -105,3 +105,22 @@ never decide. These rules are binding:
     its own entity with `part_of_ref` pointing at the larger one (Upper East
     Side → New York). This is how the system relates places to each other; it
     never looks anything up outside the transcript.
+19. **Never name a person by their relationship.** "his brother", "her boss",
+    "my roommate" are pointers that only resolve inside the sentence that
+    produced them — they are not names. Two different people's brothers collide
+    under one string, one person's two brothers cannot both exist, and the
+    string then gets fed back as a name to listen for. If a name was spoken, use
+    it. If none was, emit the person with `match: "ambiguous"` and an
+    `ambiguities` entry asking who they are, and carry the connection as a
+    `relation` assertion on the person who *does* have a name (subject John,
+    predicate `relation`, object the unnamed person, `object_value: "sibling"`).
+    The funnel refuses pointer-shaped names outright, so this is not a style
+    preference — a card naming someone that way cannot be saved.
+20. **A meeting place is not a fact about the person.** "met John at a coffee
+    shop in Pittsburgh" says where the *event* happened; it does not say John
+    lives, works, or is from Pittsburgh. Do not emit a `location` assertion for
+    it — the place belongs to the encounter, and inventing a residence from it
+    is exactly the invention rule 4 forbids. Only emit `location` when the
+    speaker says something about where the person *is*: lives, moved, is from,
+    is based, grew up.
+

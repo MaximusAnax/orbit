@@ -13,20 +13,61 @@ public enum Schema {
         return text
     }
 
+    /// The highest schema version this build knows how to produce. Bumped in the
+    /// same commit as the `migration_XXX.sql` that reaches it.
+    public static let latestVersion = 2
+
     /// Create a fresh database (schema + triggers + read-model shells).
+    ///
+    /// A fresh database is born at `latestVersion`: `001_schema` already
+    /// contains everything the migrations add, so re-running them would be
+    /// wrong. Migrations exist for databases that already hold data.
     public static func create(on db: Database) throws {
         for name in ["001_schema", "002_triggers", "003_readmodels"] {
             try db.exec(try resource(name))
         }
-        try db.run(
-            "INSERT INTO orbit_meta (key, value) VALUES ('schema_version','1')")
+        try db.run("INSERT INTO orbit_meta (key, value) VALUES ('schema_version', ?)",
+                   [.text(String(latestVersion))])
     }
 
-    /// Idempotent open-or-create for app startup.
+    public static func version(on db: Database) throws -> Int {
+        guard let raw = try db.scalar(
+            "SELECT value FROM orbit_meta WHERE key='schema_version'").stringValue,
+            let n = Int(raw) else { return 1 }
+        return n
+    }
+
+    /// Bring an existing database up to `latestVersion` (FIELD-NOTES FN-17).
+    ///
+    /// Until this existed, `ensure` created the schema only when the database
+    /// was empty and `schema_version` was written once and never read — so every
+    /// schema change reached fresh installs only, and Abdoul's phone (which
+    /// holds real memos) would have been left behind or wiped. Each migration
+    /// runs in one transaction with its version bump, so a failure leaves the
+    /// database exactly where it was rather than half-migrated.
+    public static func migrate(on db: Database) throws {
+        var current = try version(on: db)
+        while current < latestVersion {
+            let next = current + 1
+            let sql = try resource(String(format: "migration_%03d", next))
+            try db.transaction {
+                try db.exec(sql)
+                try db.run("UPDATE orbit_meta SET value=? WHERE key='schema_version'",
+                           [.text(String(next))])
+            }
+            current = next
+        }
+    }
+
+    /// Idempotent open-or-create-or-migrate for app startup.
     public static func ensure(on db: Database) throws {
         let exists = try db.scalar(
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='person'")
-        if exists.intValue == 0 { try create(on: db) }
+        if exists.intValue == 0 {
+            try create(on: db)
+        } else {
+            try migrate(on: db)
+        }
     }
 }
 

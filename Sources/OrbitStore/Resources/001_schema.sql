@@ -275,6 +275,16 @@ CREATE TABLE entity (
 );
 CREATE INDEX entity_kind ON entity(kind);
 
+-- Every confirmed way of saying a person's name (§7.10's guarantee, on the
+-- person side — see FIELD-NOTES FN-19). Matching consults these as well as
+-- display_name, so a name that arrives two ways converges instead of forking.
+CREATE TABLE person_alias (
+    person_id TEXT NOT NULL REFERENCES person(id),
+    alias     TEXT NOT NULL,
+    PRIMARY KEY (person_id, alias)
+);
+CREATE INDEX person_alias_alias ON person_alias(alias);
+
 CREATE TABLE entity_alias (
     entity_id TEXT NOT NULL REFERENCES entity(id),
     alias     TEXT NOT NULL,

@@ -39,8 +39,23 @@ def check_engine() -> None:
         sys.exit("FATAL: FTS5 unavailable in this SQLite build")
 
 
+def schema_files() -> list:
+    """Base schema only. Migrations are applied to databases that already have
+    data, never to a fresh one (a fresh database is born at latestVersion), so
+    they must not be swept into the plain load."""
+    if not SCHEMA_DIR.exists():
+        return []
+    return sorted(f for f in SCHEMA_DIR.glob("*.sql") if not f.name.startswith("migration_"))
+
+
+def migration_files() -> list:
+    if not SCHEMA_DIR.exists():
+        return []
+    return sorted(SCHEMA_DIR.glob("migration_*.sql"))
+
+
 def check_schema() -> None:
-    sql_files = sorted(SCHEMA_DIR.glob("*.sql")) if SCHEMA_DIR.exists() else []
+    sql_files = schema_files()
     if not sql_files:
         print("schema: no .sql resources yet (pre-Phase-2)")
         return
@@ -59,6 +74,66 @@ def check_schema() -> None:
     if props.exists():
         import subprocess
         subprocess.run([sys.executable, str(props)], check=True)
+
+
+def check_migrations() -> None:
+    """Migrations must work on a database that does NOT yet have what they add,
+    be safe to re-run on one that does, and leave the INV-4 rebuild intact
+    (FIELD-NOTES FN-17). Abdoul's phone holds real memos, so a migration that
+    only works on a fresh database is worse than no migration at all.
+
+    A fresh database already contains everything the migrations add, so each is
+    tested against a database with its objects dropped first — the closest
+    faithful stand-in for the older database it will actually meet."""
+    import re
+
+    migrations = migration_files()
+    if not migrations:
+        print("migrations: none")
+        return
+
+    for f in migrations:
+        sql = f.read_text()
+        created = re.findall(r"CREATE\s+(TABLE|INDEX)\s+(?:IF NOT EXISTS\s+)?(\w+)", sql, re.I)
+        if not created:
+            sys.exit(f"FATAL: {f.name} creates nothing — a migration that adds no object "
+                     f"needs its check written by hand")
+
+        con = sqlite3.connect(":memory:")
+        con.executescript("PRAGMA foreign_keys=ON;")
+        for s in schema_files():
+            con.executescript(s.read_text())
+
+        # stand in for the older database: remove what this migration adds
+        for kind, name in created:
+            con.executescript(f"DROP {kind} IF EXISTS {name};")
+        try:
+            con.executescript(sql)
+        except sqlite3.Error as e:
+            sys.exit(f"FATAL: {f.name} does not apply to a database without it: {e}")
+        for kind, name in created:
+            row = con.execute(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type=? AND name=?",
+                (kind.lower(), name)).fetchone()[0]
+            if row != 1:
+                sys.exit(f"FATAL: {f.name} claims to create {kind} {name}, and did not")
+
+        # re-running it must be a no-op, because a version bump that fails
+        # mid-way will be retried on next launch
+        try:
+            con.executescript(sql)
+        except sqlite3.Error as e:
+            sys.exit(f"FATAL: {f.name} is not idempotent: {e}")
+
+        # and the read models must still rebuild from the log afterwards (INV-4)
+        rebuild = SCHEMA_DIR / "004_rebuild_readmodels.sql"
+        if rebuild.exists():
+            try:
+                con.executescript(rebuild.read_text())
+            except sqlite3.Error as e:
+                sys.exit(f"FATAL: INV-4 rebuild broken after {f.name}: {e}")
+        print(f"  ✓ {f.name}: applies, is idempotent, INV-4 rebuild intact")
+    print(f"migrations: {len(migrations)} checked")
 
 
 SQL_START = r"(SELECT|INSERT|UPDATE|DELETE|WITH)\b"
@@ -111,7 +186,7 @@ def check_embedded_sql() -> None:
     without executing."""
     con = sqlite3.connect(":memory:")
     con.executescript("PRAGMA foreign_keys=ON;")
-    for f in sorted(SCHEMA_DIR.glob("*.sql")):
+    for f in schema_files():
         if "rebuild" not in f.name:
             con.executescript(f.read_text())
 
@@ -134,5 +209,6 @@ def check_embedded_sql() -> None:
 if __name__ == "__main__":
     check_engine()
     check_schema()
+    check_migrations()
     check_embedded_sql()
     print("sql fast-loop: OK")
