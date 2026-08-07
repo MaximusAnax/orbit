@@ -90,6 +90,30 @@ enum Copy {
     static func toldYou(_ name: String) -> String { "\(name) told you this" }
     static func notYetConfirmed(_ name: String) -> String { "\(name) told you this — not yet confirmed firsthand" }
     static let unverifiedContact = "unverified until first used"
+    /// The roster: an index, not a ranking (P6). No count in the header — a
+    /// number over a list of people is a score with extra steps.
+    static let rosterTitle = "Everyone you've saved"
+    static let rosterEmpty = "Nobody yet. The mic is the way in."
+    /// §7.3 in a roster row: said in words, never a badge (D-2).
+    static let knownOfShort = "known through others"
+    /// Handles are typed, not spoken (ORBIT.md §Contact Points): they span
+    /// platforms and a transcriber mangles them.
+    static let addContactAction = "Add a way to reach them"
+    static let addContactTitle = "How do you reach them?"
+    static let addContactHint = "Typed by hand, so this one is taken as read \u{2014} no unverified mark."
+    static let addContactSave = "Keep it"
+    static func contactKindLabel(_ kind: String) -> String {
+        switch kind {
+        case "phone": return "Phone"
+        case "email": return "Email"
+        case "instagram": return "Instagram"
+        case "linkedin": return "LinkedIn"
+        case "x": return "X"
+        case "website": return "Website"
+        default: return "Other"
+        }
+    }
+    static let reachEmpty = "No way to reach them saved yet."
 
     // Portraits (§7.11) — skippable serif prompts, never queued, never bulk
     static let portraitTitle = "Paint a portrait"
@@ -222,6 +246,9 @@ enum Copy {
             walkMeIn, heroTag, openTag, oweTag, owedToYouTag, sinceTag("her"),
             worthHavingBack, timeline, reach("him"), goBePresent, deckEndTag,
             toldYou("Sana"), notYetConfirmed("Sana"), unverifiedContact,
+            addContactAction, addContactTitle, addContactHint, addContactSave,
+            rosterTitle, rosterEmpty, knownOfShort,
+            contactKindLabel("instagram"), reachEmpty,
             extractionFailed, transcriptionFallback,
             portraitTitle, portraitHint, skipPrompt, firstMetAction, firstMetSet,
             portraitPaused, portraitDone,

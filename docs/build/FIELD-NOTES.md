@@ -727,3 +727,42 @@ below. Also added: the kicker, the search glyph and its teaching hint, the mic's
 note-stock ring and label pair, Today's section label and portrait-initial
 cards, and the centred footer row. `Today` with real items is **not** verified —
 the simulator had no data.
+
+### FN-26 · Contact points could be written but never entered — closed 2026-08-07
+
+`UserEditService.addContactPoint` shipped in M3 and was wired to **zero** UI. The
+only way a handle could exist was the extractor lifting one out of a voice memo —
+which is the worst possible input for it. "@ j dash smith underscore 92" survives
+no transcriber, and unlike a remembered fact, a near-miss handle is worthless
+rather than merely vague. DESIGN §338 records tap-to-act as deferred; *entry* was
+not recorded as deferred anywhere. It was simply missing.
+
+Added on the Desk, `source: .manual` so hand-typed handles skip the §7.8
+unverified-until-used mark that voice-derived ones carry. The kind list is
+`ContactPointKind` verbatim, so the sheet cannot invent a category the ledger has
+no column for.
+
+One trap worth recording: the Reach collapse row renders only when a handle
+already exists (D-8 — empty sections are absent), so an add button living only
+inside that page would have been unreachable for exactly the person who needed
+it. The Desk carries its own entry point for that reason.
+
+Verified on device: `Bob | instagram | @bob_makes_things | manual` in
+`contact_point`, and the Reach row appearing afterward.
+
+### FN-27 · No way to browse everyone saved — closed 2026-08-07
+
+Search answers "where is this person"; nothing answered "who do I have". Every
+Desk was unreachable unless you already knew the name to type, which is the
+wrong way round for a memory system — the names you have forgotten are exactly
+the ones you cannot search for.
+
+Added as the empty state of Search rather than a fourth door, so Home stays the
+ratified three (§12). A typed query that finds nothing still renders nothing at
+all (D-8); only a *blank* field browses.
+
+Sorted A–Z deliberately. P6 forbids people lists "sorted by anything" that
+implies ranking — recency, frequency, closeness are all scores wearing an order.
+Alphabetical is an index: it carries no judgement and is the one order that says
+nothing about anybody. Merged rows are excluded (pointers, not people) and so is
+the self row (§7.12).

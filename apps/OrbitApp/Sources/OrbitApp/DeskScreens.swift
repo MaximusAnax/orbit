@@ -13,6 +13,7 @@ struct BriefScreen: View {
     @EnvironmentObject var app: AppModel
     @Environment(\.room) var room
     @State private var brief: Brief?
+    @State private var addingContact = false
     @State private var showDeck = false
     @State private var showPortrait = false
     // FN-13/FN-15: correcting what is already saved
@@ -153,7 +154,11 @@ struct BriefScreen: View {
                     }
                     if !brief.reach.isEmpty {
                         NavigationLink {
-                            ReachMiniPage(items: brief.reach, title: Copy.reach(brief.header.name))
+                            ReachMiniPage(items: brief.reach,
+                                          title: Copy.reach(brief.header.name),
+                                          personID: personID) {
+                                self.brief = try? app.assembleBrief(personID: personID)
+                            }
                         } label: {
                             collapseRow(Copy.reach(brief.header.name),
                                         detail: brief.reach.map(\.kind).joined(separator: " · "))
@@ -163,6 +168,10 @@ struct BriefScreen: View {
                     // portrait entry: an invitation, never a queue (§7.11)
                     TertiaryButton(Copy.portraitTitle) { showPortrait = true }
                         .padding(.top, 6)
+                    // The Reach row is absent until a handle exists (D-8), so
+                    // without this there is no way to add the first one.
+                    TertiaryButton(Copy.addContactAction) { addingContact = true }
+                        .accessibilityIdentifier("desk.addContact")
                 }
                 .padding(.top, Tokens.screenPaddingTop)
                 .padding(.horizontal, Tokens.screenPaddingSide)
@@ -180,6 +189,11 @@ struct BriefScreen: View {
                             hint: Copy.deskRenameHint,
                             initial: brief?.header.name ?? "") { name in
                 app.renamePerson(personID, to: name)
+                brief = try? app.assembleBrief(personID: personID)
+            }
+        }
+        .sheet(isPresented: $addingContact) {
+            AddContactSheet(personID: personID) {
                 brief = try? app.assembleBrief(personID: personID)
             }
         }
@@ -362,16 +376,32 @@ struct TimelineMiniPage: View {
 }
 
 /// Reach mini-page (tile 8): contact kinds with tap-to-act affordances.
+///
+/// Handles arrive by hand, not by voice. ORBIT.md §Contact Points spans phone,
+/// email, Instagram, LinkedIn, X, a website — the one data type a transcriber
+/// reliably ruins, and the one where a near-miss is worthless rather than merely
+/// vague. `addContactPoint` has been in the write layer since M3 with no way to
+/// call it; this is that way. Tap-to-act stays deferred (DESIGN §338).
 struct ReachMiniPage: View {
     let items: [Brief.ReachItem]
     let title: String
+    var personID: String? = nil
+    var onAdded: () -> Void = {}
+    @EnvironmentObject var app: AppModel
     @Environment(\.room) var room
+    @State private var adding = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.gridGap) {
                 Text(title).interfaceVoice(size: 20, weight: .bold)
                     .foregroundStyle(Tokens.ink(room))
+                // D-8: an empty section says so plainly rather than rendering
+                // a placeholder row.
+                if items.isEmpty {
+                    Text(Copy.reachEmpty).interfaceVoice(size: 12)
+                        .foregroundStyle(Tokens.inkFaint(room))
+                }
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     PaperTile {
                         HStack {
@@ -383,8 +413,87 @@ struct ReachMiniPage: View {
                         }
                     }
                 }
+                if personID != nil {
+                    SecondaryButton(Copy.addContactAction) { adding = true }
+                        .accessibilityIdentifier("reach.add")
+                        .padding(.top, 4)
+                }
             }
             .padding(.top, Tokens.screenPaddingTop)
+            .padding(.horizontal, Tokens.screenPaddingSide)
+        }
+        .sheet(isPresented: $adding) {
+            if let personID {
+                AddContactSheet(personID: personID, onSaved: onAdded)
+            }
+        }
+    }
+}
+
+/// One kind, one value. The kind list is `ContactPointKind` verbatim, so the
+/// sheet cannot invent a category the ledger has no column for.
+struct AddContactSheet: View {
+    let personID: String
+    let onSaved: () -> Void
+    @EnvironmentObject var app: AppModel
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.room) var room
+    @State private var kind: ContactPointKind = .phone
+    @State private var value = ""
+
+    private let kinds: [ContactPointKind] = [.phone, .email, .instagram, .linkedin,
+                                             .x, .website, .other]
+
+    var body: some View {
+        RoomBackground { _ in
+            VStack(alignment: .leading, spacing: 16) {
+                Text(Copy.addContactTitle).interfaceVoice(size: 16, weight: .semibold)
+                    .foregroundStyle(Tokens.ink(room))
+
+                // mode entries, not a fourth button tier (§3.5/§3.6)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(kinds, id: \.rawValue) { k in
+                            Button { kind = k } label: {
+                                Text(Copy.contactKindLabel(k.rawValue))
+                                    .interfaceVoice(size: 12,
+                                                    weight: k == kind ? .semibold : .regular)
+                                    .foregroundStyle(k == kind ? Tokens.emberInk(room)
+                                                               : Tokens.inkMuted(room))
+                                    .padding(.vertical, 7).padding(.horizontal, 12)
+                                    .background(k == kind ? Tokens.ember(room)
+                                                          : Tokens.pillBg(room))
+                                    .clipShape(Capsule())
+                                    .overlay(Capsule().strokeBorder(
+                                        k == kind ? .clear : Tokens.pillEdge(room), lineWidth: 1))
+                            }
+                        }
+                    }
+                }
+
+                TextField("", text: $value)
+                    .accessibilityIdentifier("contact.value")
+                    .font(.system(size: 16))
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .padding(12)
+                    .background(Tokens.paper(room))
+                    .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusCard))
+                    .overlay(RoundedRectangle(cornerRadius: Tokens.radiusCard)
+                        .strokeBorder(Tokens.paperEdge(room), lineWidth: 1))
+
+                Text(Copy.addContactHint).interfaceVoice(size: 11.5)
+                    .foregroundStyle(Tokens.inkFaint(room))
+
+                PrimaryButton(Copy.addContactSave) {
+                    app.addContact(person: personID, kind: kind, value: value)
+                    onSaved()
+                    dismiss()
+                }
+                TertiaryButton(Copy.notNow) { dismiss() }
+                Spacer()
+            }
+            .padding(.top, 30)
             .padding(.horizontal, Tokens.screenPaddingSide)
         }
     }
@@ -461,7 +570,14 @@ struct SearchScreen: View {
                     }
 
                 case .empty:
-                    EmptyView()   // D-8: nothing renders, no "no results!" chrome
+                    // An empty field is not a failed search: it is the moment to
+                    // browse. A typed query that found nothing still renders
+                    // nothing at all (D-8) — no "no results" chrome.
+                    if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        rosterView()
+                    } else {
+                        EmptyView()
+                    }
                 }
             }
             .padding(.top, Tokens.screenPaddingTop)
@@ -469,6 +585,37 @@ struct SearchScreen: View {
         }
         .onAppear {
             result = (try? Searcher(reader: app.store.reader).search(query)) ?? .empty
+        }
+    }
+
+    /// The roster — reached by clearing the search field rather than by a fourth
+    /// door, so Home stays the ratified three (§12).
+    @ViewBuilder
+    func rosterView() -> some View {
+        let people = app.roster()
+        SectionTag(Copy.rosterTitle)
+            .padding(.top, 4)
+        if people.isEmpty {
+            Text(Copy.rosterEmpty).interfaceVoice(size: 12)
+                .foregroundStyle(Tokens.inkFaint(room))
+        }
+        ForEach(people) { person in
+            NavigationLink { DeskView(personID: person.id) } label: {
+                PaperTile {
+                    HStack(spacing: 11) {
+                        PortraitView(initial: String(person.name.prefix(1)).uppercased(),
+                                     size: 34)
+                        Text(person.name).memoryVoice(size: 15, weight: .semibold)
+                            .foregroundStyle(Tokens.ink(room))
+                        if person.isKnownOf {
+                            // §7.3: known through others, never met — said, not badged
+                            Text(Copy.knownOfShort).interfaceVoice(size: 10.5)
+                                .foregroundStyle(Tokens.inkFaint(room))
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
         }
     }
 

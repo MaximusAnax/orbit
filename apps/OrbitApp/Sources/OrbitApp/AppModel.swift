@@ -214,6 +214,47 @@ final class AppModel: ObservableObject {
                                   newValue: trimmed, reason: "corrected on the desk")
     }
 
+    /// Add a handle by hand. ORBIT.md §Contact Points lists these across
+    /// platforms, and they are the one kind of data voice capture is worst at:
+    /// "@ j dash smith underscore 92" survives no transcriber, and unlike a
+    /// remembered fact a typo makes it useless rather than merely imprecise.
+    /// `source: .manual` distinguishes it from voice-derived handles, which
+    /// carry the §7.8 unverified-until-used state — typed by hand is not a guess.
+    func addContact(person: String, kind: ContactPointKind, value: String) {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        _ = try? edits.addContactPoint(person: person, kind: kind, value: trimmed,
+                                       source: .manual)
+    }
+
+    struct RosterEntry: Identifiable {
+        let id: String
+        let name: String
+        let isKnownOf: Bool
+    }
+
+    /// Everyone saved, A–Z. Search answers "where is this person"; nothing
+    /// answered "who do I have", so every Desk was unreachable unless you
+    /// already knew the name to type.
+    ///
+    /// Alphabetical on purpose: P6 forbids people lists *sorted by anything*
+    /// that implies ranking — recency, frequency, closeness. A–Z is an index,
+    /// carries no judgement, and is the one order that says nothing about
+    /// anybody. Merged rows are excluded (they are pointers, not people) and so
+    /// is the self row (§7.12 keeps it invisible).
+    func roster() -> [RosterEntry] {
+        ((try? store.db.query(
+            """
+            SELECT id, display_name, status FROM person
+            WHERE is_self = 0 AND status != 'merged'
+            ORDER BY display_name COLLATE NOCASE
+            """)) ?? []).compactMap { row in
+                guard let id = row.text("id"), let name = row.text("display_name") else { return nil }
+                return RosterEntry(id: id, name: name,
+                                   isKnownOf: row.text("status") == "known_of")
+            }
+    }
+
     /// Minimal onboarding: the quiet self profile (§7.12) — created once, invisible.
     func ensureSelf(named name: String) {
         guard selfID == nil else { return }
