@@ -544,7 +544,9 @@ final class AppModel: ObservableObject {
         guard let whisper = whisperTranscriber else { return }
         let models = whisper.models
         Task { [weak self] in
-            await Task.detached(priority: .utility) {
+            // the Bool is deliberately dropped — the failure streak that
+            // noteStalledModelDownload reads is kept by the downloader itself
+            _ = await Task.detached(priority: .utility) {
                 await models.downloadCeilingIfNeeded()
             }.value
             await self?.upgradeRetainedAudio()

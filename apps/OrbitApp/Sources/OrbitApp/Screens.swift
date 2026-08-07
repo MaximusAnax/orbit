@@ -677,6 +677,12 @@ struct ProposalCardView: View {
                             .foregroundStyle(Tokens.ink(room))
                             .accessibilityIdentifier("card.mappedFact")
                     }
+                    // why the last tap didn't take — plain ink, never red (D-1)
+                    if let blocked = card.blocked {
+                        Text(blocked).interfaceVoice(size: 11.5)
+                            .foregroundStyle(Tokens.inkMuted(room))
+                            .accessibilityIdentifier("card.blocked")
+                    }
                     // the rationale earns its line only when it says something the
                     // quote above hasn't already said, word for word
                     if !card.rationale.isEmpty, !card.rationaleEchoesQuote {

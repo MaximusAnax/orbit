@@ -97,6 +97,8 @@ final class ReviewViewModel: ObservableObject, Identifiable {
         let isEpisode: Bool          // CREATE_EVENT reconstructed episode (§7.11)
         let payload: String          // raw payload JSON — the Edit sheet prefll
         var settled: String?         // "Saved" / "Skipped" / "Set aside"
+        /// Why this card hasn't settled yet, when a tap didn't take.
+        var blocked: String?
 
         /// The ASSERT rationale is the verbatim in curly quotes, which the card
         /// already renders above it — printing both put the same sentence on
@@ -381,16 +383,30 @@ final class ReviewViewModel: ObservableObject, Identifiable {
             for gi in groups.indices {
                 if let ci = groups[gi].cards.firstIndex(where: { $0.id == card.id }) {
                     groups[gi].cards[ci].settled = label
+                    groups[gi].cards[ci].blocked = nil
                 }
             }
             app?.refreshAmbient()
             retryDependencyWaiters()
         } catch {
+            // The card stays unsettled either way — plain ink, never red (D-1).
+            // What it must not do is stay unsettled *silently*: a Yes that
+            // appears to do nothing reads as a broken button, and the reason is
+            // right here in the error.
             if case WriteError.pendingDependency(_) = error {
                 dependencyWaiters.append(card)
+                mark(card, blocked: Copy.cardWaitingOnDependency)
+            } else {
+                mark(card, blocked: Copy.cardCouldNotSave)
             }
-            // Either way the card stays visibly unsettled — plain ink, never
-            // red (D-1); a queued card settles itself once its blocker lands.
+        }
+    }
+
+    private func mark(_ card: Card, blocked: String?) {
+        for gi in groups.indices {
+            if let ci = groups[gi].cards.firstIndex(where: { $0.id == card.id }) {
+                groups[gi].cards[ci].blocked = blocked
+            }
         }
     }
 

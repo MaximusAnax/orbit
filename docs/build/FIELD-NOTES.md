@@ -413,6 +413,60 @@ Privacy-safe routes, roughly in order of cost:
 **To close:** confirm whether (1) plus a prompt nudge toward `part_of` covers the
 real need before considering (2).
 
+### FN-19 · A person can be named by their relationship, and the name then carries identity — open
+
+A capture produced a person whose `display_name` is **"his brother"**, with a
+group header and cards to match.
+
+That string is not a name; it is a pointer that only resolves inside the sentence
+that produced it. Three consequences, in worsening order:
+
+1. Two different people's brothers both become "his brother", and person matching
+   is by `display_name` — there is no `person_alias` table (see FN-13's notes).
+   So the *second* memo's brother can match the *first* one's, silently merging
+   two unrelated people.
+2. One person with two brothers cannot be represented at all.
+3. "his brother" enters `knownNamesPrimer`, so it is fed to whisper as a name to
+   listen for and to the extractor as an existing contact to match against.
+
+DATA-MODEL §7.10 states the principle for entities — *strings never carry
+identity* — and this is the same failure on the person side, where there is no
+alias/merge safety net at capture time.
+
+The model already has the right shape: `relation` is a person↔person predicate
+(sibling, colleague, introduced_by), and §7.3 has `known_of` for people known
+only through others. So the correct output is an **unnamed** known-of person
+joined by `relation(John, sibling, ·)` — not a person literally called "his
+brother".
+
+**To close:** decide how an unnamed person is represented and displayed (a
+placeholder that reads honestly — "John's brother" as *rendering*, not as a
+stored name), then prompt work so relationship phrases stop becoming
+`display_name`. Until then, matching on such names should probably be refused
+outright — a wrong merge is worse than a duplicate.
+
+### FN-20 · Where an event happened is being stored as where a person lives — open
+
+"met John at a coffee shop in Pittsburgh" produced `location · Pittsburgh —
+coffee shop` **as an assertion about John**.
+
+Meeting someone in a city is close to no evidence about where they live, and the
+schema already has the right home for it: `event.location_entity_id` (DATA-MODEL
+§2, Event). A meeting place belongs to the event; a residence belongs to the
+person. Conflating them pollutes the one predicate that recall trusts for "where
+is this person now", and it does so with a fact the speaker never asserted.
+
+This is the third distinct job `location` has been asked to do (FN-2: origin vs
+residence; now venue), which strengthens the case that the modelling question in
+FN-2 is the real one and should be settled before more prompt patches.
+
+Also note `object_value: "coffee shop"` alongside `object_entity: Pittsburgh`
+reads as "Pittsburgh — coffee shop", which is not a fact about anything: the
+venue is not a qualifier of the city.
+
+**To close:** with FN-2. Decide the predicate split, and route venues to
+`event.location_entity_id` where they belong.
+
 ### FN-6 · This session's UI changes are build-verified only — open · T3
 
 Shipped without a device run: the working/collapse screen, the waiting-list

@@ -46,6 +46,12 @@ enum Copy {
     static let renameSave = "Use this name"
     static let renameTapHint = "Tap the name to correct it"
 
+    /// A card can depend on another (an assertion about Pittsburgh needs the
+    /// Pittsburgh card). Accepting it early queues it — correct, and invisible,
+    /// so the tap read as broken. The retry is automatic; this just says so.
+    static let cardWaitingOnDependency = "Waiting on the place or person this mentions — say yes to that card and this saves itself."
+    static let cardCouldNotSave = "That didn't save, and nothing was written. Worth trying again."
+
     static let yes = "Yes"
     static let no = "No"
     static let later = "Later"
@@ -198,6 +204,7 @@ enum Copy {
             audioDeletionNotice, audioRetainedNotice, confirmTranscript, reRecord,
             reviewTitle, contextGroupTitle, entityKindLine("school", partOf: nil),
             renameTitle, renameHint, renameSave, renameTapHint,
+            cardWaitingOnDependency, cardCouldNotSave,
             entityKindLine("place", partOf: "New York"),
             yes, no, later, editAction, saved, skipped, setAside,
             doneForNow, notNow, rejectionReasonPrompt,
