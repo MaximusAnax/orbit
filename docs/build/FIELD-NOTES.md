@@ -834,6 +834,51 @@ it (object_value vs entity, FN-14's name in prose, now precision). Worth a
 standing check that every rendered field either shows its qualifier or says why
 it doesn't.*
 
+### FN-32 · Three real bugs from PR #1 review, and one that wasn't — closed 2026-08-07
+
+Cursor Bugbot raised four findings on `1aafefe`. Three were real and are fixed;
+the fourth was wrong, and checking it was worth the time.
+
+**Real — the archive silently forgot two tables.** `Export.tables` never gained
+`person_alias` (migration 002) or `person_retirement` (migration 003), so a
+PRIV-5 restore would have come back with every retirement undone and every
+person alias gone — the aliases that make person matching work at all. Nothing
+failed; the loss would surface only on a restore, which nobody performs until
+they need it. Fixed, and the durable half is a test that enumerates the live
+schema and fails on any table that is neither exported nor deliberately excluded
+(`rm_*` are rebuilt, INV-4). Verified it fails without the fix, naming both.
+
+**Real — search answered the qualifier instead of the place.** `factAnswer` read
+`object_value` alone, and `object_value` is the literal *beside* the object
+(DATA-MODEL §2: "a role title, a date, a name"). So "where does Eliah work?"
+answered **"intern"** where the employment linked Google — and after prompt v3
+put `origin`/`residence` there, "where does James live?" answered
+**"residence"**. Worth noting this was live before v3: the eliah fixture has
+carried `object_value: "intern", entity: e_google` all along. The search goldens
+passed because the fixtures they use happen to put the company in
+`object_value` — the bug hid on exactly the fixtures that follow the
+*documented* shape.
+
+**Real — the provenance line ignored merge pointers.** Decision 6 is a pointer
+merge: the loser's rows are never rewritten, so every read must follow the
+pointer. `OrbitRecall` does this in eight queries; `Searcher.provenanceAnchor`
+did it in none, so after a merge the Desk and the search result disagreed about
+when you last saw the same person. Bugbot flagged last-seen; the first-met
+lookup had it too, and both are fixed.
+
+**Not real — name-fix ranges do not drift on extra spaces.** The claim was that
+`offset += rawToken.count + 1` assumes single spaces. It does not:
+`split(separator: " ", omittingEmptySubsequences: false)` yields an empty token
+per extra space, each consuming exactly one offset, so the arithmetic is exact
+for any run of spaces. Checked in Swift rather than by reading — one, two and
+three spaces all land on the intended token.
+
+*The nearby thing that IS true, and was not raised: a name after a tab or
+newline is never suggested at all, because `split(separator: " ")` leaves it
+glued to the previous word and the `first?.isUppercase` guard then rejects the
+pair. A missed suggestion, not a wrong edit — recorded rather than fixed, since
+transcripts from both engines are space-separated prose.*
+
 ---
 
 ## Session notes

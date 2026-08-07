@@ -13,7 +13,7 @@ public enum Export {
     /// aborts.
     static let tables = [
         "orbit_meta", "event", "entity", "event_participant", "person",
-        "entity_alias", "contact_point", "amendment", "extraction", "sync_run",
+        "person_alias", "person_retirement", "entity_alias", "contact_point", "amendment", "extraction", "sync_run",
         "sync_person_ref", "sync_entity_ref", "thread", "assertion",
         "assertion_subject_candidate", "assertion_amendment", "proposal",
         "review_outcome", "relationship_state", "open_loop",

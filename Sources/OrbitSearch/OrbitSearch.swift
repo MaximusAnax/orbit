@@ -130,7 +130,7 @@ public struct Searcher {
         if let met = try db.scalar(
             """
             SELECT e.occurred_at FROM person p JOIN event e ON e.id = p.first_met_event_id
-            WHERE p.id=?
+            WHERE COALESCE(p.merged_into, p.id) = ?
             """, [.text(personID)]).stringValue {
             parts.append("met \(String(met.prefix(7)))")
         }
@@ -145,7 +145,9 @@ public struct Searcher {
             """
             SELECT MAX(e.occurred_at) FROM event e
             JOIN event_participant ep ON ep.event_id=e.id
-            WHERE ep.person_id=? AND ep.attendance IN ('confirmed','probable') AND e.lifecycle='confirmed'
+            WHERE COALESCE((SELECT merged_into FROM person _px WHERE _px.id = ep.person_id),
+                           ep.person_id) = ?
+              AND ep.attendance IN ('confirmed','probable') AND e.lifecycle='confirmed'
             """, [.text(personID)]).stringValue {
             parts.append("last seen \(String(seen.prefix(7)))")
         }
@@ -224,6 +226,20 @@ public struct Searcher {
     ]
 
     /// "Where does James work?" → the current fact, with its evidence.
+    /// "Where does James work?" wants the place, and the place is the entity.
+    ///
+    /// `object_value` holds the literal *beside* the object (DATA-MODEL §2: "a
+    /// role title, a date, a name"), so reading it alone answers "intern" for
+    /// someone whose employment links Google, and — since prompt v3 put the
+    /// origin/residence qualifier there — answers "residence" for someone who
+    /// lives in San Francisco. The entity is the answer whenever there is one;
+    /// the literal is the fallback for facts that never linked one.
+    static func factAnswer(_ row: Row) -> String? {
+        if let entity = row.text("object_entity_name"), !entity.isEmpty { return entity }
+        if let value = row.text("object_value"), !value.isEmpty { return value }
+        return row.text("verbatim")
+    }
+
     func factLookup(lower: String, query: String) throws -> Answer? {
         guard let predicate = Self.predicateKeywords.first(where: { pk in
             pk.keys.contains { lower.contains($0) }
@@ -240,8 +256,10 @@ public struct Searcher {
         let rows = try reader.db.query(
             """
             SELECT cs.assertion_id, cs.verbatim, cs.object_value, cs.valid_from,
-                   cs.source_event_id, cs.source_kind, cs.attributed_to_person_id
+                   cs.source_event_id, cs.source_kind, cs.attributed_to_person_id,
+                   ent.canonical_name AS object_entity_name
             FROM rm_current_state cs JOIN assertion a ON a.id = cs.assertion_id
+            LEFT JOIN entity ent ON ent.id = cs.object_entity_id
             WHERE cs.subject_id=? AND cs.predicate=? AND a.muted=0
             ORDER BY cs.valid_from DESC
             """, [.text(person.personID), .text(predicate)])
@@ -264,7 +282,7 @@ public struct Searcher {
             hit.evidence = firsthandRows.map(evidence)
             firsthand = [hit]
             return Answer(firsthand: firsthand, maybe: secondhandMaybe(person, secondhandRows),
-                          factAnswer: top.text("object_value") ?? top.text("verbatim"))
+                          factAnswer: Self.factAnswer(top))
         }
         // only hearsay exists: no uncited direct answer — the maybe band
         // carries it with its teller
