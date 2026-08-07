@@ -132,9 +132,27 @@ public struct RemoteExtractor: Extractor {
     /// describe the *previous* prompt until a live run re-measures this one.
     ///
     /// `ORBIT_PROMPT_VERSION=v1` restores the measured prompt for comparison.
+    /// The allow-list this replaces silently downgraded any unrecognised value
+    /// to v3 — so promoting v4 changed the default, the build succeeded, a live
+    /// measurement ran, and every fixture came back stamped `v3`. A validation
+    /// that quietly substitutes a *different* input is worse than none: it
+    /// cannot be told apart from the thing working. An unknown version now
+    /// fails loudly at `systemPrompt()`, where the missing resource is named.
     public static var promptVersion: String {
-        let requested = ProcessInfo.processInfo.environment["ORBIT_PROMPT_VERSION"] ?? "v3"
-        return ["v1", "v2", "v3"].contains(requested) ? requested : "v3"
+        ProcessInfo.processInfo.environment["ORBIT_PROMPT_VERSION"] ?? Self.latestPromptVersion
+    }
+
+    /// Highest `extraction-prompt-vN.md` actually bundled — derived, so adding a
+    /// prompt is one file rather than a file plus two lists to remember.
+    public static var latestPromptVersion: String {
+        let versions = (Bundle.module.urls(forResourcesWithExtension: "md",
+                                           subdirectory: "Resources") ?? [])
+            .compactMap { url -> Int? in
+                let name = url.deletingPathExtension().lastPathComponent
+                guard name.hasPrefix("extraction-prompt-v") else { return nil }
+                return Int(name.dropFirst("extraction-prompt-v".count))
+            }
+        return "v\(versions.max() ?? 1)"
     }
 
     public init(apiKey: String, model: String = "claude-opus-5",
@@ -148,7 +166,9 @@ public struct RemoteExtractor: Extractor {
         guard let url = Bundle.module.url(forResource: "extraction-prompt-\(promptVersion)",
                                           withExtension: "md", subdirectory: "Resources"),
               let text = try? String(contentsOf: url, encoding: .utf8) else {
-            throw ExtractorError.badResponse("missing extraction prompt resource")
+            throw ExtractorError.badResponse(
+                "no bundled prompt for ORBIT_PROMPT_VERSION=\(promptVersion) "
+                + "(expected Resources/extraction-prompt-\(promptVersion).md)")
         }
         return text
     }

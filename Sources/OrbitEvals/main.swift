@@ -248,9 +248,30 @@ func runMeasureLive() async throws {
         }
         // CLI context is primer-less by design: measuring the extractor cold.
         // On device the same call carries known-people/entity primers (§7.7).
-        let context = ExtractionContext(eventKind: "portrait",
-                                        capturedAt: "2026-07-29T12:00:00Z",
-                                        selfName: "Abdoul")
+        //
+        // The event KIND, though, was hardcoded to "portrait" for every memo,
+        // and that is not a simplification — it is a false statement to the
+        // model. Episodes are portraits-only (rule 11), so labelling an ordinary
+        // capture a portrait invites reconstructed episodes the golden then
+        // counts as inventions. Only Eliah is a portrait; everything else is an
+        // ordinary capture, which is what the app would send.
+        let portraits: Set<String> = ["eliah"]
+        let memoName = file.deletingPathExtension().lastPathComponent
+            .lowercased().replacingOccurrences(of: " ", with: "-")
+        // The round-trip seeds a prior ledger for some memos — Priya already
+        // employed at Google, James already at Stripe — and then asked the model
+        // to extract without telling it they exist. Every one of those came back
+        // `match: "new"`, and SyncEngine skips corrections and contradictions
+        // whose subject is an unresolved ref, so CORRECT and CLOSE could not be
+        // emitted no matter how good the extraction was. The harness was seeding
+        // a person and denying them in the same breath. The primer it now sends
+        // is exactly what the app sends on device (§7.7).
+        let seeded = fixtureCases().first { $0.memo == memoName }?.seedPeople ?? []
+        let context = ExtractionContext(
+            eventKind: portraits.contains(memoName) ? "portrait" : "encounter",
+            capturedAt: "2026-07-29T12:00:00Z",
+            knownPeople: seeded.map { (id: $0.id, name: $0.name) },
+            selfName: "Abdoul")
         let result = try await extractor.extract(transcript: transcript, context: context)
         let dirName = "live-" + result.modelID.replacingOccurrences(of: "/", with: "-")
         liveSubdir = "docs/evals/fixtures/" + dirName

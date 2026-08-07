@@ -304,6 +304,13 @@ a tag. Worth fixing as **one prompt change with one rule**, not three.
 **To close:** prompt work + golden run. Fixture should include a deliberately
 rambling skill description and assert the tag stays short.
 
+**2026-08-07 live evidence, not yet conclusive.** PIPE-17 (tag discipline —
+`object_value` is a tag, not a clause) reached **0 violations** on live output,
+down from 4, which is the first sign the fix holds outside the replay corpus.
+Held open deliberately: FN-37 showed the same prompt scoring 7/10 and 9/10 on
+consecutive runs, so one clean sample of a noisy signal is not a pass. Closes
+when PIPE-15's k-run distribution is available.
+
 ### FN-11 · Spoken shorthand can't be corrected to the real entity — **mostly closed 2026-08-06**
 
 "Colorstack conference" in a voice note means *ColorStack StackedUp Summit '26* —
@@ -368,6 +375,9 @@ Options, cheapest first:
 
 **To close:** try (1), see whether the ambiguity actually bites in practice.
 
+**2026-08-07:** rides FN-10's evidence — same PIPE-17 check, same reason for
+staying open (FN-37).
+
 ### FN-13 · Nothing already saved can be renamed — **closed 2026-08-06** · write path
 
 Found by asking what happens to a rename *after* it lands. Three separate holes,
@@ -426,6 +436,9 @@ otherwise be re-diagnosed as one.
 bound to, so accepting the person card no longer makes the old name reappear on
 every other card in the run. That was a genuine propagation bug; the
 `object_value` half remains and belongs to FN-10.
+
+**2026-08-07:** rides FN-10's evidence — same PIPE-17 check, same reason for
+staying open (FN-37).
 
 ### FN-15 · Review is the only moment anything can be corrected — **closed 2026-08-07**
 
@@ -1036,6 +1049,84 @@ Two things worth keeping:
 2. **`--theirs`/`--ours` invert during a stash pop**, and reaching for either
    after hand-merging a file discards the hand-merge. The habit that would have
    caught it: after resolving, diff against both parents before staging.
+
+### FN-35 · A validation silently substituted a different prompt — closed 2026-08-07
+
+`RemoteExtractor.promptVersion` ran a hardcoded allow-list:
+
+```swift
+let requested = env["ORBIT_PROMPT_VERSION"] ?? "v4"
+return ["v1", "v2", "v3"].contains(requested) ? requested : "v3"
+```
+
+Promoting v4 changed the default, the build succeeded, a live measurement ran to
+completion, and every fixture came back stamped `prompt_version: v3`. The new
+prompt was never sent to the model once. It was caught only because three
+substantially different prompts produced *identical* failures, which is not a
+thing prompts do.
+
+**A validation that quietly swaps in a different input is worse than no
+validation**, because its output is indistinguishable from the thing working.
+The allow-list existed to stop a typo selecting a wrong prompt — and did so by
+selecting a wrong prompt.
+
+Now derived: the default is the highest `extraction-prompt-vN.md` actually
+bundled, so adding a prompt is one file rather than a file plus two lists to
+remember, and an unrecognised version fails loudly at `systemPrompt()` naming the
+resource it wanted.
+
+### FN-36 · The eval harness lied to the model in two ways — closed 2026-08-07
+
+Both found while measuring, and both had been inflating every "the extractor is
+bad" reading. Neither is a model failure; each made a correct answer
+*impossible*.
+
+1. **Every memo was extracted as a `portrait`.** `eventKind` was hardcoded.
+   Episodes are portraits-only (rule 11), so labelling ordinary captures as
+   portraits invited reconstructed episodes that the goldens then counted as
+   inventions. Only Eliah is a portrait. Fixing it alone: round-trip 5→6,
+   criticals 24→21.
+
+2. **The round-trip seeded a ledger and then hid it.** Priya was seeded as
+   already employed at Google, James at Stripe — then extraction ran
+   primer-less, so both returned `match: "new"`. `SyncEngine` skips corrections
+   and contradictions whose subject is an unresolved ref, so CORRECT and CLOSE
+   could never be emitted no matter how good the extraction was. The harness was
+   seeding a person and denying them in the same breath. It now sends the primer
+   the app sends on device (§7.7). Round-trip 6→9.
+
+*The pattern worth keeping: when a measurement says the model is failing, check
+what the measurement told the model first. Two of the five original failures
+were the harness contradicting itself.*
+
+### FN-37 · One run is not a measurement — open · blocks every ◊ number
+
+Two consecutive runs of the **identical** prompt, same corpus, same model,
+nothing changed:
+
+| | run 1 | run 2 |
+| --- | --- | --- |
+| round-trip | 7/10 | 9/10 |
+| PIPE-4 criticals | 32 | 14 |
+| PIPE-6 verbatim | FAIL | 100% |
+
+A two-check swing and a 2× swing in criticals, from nothing. Every
+prompt-vs-prompt comparison made on 2026-08-07 is a single sample, and the
+differences between adjacent prompt versions sit inside that spread — they are
+recorded as history, not as evidence that any rule helped.
+
+EVALS already anticipates this: **PIPE-15 specifies k consistency runs and a 70%
+flicker boundary**, marked ◊, and it has never been operationalized. Until it is,
+no ◊ target can be honestly assessed from this harness, because one run does not
+measure a stochastic system. The ratchet rule assumes numbers that mean
+something.
+
+**To close:** make `measure --live` take `--runs k`, report the distribution
+(median, min, max, and which checks flicker) rather than a point, and re-baseline
+every ◊ against that. Only then is a provider or prompt comparison meaningful.
+
+*Nearly drew four false conclusions from single samples tonight before running
+the same prompt twice.*
 
 ---
 
