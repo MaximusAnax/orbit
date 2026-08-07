@@ -800,6 +800,40 @@ true erase.
 without anyone having to remember the rule. That is the constitution working —
 the design cost showed up as twelve failing triggers rather than as a regret.*
 
+### FN-31 · An inferred date rendered as though it had been stated — closed 2026-08-07 (display); extraction half open
+
+"I met Gladys at YC Startup School 2026 **a few weeks ago or like two weeks ago
+I want to say**" produced a card reading `a remembered episode (2026-07-15)`. A
+bare ISO day, from a sentence that gave a range and then hedged the range.
+
+**The display half, fixed.** `date_precision` (`exact | month | year | fuzzy`)
+has been in the ledger since M0 and was rendered by **nothing** — grep found
+zero references across every app source. So a day the extractor inferred looked
+exactly like a day someone said out loud. That is P4 inverted: the model stores
+its uncertainty carefully and the screen throws it away. Cards now render at the
+stated precision and say which it is — a `month` record shows "July 2026 — no
+exact day was said" even when `occurred_at` carries a day, and a fuzzy one says
+it was worked out rather than stated. The era phrase ("sophomore spring") leads
+when the source gave one, because those are his words.
+
+**Editable now too.** `CREATE_EVENT` had no Edit button (gated to `assert` and
+`proposeState`), so a wrong date could only be rejected wholesale. The edit
+sheet takes a year, a month, or a day, and sets `date_precision` from what was
+actually typed — Orbit will not re-sharpen a year into a day afterwards.
+
+**Still open: what the extractor should emit.** The eliah fixtures show it doing
+this right — `occurred_at: 2023-08`, `precision: month`, era phrase kept — so
+day-level output from "a couple of weeks ago" is a regression against its own
+behaviour, not a missing rule (prompt rule 11 already forbids inventing a
+calendar date). Whether "two weeks ago" counts as an anchor the capture date can
+resolve is the real question: the arithmetic is defensible, the *precision* it
+claims afterwards is not. Needs a fixture and a golden run.
+
+*Third time this shape: the ledger records a distinction and the display drops
+it (object_value vs entity, FN-14's name in prose, now precision). Worth a
+standing check that every rendered field either shows its qualifier or says why
+it doesn't.*
+
 ---
 
 ## Session notes

@@ -123,6 +123,23 @@ enum Copy {
     }
     static let reachEmpty = "No way to reach them saved yet."
 
+    /// A date is only as sharp as the sentence it came from. `date_precision`
+    /// has been in the ledger since M0 and was rendered nowhere, so a day the
+    /// extractor inferred from "a couple of weeks ago" read exactly like a day
+    /// someone actually stated (P4 — stored uncertainty must stay visible).
+    static func whenLine(_ display: String, precision: String, era: String?) -> String {
+        let hedge: String
+        switch precision {
+        case "exact": hedge = display
+        case "month", "year": hedge = "\(display) — no exact day was said"
+        default: hedge = "around \(display) — worked out, not stated"
+        }
+        guard let era, !era.isEmpty else { return hedge }
+        return "\(era) · \(hedge)"
+    }
+    static let editWhenLabel = "When (YYYY, YYYY-MM, or YYYY-MM-DD)"
+    static let editWhenHint = "Say only as much as you know — a year or a month is a real answer, and Orbit will stop showing a day you never gave it."
+
     // Portraits (§7.11) — skippable serif prompts, never queued, never bulk
     static let portraitTitle = "Paint a portrait"
     static let portraitHint = "Talk about them like you'd tell a friend. Pause anytime; skip any prompt."

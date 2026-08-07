@@ -737,6 +737,12 @@ struct ProposalCardView: View {
                             .foregroundStyle(Tokens.ink(room))
                             .accessibilityIdentifier("card.mappedFact")
                     }
+                    // when it happened, at the precision the record claims
+                    if let when = card.whenLine {
+                        Text(when).interfaceVoice(size: 11.5)
+                            .foregroundStyle(Tokens.inkMuted(room))
+                            .accessibilityIdentifier("card.when")
+                    }
                     // why the last tap didn't take — plain ink, never red (D-1)
                     if let blocked = card.blocked {
                         Text(blocked).interfaceVoice(size: 11.5)
@@ -752,7 +758,8 @@ struct ProposalCardView: View {
                     HStack(spacing: 10) {
                         SecondaryButton(Copy.yes) { vm.accept(card) }
                         SecondaryButton(Copy.no) { vm.reject(card, reason: nil) }
-                        if card.op == .assert || card.op == .proposeState {
+                        if card.op == .assert || card.op == .proposeState
+                            || card.op == .createEvent {
                             TertiaryButton(Copy.editAction) { editing = true }
                         }
                         Spacer()
@@ -787,6 +794,7 @@ struct EditProposalSheet: View {
     @State private var objectValue: String = ""
     @State private var validFrom: String = ""
     @State private var suggestedOrbit: String = ""
+    @State private var occurredAt: String = ""
 
     var payloadDict: [String: Any] {
         (try? JSONSerialization.jsonObject(with: Data(card.payload.utf8))) as? [String: Any] ?? [:]
@@ -807,6 +815,10 @@ struct EditProposalSheet: View {
                 if card.op == .assert {
                     editField(Copy.editValueLabel, text: $objectValue, id: "edit.value")
                     editField(Copy.editSinceLabel, text: $validFrom, id: "edit.validFrom")
+                } else if card.op == .createEvent {
+                    editField(Copy.editWhenLabel, text: $occurredAt, id: "edit.occurredAt")
+                    Text(Copy.editWhenHint).interfaceVoice(size: 11.5)
+                        .foregroundStyle(Tokens.inkFaint(room))
                 } else {
                     editField(Copy.editOrbitLabel, text: $suggestedOrbit, id: "edit.orbit")
                 }
@@ -819,6 +831,14 @@ struct EditProposalSheet: View {
                     if card.op == .assert {
                         put("object_value", objectValue)
                         put("valid_from", validFrom)
+                    } else if card.op == .createEvent {
+                        // the precision follows what he actually wrote: a year is
+                        // a year, and Orbit must not re-sharpen it afterwards
+                        let trimmed = occurredAt.trimmingCharacters(in: .whitespaces)
+                        put("occurred_at", trimmed)
+                        let parts = trimmed.split(separator: "-").count
+                        dict["date_precision"] = parts >= 3 ? "exact"
+                            : (parts == 2 ? "month" : "year")
                     } else {
                         put("suggested_orbit", suggestedOrbit)
                     }
@@ -839,6 +859,7 @@ struct EditProposalSheet: View {
             objectValue = payloadDict["object_value"] as? String ?? ""
             validFrom = payloadDict["valid_from"] as? String ?? ""
             suggestedOrbit = payloadDict["suggested_orbit"] as? String ?? ""
+            occurredAt = payloadDict["occurred_at"] as? String ?? ""
         }
     }
 

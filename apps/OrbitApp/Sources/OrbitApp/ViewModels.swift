@@ -95,6 +95,9 @@ final class ReviewViewModel: ObservableObject, Identifiable {
         let candidates: [(id: String, name: String)]
         let stateSuggestion: String? // PROPOSE_STATE: mapped orbit/intent, shown AS a suggestion
         let isEpisode: Bool          // CREATE_EVENT reconstructed episode (§7.11)
+        /// When it happened, rendered at the precision the record actually
+        /// claims — never sharper.
+        var whenLine: String?
         let payload: String          // raw payload JSON — the Edit sheet prefll
         var settled: String?         // "Saved" / "Skipped" / "Set aside"
         /// Why this card hasn't settled yet, when a tap didn't take.
@@ -197,6 +200,7 @@ final class ReviewViewModel: ObservableObject, Identifiable {
                 candidates: Self.candidatesOf(op: op, payload: payload, app: app),
                 stateSuggestion: Self.stateSuggestionOf(op: op, payload: payload),
                 isEpisode: op == .createEvent,
+                whenLine: Self.whenLineOf(op: op, payload: payload),
                 payload: payload,
                 settled: nil)
             if byPerson[personKey] == nil {
@@ -567,6 +571,42 @@ final class ReviewViewModel: ObservableObject, Identifiable {
             parent = parent ?? (partOf["entity_ref"] as? String).flatMap { refNames[$0] ?? $0 }
         }
         return Copy.entityKindLine(kind, partOf: parent)
+    }
+
+    /// A date shown at its stated precision. `date_precision` has been carried
+    /// since M0 and rendered nowhere, so a day inferred from "a couple of weeks
+    /// ago" looked exactly like a day someone said out loud. Showing the day and
+    /// hiding the precision is the display inventing certainty the ledger was
+    /// careful not to claim (P4).
+    static func whenLineOf(op: ProposalOp, payload: String) -> String? {
+        guard op == .createEvent else { return nil }
+        let dict = decode(payload)
+        guard let raw = dict["occurred_at"] as? String, !raw.isEmpty else { return nil }
+        let precision = dict["date_precision"] as? String ?? "fuzzy"
+        let era = dict["era_relative"] as? String
+        return Copy.whenLine(Self.humanDate(raw, precision: precision),
+                             precision: precision, era: era)
+    }
+
+    /// Render only the components the precision vouches for: a `month` record
+    /// says "July 2026" even when its `occurred_at` carries a day.
+    static func humanDate(_ iso: String, precision: String) -> String {
+        let parts = iso.prefix(10).split(separator: "-").map(String.init)
+        let months = ["January", "February", "March", "April", "May", "June", "July",
+                      "August", "September", "October", "November", "December"]
+        func month(_ s: String) -> String? {
+            guard let n = Int(s), (1...12).contains(n) else { return nil }
+            return months[n - 1]
+        }
+        switch (precision, parts.count) {
+        case ("year", _): return parts.first ?? iso
+        case (_, 1): return parts[0]
+        case ("month", _): return month(parts[1]).map { "\($0) \(parts[0])" } ?? iso
+        case (_, 2): return month(parts[1]).map { "\($0) \(parts[0])" } ?? iso
+        default:
+            guard let m = month(parts[1]), let d = Int(parts[2]) else { return iso }
+            return precision == "exact" ? "\(d) \(m) \(parts[0])" : "\(m) \(parts[0])"
+        }
     }
 
     static func tellerOf(payload: String, app: AppModel) -> String? {
