@@ -438,6 +438,16 @@ OrbitCore for the accessor uses, and a lint guard covering all five APIs rather
 than the one last reported. The lesson is cheap and was available every time:
 sweep for the siblings of a reported failure before pushing.
 
+**A third strand, opened by the first test failure since the build compiled
+again.** Search recognised "what is Eliah's role?" as a role question and never
+admitted it to a fact lookup — one list gates, the other chooses, and only one
+had learned the new vocabulary. Fixing that surfaced three more layers over as
+many rounds: a matcher reading words as runs of letters ("org" inside *Morgan*),
+keyword tokens stripped so a contact named Job could never be asked about, and a
+rescue for that which could fuzzy-match "role" to a contact named **Rose** and
+answer confidently about someone never mentioned. Written up as FN-39; the
+through-line is that guessing a word is a name is how you name the wrong person.
+
 **Tier honesty:** T1 rigs and both negative controls are green here; the Swift
 halves are verified by CI, and nothing on this branch has run on a device.
 `scripts/dev/overnight.sh` is still owed — both hosts it needs are blocked by

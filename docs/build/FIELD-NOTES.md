@@ -1194,6 +1194,48 @@ because each of the first three fixes addressed the line that was reported
 instead of the class it belonged to. The cheap move — sweep for every sibling
 of the reported failure before pushing — was available every time.*
 
+### FN-39 · A list that recognises and a list that admits — closed 2026-08-08
+
+Search's fact lookup has two lists. `predicateKeywords` decides whether a
+question reaches a fact lookup at all; `entitySeekingCues` then decides which
+half of the fact answers it. Adding vocabulary to the second without the first
+produces a question the code *recognises* and never *admits*: "what is Eliah's
+role?" was read as a role question and then fell through to the generic search,
+which answers no fact. The test that caught it had been written in the same
+round as the bug and had never run, because the build was red on FN-38 — three
+commits of green-looking work sitting on a suite nobody had executed.
+
+Fixing it opened a sequence, each round finding the next layer down:
+
+1. **The gate didn't know the vocabulary.** Fixed by admitting the role words,
+   and by sweeping the siblings rather than the reported line — "what
+   university" and "which college" had the identical gap.
+2. **The matcher read words as runs of letters.** `contains` finds "position"
+   inside "disposition", "title" inside "entitled", "company" inside
+   "accompany", and — the one that matters — "org" inside **Morgan**. Adding
+   vocabulary made the collisions likelier, so the fix was the matcher, not a
+   trimmed vocabulary: single words match whole tokens, phrases stay substring.
+3. **The vocabulary is also names.** Keyword tokens were dropped before person
+   matching, so the one contact whose name is a keyword could never be asked
+   about — every token in "where does Job work?" is vocabulary.
+4. **The rescue for (3) could name the wrong person.** `peopleMatching`
+   tolerates edit distance 2, and **"role" is one character from Rose**. A
+   fuzzy rescue turns a no-answer into a confident answer about someone who was
+   never mentioned. It now runs only when there are no name-shaped tokens at
+   all, and matches exact/prefix only.
+
+**What generalizes.** Two lists that must agree, where only one of them is a
+gate, is a shape that fails silently — the symptom is a feature quietly not
+working, never an error. And every fix in the sequence converged on the same
+principle: *guessing that a word is a name is how you answer confidently about
+the wrong person*, which is the one failure this app exists to refuse. The
+narrowing in (4) costs "where does Job work in SF?", and that is the right
+trade — it was never answerable before, and no answer beats a wrong one.
+
+Worth noting who found what. (1) came from CI; (2)–(4) came from review, each
+one a defect in the fix posted minutes earlier, and none of them surfaced by
+re-reading my own change.
+
 ---
 
 ## Session notes
