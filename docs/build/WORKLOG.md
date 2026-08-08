@@ -442,3 +442,45 @@ extractor had guessed.
   751abe2 — "what is Eliah's role?" and "what is Eliah's title?" both answer nil
   where they should answer "intern". The app target is not part of the SPM
   package, so nothing here touches it. Untouched, and owed a fix of its own.
+
+## 2026-08-08 · A fact about two people, saved against one
+
+Reported from device as "still saving pieces of my transcript rather than the
+concise facts" — from *"both of them go to Harvard"*, Gladys should be recorded
+as going to Harvard.
+
+- **The screen it was reported from cannot show that defect.** The Desk's
+  `claim` is `verbatim` (`OrbitRecall.swift:25`), and DESIGN §12 specifies a
+  *serif* claim for both the hero row and Worth having back — the memory voice,
+  his own words, deliberately. So the Desk reads like raw transcript no matter
+  what `object_value` holds. Checked before changing anything, because FN-1 was
+  exactly this: a display that hides a field produces confident bug reports
+  about the layer underneath. v6 already carries hard tag rules (16: never a
+  clause; 28: at most six words) and PIPE-17 measured 0 violations live on
+  08-07. **Tag discipline is not what this capture proves is broken.**
+- **What is genuinely missing: plural distribution.** Grepping v6 for
+  `both|plural|group|they both` returns nothing. Rule 8 has always handled the
+  speaker's own "we both…" — two assertions, subject and self — and nothing
+  generalised it to two other people. v7 rule 35 does, with the three boundaries
+  that stop distribution turning into invention (neighbouring facts don't
+  spread; unnamed members aren't invented; a shared occasion is one episode with
+  N participants, not N assertions). Logged as FN-38.
+- **Golden authored first, and it is reported.** `plural-attribution` requires
+  *both* named people to carry the school and the origin, matched by `entity:`
+  rather than `contains:` — containment would pass on verbatim mentioning the
+  school, which is the very failure being graded. Four `forbidden` entries cover
+  the boundaries. `measure.py` lists it under "Goldens awaiting a fixture"
+  alongside `tag-discipline`; the harness treats an unanswerable golden as a
+  named gap, never a skip.
+- **v7 is the default as of this commit, and its golden run is owed.**
+  `ExtractionPrompt.latestVersion` resolves the highest bundled prompt, so
+  *adding the file promoted it* — verified by probe: `RESOLVED_PROMPT_VERSION=v7`.
+  This is not the §1.3 waiver being invoked a third time; it is the gate
+  outstanding, discharged by `orbit-evals measure --live` on a machine with the
+  key. `ORBIT_PROMPT_VERSION=v6` pins back.
+- **Doc drift fixed on the way past.** BUILD.md §1.3 stated "**v3 is the
+  default**" while the build had been resolving v6 for some time — a doc naming
+  a version the code derives is a second place to be wrong. §1.3 now says the
+  default is derived and names where it comes from.
+- **Unchanged and still red:** `FactAnswerTests.testRolePhrasingsStillAnswerTheRole`,
+  pre-existing at 751abe2 and untouched here.

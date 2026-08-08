@@ -1177,3 +1177,37 @@ fails and names the file and line.
 value silently withdrew Equatable). Both were changes that type-check in one
 configuration and not another, and neither could be caught from the cloud
 session, where no Swift compiler exists at all.*
+
+### FN-38 · A fact stated about a group lands on only one of them — **rule written, golden run owed** · prompt
+
+A device capture said, of two people met together, *"she goes to Harvard she
+both of them go to Harvard"*. Gladys carries the fact. Whether Catherine does
+is unverified — and that is the point: **the half that goes missing leaves no
+trace**, so nothing on any screen says a fact was dropped rather than never
+stated.
+
+v6 had no rule for this. Rule 8 has covered the speaker's own case since v1
+("we both…" produces two assertions, subject and self), but nothing generalised
+it to a group the speaker isn't in. v7 rule 35 is rule 8 with the speaker taken
+out, plus three boundaries that keep distribution from becoming invention:
+neighbouring facts don't spread ("both from Montreal" ≠ both live in Boston),
+unnamed members aren't invented to receive the fact, and a shared occasion is
+one episode with N participants rather than N assertions.
+
+**Reported as a `object_value` problem; it is not, and the distinction matters.**
+The Desk renders `claim`, which is `verbatim` by ratified design (DESIGN §12
+rows 2 and 6 both specify a *serif* claim — the memory voice). So the Desk shows
+the rambling sentence whatever the tag holds, and **no Desk screenshot can
+diagnose tag discipline**. PIPE-17 measured 0 violations on live output on
+08-07. FN-1's lesson, second occurrence: the layer that renders a field decides
+what bug you think you have.
+
+**To close:** `swift run orbit-evals measure --live` on a machine with the key.
+The `plural-attribution` golden already encodes the contract — both members
+required, by entity ref rather than containment, because a verbatim mentioning
+Northeastern is not a fact linking to it.
+
+**Still unverified, and cheap to settle:** whether the Gladys capture's
+`object_value` was in fact clean. A review card shows the mapped fact
+(`ReviewViewModel.mappedFact`), so the next capture answers it on screen. There
+is no ledger export in the app, which is why this needed asking at all.

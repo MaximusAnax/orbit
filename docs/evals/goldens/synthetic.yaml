@@ -172,3 +172,47 @@
     # FN-31: dates must not claim more precision than the source gave.
     - {kind: date_precision_exceeds_source, contains: march,
        why: "FN-31: 'started in March' is month precision — a day was never said"}
+
+# A fact stated about a group belongs to each named member of that group.
+# Motivated by a device capture (WORKLOG 2026-08-08): "both of them go to
+# Harvard" left one of the two people without the fact. The plural is a
+# grammatical convenience, not a hedge — "they both go to X" states X about
+# each of them as plainly as naming them one at a time would.
+#
+# The `entity:` requirements are deliberate: `contains:` alone would pass on
+# verbatim containment, which is exactly the failure being graded — the sentence
+# mentioning Northeastern is not the same thing as the fact linking to it.
+- memo: plural-attribution
+  source: docs/evals/corpus/synthetic/plural-attribution.txt
+  status: draft
+  required_people:
+    - {key: rania, name_like: rania}
+    - {key: theo, name_like: "th"}
+  required_entities:
+    - {key: northeastern, name_like: northeastern}
+    - {key: montreal, name_like: montreal}
+  required_assertions:
+    # the distributed facts — one per named member, both halves required
+    - {subject: rania, predicate: education, entity: northeastern}
+    - {subject: theo, predicate: education, entity: northeastern,
+       why: "the plural half that goes missing: stated once, true of both"}
+    - {subject: rania, predicate: location, entity: montreal}
+    - {subject: theo, predicate: location, entity: montreal,
+       why: "same distribution, second predicate — one rule, not one special case"}
+    # the facts stated about one person only must stay on that person
+    - {subject: rania, predicate: education, contains: mechanical}
+    - {subject: rania, predicate: location, contains: boston}
+  forbidden:
+    - {kind: any_text, contains: both of them,
+       why: "FN-10: the plural phrase leaking into a tag means the clause was
+             copied rather than the fact distributed"}
+    - {kind: assertion, subject: theo, predicate: location, contains: boston,
+       why: "'I didn't ask where Théo's living' — distribution must not become
+             invention (rule 4); only what was said about the group distributes"}
+    - {kind: assertion, subject: rania, predicate: employment, contains: robotics,
+       why: "the internship is Théo's alone — distribution is not contagion
+             between people who merely appear together"}
+    - {kind: assertion, predicate: location, contains: ramen,
+       why: "rule 20: where the dinner happened is not where anyone lives"}
+    - {kind: any_text, contains: some robotics place,
+       why: "an employer that was never named is an ambiguity, not an entity"}

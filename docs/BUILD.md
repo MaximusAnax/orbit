@@ -63,12 +63,18 @@ The four ratified documents say what Orbit is, what its data means, what it look
     v2 was promoted to default without its golden run to get the FN-10 fix
     (`object_value` as a tag, not a summary) onto the device the same evening;
     v3 followed under the same waiver for FN-2's origin/residence qualifier.
-    Abdoul ran both live on 2026-08-07 and confirmed v3 — **v3 is the default**
-    (`Extractor.makeExtractor`). The rule stands for every future bump; these
-    are recorded exceptions, not a precedent. `ORBIT_PROMPT_VERSION=v1` still
-    runs the originally-measured prompt for comparison, and the ratification
-    packet's provisional PIPE numbers remain v1-measured until the first
-    `swift run orbit-evals measure --live`.
+    Abdoul ran both live on 2026-08-07 and confirmed v3. The rule stands for
+    every future bump; these are recorded exceptions, not a precedent.
+    `ORBIT_PROMPT_VERSION=v1` still runs the originally-measured prompt for
+    comparison, and the ratification packet's provisional PIPE numbers remain
+    v1-measured until the first `swift run orbit-evals measure --live`.
+  - **The default is derived, not named** — `ExtractionPrompt.latestVersion`
+    resolves to the highest bundled `extraction-prompt-vN.md`, so *adding a
+    prompt file promotes it*. This paragraph named v3 as the default while the
+    build had long since resolved v6; the version is now stated in one place
+    (the resource directory) rather than two that can disagree. **Currently
+    v7.** Its golden run is owed, not waived: the `plural-attribution` golden is
+    authored and `measure.py` reports it as awaiting a fixture on every run.
 
 ### 1.4 Verification tiers
 
