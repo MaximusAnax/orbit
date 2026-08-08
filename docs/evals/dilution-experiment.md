@@ -1,4 +1,49 @@
-# The dilution experiment — pre-registered 2026-08-08, before the result
+# The dilution experiment — pre-registered, then run
+
+## Result: refuted. The verbose prompt is better.
+
+| | v8 (2,975 words) | v9 (1,462 words) |
+| --- | --- | --- |
+| recall, median (min–max) | **72.8%** (66.7–80.0) | 65.6% (60.0–73.3) |
+| criticals, median | **15** (13–18) | 22 (17–26) |
+| round-trip passed, median | **8** (8–9) | 7 (7–9) |
+| paired: improved / regressed | | 16 / **29** |
+| sign test | | p = 0.072 |
+
+Halving the prompt while keeping every requirement cost about **7 points of
+recall and 7 extra criticals per run**. Twenty-nine items regressed against
+sixteen improved. The sign test does not clear 0.05 (p = 0.072), so this is
+suggestive rather than conclusive on the paired evidence alone — but the
+aggregate distributions barely overlap, and both point the same way.
+
+So the "If v9 < v8" branch below was the right one, and its guess at the
+mechanism looks right too: **the repetition was doing work.** Saying "episodes
+are portraits-only" in four places beat saying it once well. The hedge rules are
+the clearest case — v8 stated hedging in three separate places and hit 90% on
+the recovered hedges; v9 consolidated them into one excellent rule and fell to
+20–30%.
+
+Not uniformly worse, which is worth recording: `futureforce hedge "I believe"`
+went 10% → 70%, both `tartan` items 50% → 100%, `maya/concern/parkinson`
+10% → 40%. Consolidation helped where the v8 text was genuinely scattered and
+hurt where the repetition was reinforcing. And residence assertions fell 33 → 12,
+the over-suppression pattern v7 showed — a shorter rule loses the "these ARE
+residences" half first.
+
+**What this closes.** FN-41's dilution hypothesis is refuted at this scale: prompt
+length is not what caused the v7 hardship regression, and the accretion pattern is
+not, by itself, hurting. Rule *content* remains the explanation to chase.
+
+**What it does not license.** This tested one compression, written by one author,
+in one sitting. "Verbose beats terse" is not a law — the honest finding is that
+*this* consolidation lost something the original had, and the most likely
+something is redundancy across separated rules rather than any single deleted
+sentence.
+
+---
+
+## Original pre-registration, unedited
+
 
 FN-41 raised a hypothesis the v7 comparison could not test: that the extraction
 prompt has grown long enough that **each added rule now trades one item for

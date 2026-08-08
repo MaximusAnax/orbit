@@ -43,3 +43,7 @@ __pycache__/
 # Regenerable and billable-once; not worth versioning, but deleting it costs
 # real money to rebuild.
 docs/evals/judge-cache/
+
+# Audit answers land in the project root from the browser's download. The
+# canonical copy lives beside its key in docs/evals/runs/<label>/.
+/judge-audit-answers.json

@@ -1464,6 +1464,11 @@ independently, which is the best evidence they are real:
 - *"Startup School was an event, not actual education"*, and again on Salesforce
   Futureforce: *"Its not education but it was an event yes."* **A new defect:
   attending an event is being recorded as `education`.** Twice, in two memos.
+  Quantified afterwards across the three collections — 5/81 education assertions
+  in v6 (6%), 13/98 in v7 (13%), 3/81 in v8 (4%), almost all of them Y Combinator
+  Startup School. Small and noisy at these counts, so the *rate* is not worth
+  chasing; the defect is worth fixing because a programme someone attended for a
+  weekend should not sit in a profile beside their degree.
 - *"This is referencing someone that made dom get upset… the only thing about
   dom that could be derived is that he didnt like conversation surrounding fish
   farms"* — an employment claim built from a third party's job.
@@ -1471,10 +1476,26 @@ independently, which is the best evidence they are real:
 **Done immediately:** Stage A now enforces rule 27 mechanically. Free,
 deterministic, and it would have caught the Maya case without a judge.
 
-**Still open:** j5 needs to move toward the owner's bar, not further from it —
-relax on reasonable inference, tighten on empty objects and wrong-slot objects.
-And κ must be re-measured after, because a judge tuned to agree with 31 audited
-claims has been fitted to them; the next audit needs fresh claims.
+**Still open — and the shape of j5 is now clear.** Sorting the 11 over-strict
+refusals, they are not eleven problems but two:
+
+1. **Ordinary role inference, refused seven times.** `major` for "studies CS",
+   `attendee` for "was present at", `undergrad` for "we go to Carnegie Mellon",
+   `founder` for "started a studio", `nurse` for a nursing job starting,
+   `climbing partner` for people who met climbing. The judge demands the exact
+   word appear in the transcript. Abdoul allows the ordinary reading. The rule:
+   *a claim may name the role or status that what was said ordinarily implies;
+   it may not add a fact the speaker did not give.*
+2. **Owner confusion, three times**, all on the futureforce memo — the judge
+   rejected claims about the speaker because the transcript says "Abdul" and the
+   context says "Abdoul". That memo exists *because* of that collision, and the
+   judge fell into the exact trap the extractor is graded on avoiding. The rule:
+   *the `Owner:` line names the speaker; first-person statements are theirs.*
+
+Two general rules, not eleven patches — which matters, because a judge tuned
+claim-by-claim against 31 audited items has been fitted to them. κ must be
+re-measured on a **fresh sample** afterwards; re-scoring the same 40 would only
+report how well I fitted the answer key.
 
 *The lesson is not that the judge is bad. It is that I validated it twice against
 my own reading, called that validation, and was wrong in a direction my own
