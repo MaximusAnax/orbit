@@ -374,6 +374,20 @@ func runMeasureLive(runs: Int, concurrency: Int, outLabel: String?) async throws
     let previous = (try? Data(contentsOf: manifestURL))
         .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
     let priorFailures = previous["failures"] as? [String] ?? []
+    // JSON has one number type and Swift has several. `total_seconds: 12.0`
+    // serializes as `12`, comes back as an integer-shaped value, and a plain
+    // `as? Double` yields nil — so a resumed run would silently restart the
+    // cumulative clock at zero and under-report its own model time. Read both
+    // totals through every numeric shape the round trip can produce.
+    func priorNumber(_ key: String) -> Double {
+        switch previous[key] {
+        case let d as Double: return d
+        case let i as Int: return Double(i)
+        case let n as NSNumber: return n.doubleValue
+        case let s as String: return Double(s) ?? 0
+        default: return 0
+        }
+    }
     // A resumed leg re-reports nothing it skipped, so the union is the history.
     let allFailures = priorFailures + failures.filter { !priorFailures.contains($0) }
     let manifest: [String: Any] = [
@@ -386,8 +400,8 @@ func runMeasureLive(runs: Int, concurrency: Int, outLabel: String?) async throws
         "collected_at": previous["collected_at"] as? String
             ?? ISO8601DateFormatter().string(from: Date()),
         "last_collected_at": ISO8601DateFormatter().string(from: Date()),
-        "total_tokens": (previous["total_tokens"] as? Int ?? 0) + totalTokens,
-        "total_seconds": (previous["total_seconds"] as? Double ?? 0) + totalSeconds,
+        "total_tokens": Int(priorNumber("total_tokens")) + totalTokens,
+        "total_seconds": priorNumber("total_seconds") + totalSeconds,
         "failures": allFailures,
     ]
     try JSONSerialization.data(withJSONObject: manifest, options: [.prettyPrinted, .sortedKeys])
