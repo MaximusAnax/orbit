@@ -448,7 +448,18 @@ rescue for that which could fuzzy-match "role" to a contact named **Rose** and
 answer confidently about someone never mentioned. Written up as FN-39; the
 through-line is that guessing a word is a name is how you name the wrong person.
 
-**Tier honesty:** T1 rigs and both negative controls are green here; the Swift
+**One thing added rather than fixed.** `overnight.sh` has two stages, and only
+the expensive one was unreachable from here: collection needs an API key,
+grading needs nothing. Grading also had no coverage, so a defect in it would
+have surfaced at the end of a paid ten-run collection — the worst possible
+moment. `scripts/dev/aggregate_selftest.py` now builds a synthetic collection
+from the canonical fixtures with two deliberate holes (an ordinary memo, and the
+`expect_empty` golden where an absent fixture *is* a passing payload), grades it,
+and asserts the denominator stays fixed across runs. Its negative control —
+restoring the pre-fix skip behaviour — reproduces exactly what review reported:
+a run missing five required items scoring 100% recall. In the gate now.
+
+**Tier honesty:** T1 rigs and all three negative controls are green here; the Swift
 halves are verified by CI, and nothing on this branch has run on a device.
 `scripts/dev/overnight.sh` is still owed — both hosts it needs are blocked by
 this session's egress policy, so the live PIPE numbers remain provisional and

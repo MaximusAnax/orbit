@@ -28,6 +28,12 @@ python3 scripts/dev/design_lint.py
 echo "== provisional PIPE measurement (T1 twin of orbit-evals --replay) =="
 python3 scripts/dev/measure.py
 
+# The overnight job's grading stage. Collection costs an API key and money and
+# cannot run here; grading costs nothing and had no coverage at all, so a broken
+# grader would have surfaced at the end of a paid ten-run collection.
+echo "== overnight grading-stage self-test (aggregate.py) =="
+python3 scripts/dev/aggregate_selftest.py
+
 if command -v swift >/dev/null 2>&1; then
   echo "== swift build =="
   swift build
