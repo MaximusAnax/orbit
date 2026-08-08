@@ -261,7 +261,11 @@ func runMeasureLive(runs: Int, concurrency: Int, outLabel: String?) async throws
             print("  ! \(file.lastPathComponent): no readable source transcript — skipped")
             continue
         }
-        let name = file.deletingPathExtension().lastPathComponent
+        // String work, not the URL path-extension member: it is a method on
+        // Darwin and a property on Linux, so calling it builds on macOS and
+        // fails the Linux core workflow (see ExtractionPrompt.latestVersion).
+        let base = file.lastPathComponent
+        let name = (base.hasSuffix(".json") ? String(base.dropLast(5)) : base)
             .lowercased().replacingOccurrences(of: " ", with: "-")
         memos.append(Memo(name: name,
                           file: file.lastPathComponent,

@@ -1148,3 +1148,32 @@ counts are real, the Deck's anatomy (progress bars → ember caps tag → serif 
 main → sans sub) matches, both rooms translate, and the three search shapes
 exist. The divergences were in the **signature moves** — the small things §5
 says carry the whole feeling.
+
+### FN-37 · A Foundation API that is a method on Darwin and a property on Linux — closed 2026-08-08
+
+`ExtractionPrompt.latestVersion` derived the newest bundled prompt by calling
+the URL path-extension member. That call **compiles on macOS and does not
+compile on Linux**, where Foundation exposes it as a `URL?` property:
+
+```
+error: cannot call value of non-function type 'URL?'
+```
+
+So the `app` workflow (macOS) went green while `core` (Linux) failed, on two
+consecutive commits. The asymmetry is the lesson: **macOS-only verification is
+not verification of this package**, because the trust core is built on Linux by
+design (BUILD §1.2 — the invariant suite must run without an Apple toolchain).
+
+A second, unreached instance sat in `orbit-evals`' memo discovery and would have
+been the next red build once the first was fixed.
+
+Both now use `lastPathComponent` plus string trimming, and
+`scripts/lint-writepath.sh` bans the call outright across `Sources/` and
+`Tests/` — everything Linux CI compiles. The guard skips comment lines, since
+its own explanation names the API. Verified by planting a violation: the lint
+fails and names the file and line.
+
+*Worth keeping: this is the same shape as FN-25 (an enum gaining an associated
+value silently withdrew Equatable). Both were changes that type-check in one
+configuration and not another, and neither could be caught from the cloud
+session, where no Swift compiler exists at all.*
