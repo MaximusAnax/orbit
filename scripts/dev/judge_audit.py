@@ -120,6 +120,8 @@ def build(collection, n):
     <label><input type="radio" name="{it['id']}" value="no"> Not supported</label>
     <label><input type="radio" name="{it['id']}" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="{it['id']}" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>""")
 
     # The verdicts are NOT embedded — the page cannot leak what the judge said.
@@ -139,6 +141,11 @@ def build(collection, n):
  details p{{font-size:13.5px;color:#555;background:#f6f4f1;padding:10px 12px;border-radius:6px}}
  .ask{{font-size:13px;color:#555;margin-bottom:8px}}
  .opts{{display:flex;gap:18px;flex-wrap:wrap}} label{{cursor:pointer;font-size:14.5px}}
+ textarea.why{{width:100%;margin-top:12px;padding:8px 10px;border:1px solid #e0dbd3;
+   border-radius:6px;font-family:inherit;font-size:14.5px;line-height:1.45;
+   background:#fcfbfa;color:inherit;
+   resize:vertical;overflow:hidden;box-sizing:border-box}}
+ textarea.why:focus{{outline:2px solid #b06a2c33;border-color:#b06a2c}}
  #bar{{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #e6e2dc;
    padding:12px 20px;display:flex;gap:14px;align-items:center;justify-content:center}}
  button{{font:inherit;padding:9px 20px;border-radius:8px;border:1px solid #b06a2c;
@@ -148,6 +155,7 @@ def build(collection, n):
    body{{background:#14140f;color:#ece7df}} .c{{background:#1c1c16;border-color:#2e2e26}}
    blockquote{{background:#191913;color:#c9c3b8;border-color:#38382e}}
    details p{{background:#191913;color:#b8b2a8}} #bar{{background:#1c1c16;border-color:#2e2e26}}
+   textarea.why{{background:#191913;border-color:#38382e}}
  }}
 </style>
 <h1>Judge audit</h1>
@@ -156,7 +164,11 @@ transcript support it <em>exactly as written</em>? Not "is it roughly right" —
 does it say more than you said, or attach a fact to the wrong person?
 <br><br>You are not being shown what the automated judge decided. That is
 deliberate: seeing it first would make this measure agreement with a suggestion
-rather than your own reading.</p>
+rather than your own reading.
+<br><br>Each claim has a <em>why</em> box. It is optional and a bare verdict is
+always enough — but where you write one, especially on a close call or something
+you are overruling, that sentence is what becomes the next judge rule. Every fix
+to the automated judge so far came from reading rationales, not scores.</p>
 {''.join(rows)}
 <div id="bar"><span id="count">0 of {len(sample)}</span>
 <button onclick="save()">Download answers</button></div>
@@ -165,8 +177,17 @@ const N={len(sample)};
 function tally(){{document.getElementById('count').textContent=
   document.querySelectorAll('input:checked').length+' of '+N;}}
 document.addEventListener('change',tally);
+document.addEventListener('input',e=>{{
+  if(e.target.classList.contains('why')){{
+    e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}}
+}});
 function save(){{
-  const a={{}};document.querySelectorAll('input:checked').forEach(i=>a[i.name]=i.value);
+  const a={{}};
+  document.querySelectorAll('input:checked').forEach(i=>a[i.name]={{verdict:i.value}});
+  document.querySelectorAll('textarea.why').forEach(t=>{{
+    const v=t.value.trim();if(!v)return;
+    const id=t.dataset.for;a[id]=Object.assign(a[id]||{{}},{{why:v}});
+  }});
   const b=new Blob([JSON.stringify(a,null,1)],{{type:'application/json'}});
   const u=URL.createObjectURL(b),l=document.createElement('a');
   l.href=u;l.download='judge-audit-answers.json';l.click();URL.revokeObjectURL(u);
@@ -190,7 +211,17 @@ def score(collection):
     ans_path = collection / "judge-audit-answers.json"
     if not ans_path.exists():
         sys.exit(f"no answers yet — expected {ans_path}")
-    ans = json.loads(ans_path.read_text())
+    raw = json.loads(ans_path.read_text())
+    # Accept both shapes: the flat {id: "yes"} the first page produced, and the
+    # {id: {verdict, why}} the current one does.
+    ans, why = {}, {}
+    for k, v in raw.items():
+        if isinstance(v, dict):
+            ans[k] = v.get("verdict")
+            if v.get("why"):
+                why[k] = v["why"]
+        else:
+            ans[k] = v
 
     both = [(k, v) for k, v in ans.items() if k in key and v in ("yes", "no")]
     if not both:
@@ -218,17 +249,44 @@ def score(collection):
 
     fp = [(k, key[k]) for k, v in both if v == "yes" and not key[k]["judge"]]
     fn = [(k, key[k]) for k, v in both if v == "no" and key[k]["judge"]]
-    if fp:
-        print(f"\n## Judge refused what you accepted ({len(fp)}) — over-strict\n")
-        for k, m in fp[:15]:
-            print(f"- [{m['memo']}] `{m['claim'][:64]}`\n    judge: {m['why']}")
-    if fn:
-        print(f"\n## Judge accepted what you refused ({len(fn)}) — the dangerous direction\n")
-        for k, m in fn[:15]:
-            print(f"- [{m['memo']}] `{m['claim'][:64]}`")
-        print("\nThese matter most: claims the automated pass would have let through "
-              "as supported and you would not. Every one is a precision number "
-              "that reads better than the truth.")
+    def show(pairs, title, note):
+        if not pairs:
+            return
+        print(f"\n## {title} ({len(pairs)})\n")
+        for k, m in pairs[:20]:
+            print(f"- **[{m['memo']}]** `{m['claim'][:66]}`")
+            print(f"    judge said: {m['why']}")
+            if why.get(k):
+                print(f"    YOU said:   {why[k]}")
+        print(f"\n{note}")
+
+    show(fp, "Judge refused what you accepted — over-strict",
+         "Over-strictness costs a precision number that reads worse than reality. "
+         "Annoying, not dangerous.")
+    show(fn, "Judge accepted what you refused — the dangerous direction",
+         "These matter most: claims the automated pass waved through as supported "
+         "and you would not. Every one is a precision number reading better than "
+         "the truth, and every one is a card that would have reached you as "
+         "something you said.")
+
+    # The rationales ARE the next judge prompt. j1 through j4 were fixed by
+    # reading reasons, never by reading scores.
+    stated = [(k, key[k], why[k]) for k, v in both if k in why]
+    if stated:
+        disagreed = {k for k, v in both if (v == "yes") != key[k]["judge"]}
+        print(f"\n## Candidate judge rules, from your rationales ({len(stated)})\n")
+        print("Draft material for the next judge prompt. The ones on disagreements "
+              "are the load-bearing ones — a rationale attached to a case the judge "
+              "already got right confirms it; one attached to a case it got wrong "
+              "tells you what it does not know.\n")
+        for k, m, w in sorted(stated, key=lambda x: x[0] not in disagreed):
+            mark = "**DISAGREED**" if k in disagreed else "agreed"
+            print(f"- [{mark}] *{m['memo']}* — `{m['claim'][:58]}`")
+            print(f"    {w}")
+    else:
+        print("\nNo rationales were written. The kappa above says whether the judge "
+              "agrees with you; only the rationales say why it does not, and that "
+              "is what the next prompt is built from.")
 
 
 if __name__ == "__main__":

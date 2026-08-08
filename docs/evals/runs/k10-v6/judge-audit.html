@@ -14,6 +14,11 @@
  details p{font-size:13.5px;color:#555;background:#f6f4f1;padding:10px 12px;border-radius:6px}
  .ask{font-size:13px;color:#555;margin-bottom:8px}
  .opts{display:flex;gap:18px;flex-wrap:wrap} label{cursor:pointer;font-size:14.5px}
+ textarea.why{width:100%;margin-top:12px;padding:8px 10px;border:1px solid #e0dbd3;
+   border-radius:6px;font-family:inherit;font-size:14.5px;line-height:1.45;
+   background:#fcfbfa;color:inherit;
+   resize:vertical;overflow:hidden;box-sizing:border-box}
+ textarea.why:focus{outline:2px solid #b06a2c33;border-color:#b06a2c}
  #bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #e6e2dc;
    padding:12px 20px;display:flex;gap:14px;align-items:center;justify-content:center}
  button{font:inherit;padding:9px 20px;border-radius:8px;border:1px solid #b06a2c;
@@ -23,6 +28,7 @@
    body{background:#14140f;color:#ece7df} .c{background:#1c1c16;border-color:#2e2e26}
    blockquote{background:#191913;color:#c9c3b8;border-color:#38382e}
    details p{background:#191913;color:#b8b2a8} #bar{background:#1c1c16;border-color:#2e2e26}
+   textarea.why{background:#191913;border-color:#38382e}
  }
 </style>
 <h1>Judge audit</h1>
@@ -31,7 +37,11 @@ transcript support it <em>exactly as written</em>? Not "is it roughly right" —
 does it say more than you said, or attach a fact to the wrong person?
 <br><br>You are not being shown what the automated judge decided. That is
 deliberate: seeing it first would make this measure agreement with a suggestion
-rather than your own reading.</p>
+rather than your own reading.
+<br><br>Each claim has a <em>why</em> box. It is optional and a bare verdict is
+always enough — but where you write one, especially on a close call or something
+you are overruling, that sentence is what becomes the next judge rule. Every fix
+to the automated judge so far came from reading rationales, not scores.</p>
 
 <section class="c" id="09e5afdf53dc">
   <div class="n">1 of 40 · <span class="memo">secondhand-chain</span></div>
@@ -46,6 +56,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="09e5afdf53dc" value="no"> Not supported</label>
     <label><input type="radio" name="09e5afdf53dc" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="09e5afdf53dc" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="12c083202135">
   <div class="n">2 of 40 · <span class="memo">nikos</span></div>
@@ -60,6 +72,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="12c083202135" value="no"> Not supported</label>
     <label><input type="radio" name="12c083202135" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="12c083202135" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="13b2503e4438">
   <div class="n">3 of 40 · <span class="memo">contradiction</span></div>
@@ -74,6 +88,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="13b2503e4438" value="no"> Not supported</label>
     <label><input type="radio" name="13b2503e4438" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="13b2503e4438" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="163e9befe5f4">
   <div class="n">4 of 40 · <span class="memo">futureforce</span></div>
@@ -88,6 +104,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="163e9befe5f4" value="no"> Not supported</label>
     <label><input type="radio" name="163e9befe5f4" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="163e9befe5f4" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="1aae2c78abd7">
   <div class="n">5 of 40 · <span class="memo">hardship</span></div>
@@ -102,6 +120,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="1aae2c78abd7" value="no"> Not supported</label>
     <label><input type="radio" name="1aae2c78abd7" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="1aae2c78abd7" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="2885a3c97cea">
   <div class="n">6 of 40 · <span class="memo">group-ramble</span></div>
@@ -116,6 +136,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="2885a3c97cea" value="no"> Not supported</label>
     <label><input type="radio" name="2885a3c97cea" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="2885a3c97cea" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="3e28a12f231e">
   <div class="n">7 of 40 · <span class="memo">hardship</span></div>
@@ -130,6 +152,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="3e28a12f231e" value="no"> Not supported</label>
     <label><input type="radio" name="3e28a12f231e" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="3e28a12f231e" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="460f408ab6bd">
   <div class="n">8 of 40 · <span class="memo">futureforce</span></div>
@@ -143,6 +167,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="460f408ab6bd" value="no"> Not supported</label>
     <label><input type="radio" name="460f408ab6bd" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="460f408ab6bd" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="5d1810df9122">
   <div class="n">9 of 40 · <span class="memo">eliah</span></div>
@@ -157,6 +183,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="5d1810df9122" value="no"> Not supported</label>
     <label><input type="radio" name="5d1810df9122" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="5d1810df9122" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="5dc02231da9b">
   <div class="n">10 of 40 · <span class="memo">secondhand-chain</span></div>
@@ -171,6 +199,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="5dc02231da9b" value="no"> Not supported</label>
     <label><input type="radio" name="5dc02231da9b" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="5dc02231da9b" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="657123af5c18">
   <div class="n">11 of 40 · <span class="memo">eliah</span></div>
@@ -185,6 +215,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="657123af5c18" value="no"> Not supported</label>
     <label><input type="radio" name="657123af5c18" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="657123af5c18" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="669955606f89">
   <div class="n">12 of 40 · <span class="memo">hardship</span></div>
@@ -199,6 +231,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="669955606f89" value="no"> Not supported</label>
     <label><input type="radio" name="669955606f89" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="669955606f89" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="7a265b697f91">
   <div class="n">13 of 40 · <span class="memo">secondhand-chain</span></div>
@@ -213,6 +247,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="7a265b697f91" value="no"> Not supported</label>
     <label><input type="radio" name="7a265b697f91" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="7a265b697f91" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="7c2d89ab27a1">
   <div class="n">14 of 40 · <span class="memo">dom</span></div>
@@ -227,6 +263,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="7c2d89ab27a1" value="no"> Not supported</label>
     <label><input type="radio" name="7c2d89ab27a1" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="7c2d89ab27a1" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="89378d673149">
   <div class="n">15 of 40 · <span class="memo">contradiction</span></div>
@@ -241,6 +279,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="89378d673149" value="no"> Not supported</label>
     <label><input type="radio" name="89378d673149" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="89378d673149" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="8d7854d8e389">
   <div class="n">16 of 40 · <span class="memo">futureforce</span></div>
@@ -255,6 +295,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="8d7854d8e389" value="no"> Not supported</label>
     <label><input type="radio" name="8d7854d8e389" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="8d7854d8e389" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="91b01caf4262">
   <div class="n">17 of 40 · <span class="memo">group-ramble</span></div>
@@ -269,6 +311,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="91b01caf4262" value="no"> Not supported</label>
     <label><input type="radio" name="91b01caf4262" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="91b01caf4262" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="92817cd98992">
   <div class="n">18 of 40 · <span class="memo">futureforce</span></div>
@@ -283,6 +327,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="92817cd98992" value="no"> Not supported</label>
     <label><input type="radio" name="92817cd98992" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="92817cd98992" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="9499cbc85134">
   <div class="n">19 of 40 · <span class="memo">homonym</span></div>
@@ -297,6 +343,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="9499cbc85134" value="no"> Not supported</label>
     <label><input type="radio" name="9499cbc85134" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="9499cbc85134" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="94f0bfa51a29">
   <div class="n">20 of 40 · <span class="memo">correction</span></div>
@@ -311,6 +359,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="94f0bfa51a29" value="no"> Not supported</label>
     <label><input type="radio" name="94f0bfa51a29" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="94f0bfa51a29" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="9e2f0402f048">
   <div class="n">21 of 40 · <span class="memo">group-ramble</span></div>
@@ -325,6 +375,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="9e2f0402f048" value="no"> Not supported</label>
     <label><input type="radio" name="9e2f0402f048" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="9e2f0402f048" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="a424c16f8a8c">
   <div class="n">22 of 40 · <span class="memo">nikos</span></div>
@@ -339,6 +391,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="a424c16f8a8c" value="no"> Not supported</label>
     <label><input type="radio" name="a424c16f8a8c" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="a424c16f8a8c" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="a453be37e34f">
   <div class="n">23 of 40 · <span class="memo">eliah</span></div>
@@ -353,6 +407,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="a453be37e34f" value="no"> Not supported</label>
     <label><input type="radio" name="a453be37e34f" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="a453be37e34f" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="aee5e4576a63">
   <div class="n">24 of 40 · <span class="memo">homonym</span></div>
@@ -367,6 +423,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="aee5e4576a63" value="no"> Not supported</label>
     <label><input type="radio" name="aee5e4576a63" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="aee5e4576a63" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="b2bbdf84e6db">
   <div class="n">25 of 40 · <span class="memo">dom</span></div>
@@ -381,6 +439,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="b2bbdf84e6db" value="no"> Not supported</label>
     <label><input type="radio" name="b2bbdf84e6db" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="b2bbdf84e6db" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="b79425a0b6b5">
   <div class="n">26 of 40 · <span class="memo">group-ramble</span></div>
@@ -395,6 +455,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="b79425a0b6b5" value="no"> Not supported</label>
     <label><input type="radio" name="b79425a0b6b5" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="b79425a0b6b5" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="b8246e1770b4">
   <div class="n">27 of 40 · <span class="memo">correction</span></div>
@@ -409,6 +471,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="b8246e1770b4" value="no"> Not supported</label>
     <label><input type="radio" name="b8246e1770b4" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="b8246e1770b4" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="bab0551ac817">
   <div class="n">28 of 40 · <span class="memo">dom</span></div>
@@ -423,6 +487,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="bab0551ac817" value="no"> Not supported</label>
     <label><input type="radio" name="bab0551ac817" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="bab0551ac817" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="beebc7104705">
   <div class="n">29 of 40 · <span class="memo">contradiction</span></div>
@@ -437,6 +503,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="beebc7104705" value="no"> Not supported</label>
     <label><input type="radio" name="beebc7104705" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="beebc7104705" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="d615da5c641b">
   <div class="n">30 of 40 · <span class="memo">homonym</span></div>
@@ -451,6 +519,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="d615da5c641b" value="no"> Not supported</label>
     <label><input type="radio" name="d615da5c641b" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="d615da5c641b" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="d94dbe9f1fe7">
   <div class="n">31 of 40 · <span class="memo">dom</span></div>
@@ -465,6 +535,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="d94dbe9f1fe7" value="no"> Not supported</label>
     <label><input type="radio" name="d94dbe9f1fe7" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="d94dbe9f1fe7" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="db925d5df8b0">
   <div class="n">32 of 40 · <span class="memo">nikos</span></div>
@@ -479,6 +551,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="db925d5df8b0" value="no"> Not supported</label>
     <label><input type="radio" name="db925d5df8b0" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="db925d5df8b0" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="dbc8352d2c93">
   <div class="n">33 of 40 · <span class="memo">eliah</span></div>
@@ -493,6 +567,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="dbc8352d2c93" value="no"> Not supported</label>
     <label><input type="radio" name="dbc8352d2c93" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="dbc8352d2c93" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="dd3634013ea2">
   <div class="n">34 of 40 · <span class="memo">nikos</span></div>
@@ -507,6 +583,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="dd3634013ea2" value="no"> Not supported</label>
     <label><input type="radio" name="dd3634013ea2" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="dd3634013ea2" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="e46ccede81e1">
   <div class="n">35 of 40 · <span class="memo">group-ramble</span></div>
@@ -521,6 +599,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="e46ccede81e1" value="no"> Not supported</label>
     <label><input type="radio" name="e46ccede81e1" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="e46ccede81e1" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="e47a065282fa">
   <div class="n">36 of 40 · <span class="memo">futureforce</span></div>
@@ -535,6 +615,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="e47a065282fa" value="no"> Not supported</label>
     <label><input type="radio" name="e47a065282fa" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="e47a065282fa" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="e7e8f0465cfc">
   <div class="n">37 of 40 · <span class="memo">eliah</span></div>
@@ -549,6 +631,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="e7e8f0465cfc" value="no"> Not supported</label>
     <label><input type="radio" name="e7e8f0465cfc" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="e7e8f0465cfc" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="eaab4870882d">
   <div class="n">38 of 40 · <span class="memo">dom</span></div>
@@ -563,6 +647,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="eaab4870882d" value="no"> Not supported</label>
     <label><input type="radio" name="eaab4870882d" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="eaab4870882d" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="f37d973b98ec">
   <div class="n">39 of 40 · <span class="memo">hardship</span></div>
@@ -577,6 +663,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="f37d973b98ec" value="no"> Not supported</label>
     <label><input type="radio" name="f37d973b98ec" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="f37d973b98ec" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <section class="c" id="f4dac7dc710c">
   <div class="n">40 of 40 · <span class="memo">homonym</span></div>
@@ -591,6 +679,8 @@ rather than your own reading.</p>
     <label><input type="radio" name="f4dac7dc710c" value="no"> Not supported</label>
     <label><input type="radio" name="f4dac7dc710c" value="unsure"> Unsure</label>
   </div>
+  <textarea class="why" data-for="f4dac7dc710c" rows="1"
+    placeholder="Why? — optional, but this is the part that becomes a rule"></textarea>
 </section>
 <div id="bar"><span id="count">0 of 40</span>
 <button onclick="save()">Download answers</button></div>
@@ -599,8 +689,17 @@ const N=40;
 function tally(){document.getElementById('count').textContent=
   document.querySelectorAll('input:checked').length+' of '+N;}
 document.addEventListener('change',tally);
+document.addEventListener('input',e=>{
+  if(e.target.classList.contains('why')){
+    e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}
+});
 function save(){
-  const a={};document.querySelectorAll('input:checked').forEach(i=>a[i.name]=i.value);
+  const a={};
+  document.querySelectorAll('input:checked').forEach(i=>a[i.name]={verdict:i.value});
+  document.querySelectorAll('textarea.why').forEach(t=>{
+    const v=t.value.trim();if(!v)return;
+    const id=t.dataset.for;a[id]=Object.assign(a[id]||{},{why:v});
+  });
   const b=new Blob([JSON.stringify(a,null,1)],{type:'application/json'});
   const u=URL.createObjectURL(b),l=document.createElement('a');
   l.href=u;l.download='judge-audit-answers.json';l.click();URL.revokeObjectURL(u);
