@@ -181,12 +181,24 @@ enum ExtractionMessage {
 /// apart from the thing working. An unknown version now fails loudly, naming the
 /// resource it wanted.
 public enum ExtractionPrompt {
+    /// The prompt that ships. **Newest is not best** — v9 halved v8's word count
+    /// while keeping every requirement and lost 7 points of recall
+    /// (docs/evals/dilution-experiment.md), so deriving "active" from the
+    /// highest bundled file silently promoted the worse prompt the moment it
+    /// existed. Measurement decides this, not filename order.
+    ///
+    /// This is one constant, not a validation list: the FN-35 bug was an
+    /// allow-list that *substituted a different value* on a miss. A missing
+    /// resource here fails loudly in `system()`, naming the file it wanted.
+    public static let activeVersion = "v8"
+
     public static var version: String {
-        ProcessInfo.processInfo.environment["ORBIT_PROMPT_VERSION"] ?? Self.latestVersion
+        ProcessInfo.processInfo.environment["ORBIT_PROMPT_VERSION"] ?? Self.activeVersion
     }
 
-    /// Highest `extraction-prompt-vN.md` actually bundled — derived, so adding a
-    /// prompt is one file rather than a file plus a list to remember.
+    /// Highest `extraction-prompt-vN.md` bundled. Reported for reference only —
+    /// promoting a prompt is a measurement result, not a file-creation side
+    /// effect.
     public static var latestVersion: String {
         let versions = (Bundle.module.urls(forResourcesWithExtension: "md",
                                            subdirectory: "Resources") ?? [])
