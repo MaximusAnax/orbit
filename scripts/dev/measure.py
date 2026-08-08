@@ -79,7 +79,18 @@ class Grader:
             parts += [e["name_as_heard"]] + e["aliases"]
         return norm(" | ".join(x for x in parts if x))
 
-    def find_assertions(self, subject=None, predicate=None, contains=None):
+    def entity_matches(self, ref, want):
+        """`entity: anthropic` names a key in the golden's required_entities,
+        which carries the name_like to match against the emitted entity."""
+        forms = [re["name_like"] for re in self.g.get("required_entities", [])
+                 if re.get("key") == want] or [want]
+        ent = self.entities.get(ref or "")
+        if not ent:
+            return False
+        names = [ent.get("name_as_heard", "")] + (ent.get("aliases") or [])
+        return any(f in norm(n) for n in names for f in forms)
+
+    def find_assertions(self, subject=None, predicate=None, contains=None, entity=None):
         out = []
         for a in self.p["assertions"]:
             if subject and not self.subject_matches(a["subject_ref"], subject):
@@ -87,6 +98,11 @@ class Grader:
             if predicate and a["predicate"] != predicate:
                 continue
             if contains and norm(contains) not in self.blob(a):
+                continue
+            # A required assertion may demand that the object is a LINKED
+            # entity, not prose — FN-10's whole point. Ignoring this key meant
+            # `entity: anthropic` graded as "any employment assertion".
+            if entity and not self.entity_matches(a.get("object_entity_ref"), entity):
                 continue
             out.append(a)
         return out
@@ -167,7 +183,8 @@ class Grader:
                 self.criticals.append(("person match", f"{rp['name_like']}: {hits[0]['match']} ≠ {rp['match']}"))
 
         for ra in g.get("required_assertions", []):
-            hits = self.find_assertions(ra.get("subject"), ra.get("predicate"), ra.get("contains"))
+            hits = self.find_assertions(ra.get("subject"), ra.get("predicate"),
+                                        ra.get("contains"), ra.get("entity"))
             if ra.get("closed"):
                 hits = [a for a in hits if a.get("valid_to")]
             if ra.get("hedged"):
@@ -181,10 +198,20 @@ class Grader:
             self.req(bool(hits), f"self:{ra.get('predicate')}/{ra.get('contains')}")
 
         for re_ in g.get("required_entities", []):
+            # Two shapes are in use: `contains:` (match the emitted name) and
+            # `key:`/`name_like:` (a handle other rules refer to, as
+            # `required_assertions.entity`). Reading only the first crashed on
+            # the second, so a golden written in the newer shape could not run
+            # at all — which is how tag-discipline's rules went ungraded.
+            needle = re_.get("contains") or re_.get("name_like") or re_.get("key")
+            if not needle:
+                self.criticals.append(
+                    ("golden", f"required_entities entry names nothing to match: {re_}"))
+                continue
             hits = []
             for e in p["entities"]:
                 text = norm(e["name_as_heard"] + " " + " ".join(e["aliases"]))
-                if norm(re_["contains"]) in text:
+                if norm(needle) in text:
                     if re_.get("part_of_contains"):
                         parent = self.entities.get(e.get("part_of_ref") or "")
                         ptext = norm(parent["name_as_heard"] + " " + " ".join(parent["aliases"])) if parent else ""
@@ -193,7 +220,7 @@ class Grader:
                     if re_.get("kind") and e["kind"] != re_["kind"]:
                         continue
                     hits.append(e)
-            self.req(bool(hits), f"entity:{re_['contains']}")
+            self.req(bool(hits), f"entity:{needle}")
 
         # PIPE-5 hedges — zero tolerance
         for span in g.get("required_hedges", []):
@@ -329,6 +356,43 @@ class Grader:
                 if f.get("contains"):
                     cands = [c for c in cands if norm(f["contains"]) in norm(c["object_like"] + c["verbatim"])]
                 hit = cands[0] if cands else None
+            # FN-10: a clause in the tag slot. PIPE-17 applies one global
+            # ceiling; a golden may hold a predicate to a tighter one, because
+            # a role title is shorter than a life event.
+            elif kind == "object_value_longer_than":
+                limit = int(f["words"])
+                hit = next((a for a in self.find_assertions(f.get("subject"), f.get("predicate"))
+                            if len((a.get("object_value") or "").split()) > limit), None)
+            # FN-14: a name the ref already carries, spelled into the tag as
+            # well — a second place to be wrong that a rename cannot reach.
+            elif kind == "object_value_contains_person_name":
+                names = {norm(m.get("name_as_heard")) for m in p["people"]}
+                names |= {norm(al) for m in p["people"] for al in (m.get("aliases") or [])}
+                names = {n for n in names if len(n) > 2}
+                hit = next((a for a in self.find_assertions(f.get("subject"), f.get("predicate"))
+                            if any(n in norm(a.get("object_value")) for n in names)), None)
+            # FN-31: `exact` claims a day was stated. If the source never says
+            # one, the precision was invented — P4's stored-uncertainty rule
+            # applied to dates.
+            elif kind == "date_precision_exceeds_source":
+                for a in self.find_assertions(f.get("subject"), f.get("predicate"),
+                                              f.get("contains")):
+                    if a.get("date_precision") != "exact":
+                        continue
+                    vf = a.get("valid_from") or ""
+                    if len(vf) < 10:
+                        hit = a          # "exact" with no day is self-contradictory
+                        break
+                    day = vf[8:10].lstrip("0")
+                    if day and day not in self.source:
+                        hit = a          # a day the transcript never mentions
+                        break
+            else:
+                # An unhandled kind used to fall through with hit = None, so the
+                # rule silently never ran — a check that cannot fail is worse
+                # than no check, because the golden claims coverage it lacks.
+                self.criticals.append((
+                    "golden", f"unknown forbidden kind {kind!r} — the rule never ran"))
             if hit is not None:
                 self.criticals.append((f"forbidden:{kind}", f.get("why", str(f))[:90]))
 

@@ -160,4 +160,44 @@ final class FactAnswerTests: XCTestCase {
         XCTAssertTrue(anchor.contains("last seen 2026-06"),
                       "the merged-away id held the only event; anchor was \(anchor.debugDescription)")
     }
+
+    // MARK: the employer asked for by other names (Bugbot, 2026-08-07)
+
+    /// "where" was the only cue that selected the entity, so every other way of
+    /// asking for the employer fell to the literal and answered `intern`.
+    /// The employer is not the job in either direction.
+    func testCompanyPhrasingsAnswerTheEmployerNotTheRole() throws {
+        let eliah = try edits.createPerson(displayName: "Eliah")
+        try entity("e_google", "Google")
+        try fact(subject: eliah, predicate: "employment", value: "intern",
+                 entity: "e_google", verbatim: "she interned at Google")
+
+        for query in ["what company does Eliah work for?",
+                      "which company does Eliah work for?",
+                      "who does Eliah work for?"] {
+            let answer = try Searcher(reader: store.reader).search(query)
+            guard case .answer(let a) = answer else {
+                return XCTFail("expected an answer band for \(query), got \(answer)")
+            }
+            XCTAssertEqual(a.factAnswer, "Google",
+                           "\(query) asks for the employer, not the role")
+        }
+    }
+
+    /// The other direction has to keep working: a role question must not start
+    /// answering with the company just because the cue list grew.
+    func testRolePhrasingsStillAnswerTheRole() throws {
+        let eliah = try edits.createPerson(displayName: "Eliah")
+        try entity("e_google", "Google")
+        try fact(subject: eliah, predicate: "employment", value: "intern",
+                 entity: "e_google", verbatim: "she interned at Google")
+
+        for query in ["what is Eliah's job?", "what is Eliah's role?", "what is Eliah's title?"] {
+            let answer = try Searcher(reader: store.reader).search(query)
+            guard case .answer(let a) = answer else {
+                return XCTFail("expected an answer band for \(query), got \(answer)")
+            }
+            XCTAssertEqual(a.factAnswer, "intern", "\(query) asks for the role")
+        }
+    }
 }

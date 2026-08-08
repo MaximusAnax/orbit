@@ -176,6 +176,15 @@ enum Copy {
     /// you can only infer is state you cannot check.
     static let modelSectionTitle = "The listener"
     static let modelPresent = "The full model is on this phone. Recordings are deleted once it has heard them."
+    /// The model landing is not the end of the story: memos transcribed by the
+    /// floor still hold their audio until the re-listen pass reaches them, and
+    /// saying "nothing is waiting" while recordings sit there is the exact
+    /// inference FN-5 exists to remove.
+    static func modelPresentCatchingUp(_ retained: Int) -> String {
+        let kept = retained == 1 ? "1 recording is" : "\(retained) recordings are"
+        return "The full model is on this phone. \(kept) still waiting to be re-heard, "
+            + "and deleted once that's done."
+    }
     static func modelAbsent(_ retained: Int, failures: Int) -> String {
         let kept = retained == 1 ? "1 recording is being kept"
                                  : "\(retained) recordings are being kept"
@@ -297,7 +306,8 @@ enum Copy {
             stateCardTag, suggestedPrefix, onboardingNamePrompt, onboardingBegin,
             onboardingPortraitInvite,
             settingsTitle, settingsHint, openAIKeyLabel,
-            modelSectionTitle, modelPresent, modelAbsent(3, failures: 2),
+            modelSectionTitle, modelPresent, modelPresentCatchingUp(1),
+            modelPresentCatchingUp(3), modelAbsent(3, failures: 2),
             modelAbsentNothingKept,
             saveKeys, keySaved,
             waitingFooter(1), waitingFooter(3), keepNote, micUnavailable, micDenied,

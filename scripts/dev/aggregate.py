@@ -27,6 +27,28 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 STABLE = 0.70          # PIPE-15's provisional flicker boundary
 
 
+def missing_fixture(memo):
+    """A stand-in payload for a memo that never came back, so the golden is
+    still graded (as a total miss) rather than dropped from the denominator.
+
+    The Grader reads the transcript through `source`, which lives on the
+    fixture rather than the golden — so the canonical fixture supplies it.
+    """
+    canonical = ROOT / "docs/evals/fixtures" / f"{memo}.json"
+    if not canonical.exists():
+        return None
+    source = json.loads(canonical.read_text()).get("source")
+    if not source:
+        return None
+    return {
+        "source": source,
+        "payload": {"people": [], "entities": [], "assertions": [], "episodes": [],
+                    "threads": [], "thread_closures": [], "loops": [],
+                    "contact_points": [], "state_declarations": [], "corrections": [],
+                    "ambiguities": []},
+    }
+
+
 def load_grader():
     spec = importlib.util.spec_from_file_location("measure", ROOT / "scripts/dev/measure.py")
     m = importlib.util.module_from_spec(spec)
@@ -67,13 +89,32 @@ def main():
     for rd in run_dirs:
         m.FIX = rd
         run = {"name": rd.name, "required_hit": 0, "required_total": 0,
-               "criticals": 0, "by_check": {}}
+               "criticals": 0, "by_check": {}, "missing": []}
         for memo, golden in goldens.items():
             f = rd / f"{memo}.json"
-            if not f.exists():
-                continue                      # a hole in the distribution; counted below
-            g = m.Grader(memo, golden, json.loads(f.read_text()))
-            g.grade()
+            if f.exists():
+                g = m.Grader(memo, golden, json.loads(f.read_text()))
+                g.grade()
+            else:
+                # A hole is scored as ZERO RECALL, never skipped. Skipping made
+                # required_total differ between runs of the same configuration,
+                # so recall was not comparable across runs and the spread mixed
+                # collection gaps into model variance — the one thing this
+                # aggregator exists to separate.
+                stub = missing_fixture(memo)
+                if stub is None:
+                    print(f"  ! {rd.name}/{memo}: missing, and no canonical fixture "
+                          f"to take its source from — excluded", file=sys.stderr)
+                    continue
+                g = m.Grader(memo, golden, stub)
+                g.grade()
+                # An empty payload satisfies the silence golden, so a missing
+                # fixture would score as a pass there of all places.
+                if golden.get("expect_empty"):
+                    g.required_hit = 0
+                    g.hits, g.misses = [], ["fixture missing"]
+                g.criticals.append(("collection gap", f"{memo}: no fixture in {rd.name}"))
+                run["missing"].append(memo)
             run["required_hit"] += g.required_hit
             run["required_total"] += g.required_total
             run["criticals"] += len(g.criticals)
@@ -127,6 +168,17 @@ def main():
         L.append("")
         L.append(f"⚠️ **{len(manifest['failures'])} extraction failure(s)** — the "
                  "distribution has holes; treat every number below as a floor.")
+    # Collection gaps are stated, never absorbed: a memo that never came back is
+    # graded as a total miss, so recall stays comparable across runs and the
+    # reader can see how much of the number is a hole rather than the model.
+    gaps = {r["name"]: r["missing"] for r in per_run if r.get("missing")}
+    if gaps:
+        L.append("")
+        total_gaps = sum(len(v) for v in gaps.values())
+        L.append(f"⚠️ **{total_gaps} missing fixture(s)** across {len(gaps)} run(s), "
+                 "scored as zero recall rather than skipped:")
+        for name, memos in sorted(gaps.items()):
+            L.append(f"- `{name}`: {', '.join(sorted(memos))}")
     L.append("")
     L.append("## Distribution, not a point")
     L.append("")

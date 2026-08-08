@@ -224,9 +224,16 @@ final class AppModel: ObservableObject {
     /// "is the model here, and what is waiting on it" had no answer.
     var modelStatusLine: String {
         let models = whisperTranscriber?.models ?? ModelManager()
-        if models.ceilingURL != nil { return Copy.modelPresent }
+        // Counted once, before either branch: the model arriving does not empty
+        // the backlog. Floor-transcribed memos keep their audio until
+        // `upgradeRetainedAudio` re-hears them, so reporting "nothing waiting"
+        // on `ceilingURL != nil` alone re-introduced exactly the inference this
+        // line exists to replace.
         let retained = Int((try? store.db.scalar(
             "SELECT COUNT(*) FROM event WHERE raw_audio_ref IS NOT NULL").intValue) ?? 0)
+        if models.ceilingURL != nil {
+            return retained > 0 ? Copy.modelPresentCatchingUp(retained) : Copy.modelPresent
+        }
         guard retained > 0 else { return Copy.modelAbsentNothingKept }
         return Copy.modelAbsent(retained, failures: models.consecutiveDownloadFailures)
     }

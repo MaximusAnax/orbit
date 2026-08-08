@@ -239,6 +239,32 @@ public struct Searcher {
     ///
     /// A qualifier short-circuits it: "residence" answers nothing, whatever was
     /// asked, so the entity wins even when the question said "what".
+    /// Phrasings that ask for the *object* of the fact — the organisation, the
+    /// school, the city. "where" is the obvious one and was the only one, which
+    /// meant "what company does he work for" and "who does he work for" took
+    /// the literal branch and answered `intern`. The employer is not the job in
+    /// either direction, so both phrasings have to be recognised.
+    static let entitySeekingCues: [String] = [
+        "where", "work for", "works for", "worked for",
+        "what company", "which company", "what org", "which org",
+        "what school", "which school", "what university", "which university",
+        "what college", "which college", "what city", "which city",
+        "based in", "based out of",
+    ]
+
+    /// Phrasings that ask for the literal beside the object — the role, the
+    /// status. Checked only when nothing above matched, so "what is his job at
+    /// the company" still reads as a role question.
+    static let literalSeekingCues: [String] = [
+        "job", "role", "title", "position", "what does", "what is he", "what is she",
+    ]
+
+    static func wantsEntity(_ lower: String) -> Bool {
+        if entitySeekingCues.contains(where: { lower.contains($0) }) { return true }
+        if literalSeekingCues.contains(where: { lower.contains($0) }) { return false }
+        return false
+    }
+
     static func factAnswer(_ row: Row, asksWhere: Bool) -> String? {
         let entity = row.text("object_entity_name").flatMap { $0.isEmpty ? nil : $0 }
         let literal = row.text("object_value").flatMap { $0.isEmpty ? nil : $0 }
@@ -293,7 +319,7 @@ public struct Searcher {
             hit.evidence = firsthandRows.map(evidence)
             firsthand = [hit]
             return Answer(firsthand: firsthand, maybe: secondhandMaybe(person, secondhandRows),
-                          factAnswer: Self.factAnswer(top, asksWhere: lower.contains("where")))
+                          factAnswer: Self.factAnswer(top, asksWhere: Self.wantsEntity(lower)))
         }
         // only hearsay exists: no uncited direct answer — the maybe band
         // carries it with its teller

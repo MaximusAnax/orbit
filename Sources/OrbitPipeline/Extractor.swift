@@ -306,9 +306,18 @@ public struct OpenAIExtractor: Extractor {
         let started = Date()
         var dropped: Set<String> = []
         var attempt = 0
+        // Attempts spent learning that a decode parameter is unsupported. These
+        // are NOT retries: they buy information, not a result, and they must not
+        // come out of the retry budget. `maxAttempts` is 4 and there are exactly
+        // four droppable parameters, so charging them to the same counter meant
+        // an endpoint that rejected each one in turn consumed the whole budget
+        // and never sent the stripped request that would have succeeded.
+        // Each is refunded; `dropped` only ever grows through a fixed list and
+        // never repeats a name, so this cannot loop.
+        var negotiated = 0
         var lastError: Error = ExtractorError.transport("no attempt made")
 
-        while attempt < maxAttempts {
+        while attempt - negotiated < maxAttempts {
             attempt += 1
             let (bodyDict, recorded) = try body(transcript: transcript, context: context,
                                                 dropping: dropped)
@@ -332,12 +341,13 @@ public struct OpenAIExtractor: Extractor {
                        let offending = ["temperature", "top_p", "seed", "max_completion_tokens"]
                         .first(where: { text.contains($0) && !dropped.contains($0) }) {
                         dropped.insert(offending)
+                        negotiated += 1        // refund: this bought information
                         continue
                     }
                     let retryable = http.statusCode == 429 || (500...599).contains(http.statusCode)
                     let err = ExtractorError.transport(
                         "extraction endpoint HTTP \(http.statusCode): \(text.prefix(300))")
-                    if retryable, attempt < maxAttempts {
+                    if retryable, attempt - negotiated < maxAttempts {
                         lastError = err
                         try await Self.backoff(attempt)
                         continue
@@ -374,8 +384,8 @@ public struct OpenAIExtractor: Extractor {
                 // Transport-level: timeouts and connection resets. These are the
                 // ones that killed the 2026-08-07 run.
                 lastError = error
-                if attempt < maxAttempts {
-                    try await Self.backoff(attempt)
+                if attempt - negotiated < maxAttempts {
+                    try await Self.backoff(attempt - negotiated)
                     continue
                 }
             }
