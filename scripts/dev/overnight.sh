@@ -46,8 +46,27 @@ if [ -z "$LABEL" ] || [ ! -d "docs/evals/runs/$LABEL" ]; then
 fi
 
 echo
-echo "== stage 2/2 · grade + aggregate =="
+echo "== stage 2/3 · grade + aggregate =="
 python3 scripts/dev/aggregate.py "docs/evals/runs/$LABEL" --roundtrip
 
 echo
-echo "report: docs/evals/runs/$LABEL/aggregate.md"
+echo "== stage 3/3 · precision =="
+# Stage A only by default: free, deterministic, and it is the half that does not
+# need a judge nobody has audited yet. ORBIT_JUDGE=1 adds the semantic pass.
+if [ "${ORBIT_JUDGE:-0}" = "1" ]; then
+  python3 scripts/dev/adjudicate.py "docs/evals/runs/$LABEL" --judge --workers 8 --sample 40 \
+    > "docs/evals/runs/$LABEL/precision.md" && tail -12 "docs/evals/runs/$LABEL/precision.md"
+  python3 scripts/dev/judge_audit.py build "docs/evals/runs/$LABEL" --n 40
+else
+  python3 scripts/dev/adjudicate.py "docs/evals/runs/$LABEL" \
+    > "docs/evals/runs/$LABEL/precision.md" && head -10 "docs/evals/runs/$LABEL/precision.md"
+fi
+
+echo
+echo "reports in docs/evals/runs/$LABEL/ :  aggregate.md  precision.md"
+PREV="$(ls -1t docs/evals/runs | grep -v "^$LABEL$" | head -1)"
+if [ -n "$PREV" ]; then
+  echo
+  echo "compare against the previous collection (paired, the only sound A/B):"
+  echo "  python3 scripts/dev/compare.py docs/evals/runs/$PREV docs/evals/runs/$LABEL"
+fi
