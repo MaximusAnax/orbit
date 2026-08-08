@@ -98,7 +98,7 @@ final class ReviewViewModel: ObservableObject, Identifiable {
         /// When it happened, rendered at the precision the record actually
         /// claims — never sharper.
         var whenLine: String?
-        let payload: String          // raw payload JSON — the Edit sheet prefll
+        var payload: String          // raw payload JSON — the Edit sheet prefll
         var settled: String?         // "Saved" / "Skipped" / "Set aside"
         /// Why this card hasn't settled yet, when a tap didn't take.
         var blocked: String?
@@ -125,6 +125,12 @@ final class ReviewViewModel: ObservableObject, Identifiable {
     /// Corrections he made in this review, keyed by ref. Display-only until the
     /// card carrying the ref is accepted.
     @Published var renames: [String: String] = [:]
+    /// Accept-with-edits payloads from the Edit sheet, keyed by card id. Kept
+    /// here rather than passed through a single `acceptEdited` call because an
+    /// accept can bounce off a pending dependency and be retried later
+    /// (`retryDependencyWaiters`) — a date corrected here would otherwise be
+    /// silently replaced by the one the extractor guessed.
+    private var payloadEdits: [String: String] = [:]
     /// Names as the extractor supplied them, before any correction.
     private var baseNames: [String: String] = [:]
     let syncRunID: String
@@ -286,6 +292,10 @@ final class ReviewViewModel: ObservableObject, Identifiable {
                                                  refNames: names, app: app)
                     ?? Self.entityKindOf(op: card.op, payload: card.payload,
                                          refNames: names, app: app)
+                // The date is display derived from the payload too, so a
+                // corrected `occurred_at` has to re-render here or the card
+                // goes on showing the day it was told to stop showing.
+                c.whenLine = Self.whenLineOf(op: card.op, payload: card.payload)
                 return c
             }
             return PersonGroup(id: group.id, name: names[group.id] ?? group.name,
@@ -293,29 +303,44 @@ final class ReviewViewModel: ObservableObject, Identifiable {
         }
     }
 
-    /// The payload as it should be written, with any correction folded in.
+    /// The payload as it should be written, with every correction folded in.
+    /// Both kinds can land on one card — an Edit-sheet change to the payload
+    /// and an inline rename of the ref it introduces — so the rename is applied
+    /// on top of the edited payload rather than on top of the original.
     private func editedPayload(for card: Card) -> String? {
-        guard let ref = renameableRef(card), let newName = renames[ref] else { return nil }
-        var dict = Self.decode(card.payload)
+        let edited = payloadEdits[card.id]
+        guard let ref = renameableRef(card), let newName = renames[ref] else { return edited }
+        var dict = Self.decode(edited ?? card.payload)
         dict[card.op == .createPerson ? "display_name" : "canonical_name"] = newName
-        guard let data = try? JSONSerialization.data(withJSONObject: dict) else { return nil }
+        guard let data = try? JSONSerialization.data(withJSONObject: dict) else { return edited }
         return String(data: data, encoding: .utf8)
     }
 
     // Decisions — each writes the J-12 outcome row through the funnel.
 
     func accept(_ card: Card) {
-        // a corrected name is an accept-with-edits, so the ledger gets the name
-        // he fixed rather than the one the transcript guessed
+        // a corrected name or date is an accept-with-edits, so the ledger gets
+        // what he fixed rather than what the transcript guessed
         if let edited = editedPayload(for: card) {
-            acceptEdited(card, payloadJSON: edited)
+            settle(card) { try self.service.resolve(proposal: card.id,
+                                                    .acceptEdited(payloadJSON: edited)) }
             return
         }
         settle(card) { try self.service.resolve(proposal: card.id, .accept) }
     }
 
+    /// The Edit sheet's save. The correction is recorded on the view model
+    /// before the write is attempted, so it survives an accept that bounces off
+    /// a pending dependency and is retried once that dependency lands.
     func acceptEdited(_ card: Card, payloadJSON: String) {
-        settle(card) { try self.service.resolve(proposal: card.id, .acceptEdited(payloadJSON: payloadJSON)) }
+        payloadEdits[card.id] = payloadJSON
+        for gi in groups.indices {
+            if let ci = groups[gi].cards.firstIndex(where: { $0.id == card.id }) {
+                groups[gi].cards[ci].payload = payloadJSON
+            }
+        }
+        rebuildDisplay()
+        accept(liveCard(card.id) ?? card)
     }
 
     func reject(_ card: Card, reason: RejectionReason?) {
@@ -378,7 +403,7 @@ final class ReviewViewModel: ObservableObject, Identifiable {
     /// (e.g. an assertion referencing an entity whose LINK card lives in
     /// another group). Retried automatically after every successful settle,
     /// so accept-all converges regardless of tap order.
-    private var dependencyWaiters: [Card] = []
+    private var dependencyWaiters: [String] = []
 
     private func settle(_ card: Card, _ op: () throws -> Void) {
         do {
@@ -398,7 +423,7 @@ final class ReviewViewModel: ObservableObject, Identifiable {
             // appears to do nothing reads as a broken button, and the reason is
             // right here in the error.
             if case WriteError.pendingDependency(_) = error {
-                dependencyWaiters.append(card)
+                if !dependencyWaiters.contains(card.id) { dependencyWaiters.append(card.id) }
                 mark(card, blocked: Copy.cardWaitingOnDependency)
             } else {
                 mark(card, blocked: Copy.cardCouldNotSave)
@@ -414,17 +439,24 @@ final class ReviewViewModel: ObservableObject, Identifiable {
         }
     }
 
+    /// Retried from the *live* card, never from the copy captured when the
+    /// accept failed. A card can be edited while it sits waiting, and a stale
+    /// copy would re-submit exactly the payload the edit replaced.
     private func retryDependencyWaiters() {
         guard !dependencyWaiters.isEmpty else { return }
         let waiting = dependencyWaiters
         dependencyWaiters = []
-        for card in waiting where stillPending(card) {
+        for id in waiting {
+            guard let card = liveCard(id), card.settled == nil else { continue }
             accept(card)
         }
     }
 
-    private func stillPending(_ card: Card) -> Bool {
-        groups.contains { $0.cards.contains { $0.id == card.id && $0.settled == nil } }
+    private func liveCard(_ id: String) -> Card? {
+        for group in groups {
+            if let card = group.cards.first(where: { $0.id == id }) { return card }
+        }
+        return nil
     }
 
     private func labelFor(cardID: String) throws -> String {

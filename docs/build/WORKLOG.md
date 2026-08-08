@@ -403,3 +403,42 @@ unnoticed even without a live run.
 - **Tier honesty unchanged:** T1 rigs and negative controls are green here; no
   Swift compiled in this environment and Actions has still not picked up a job
   since 07-31, so the Swift halves are unbuilt until his Mac runs them.
+
+## 2026-08-08 · An edited date that was written, then quietly overwritten
+
+Found by hand on device: correcting the date on a review card did nothing. The
+card went on showing "around July 2026", and the ledger kept the day the
+extractor had guessed.
+
+- **The Edit sheet's correction lived in one stack frame.** `acceptEdited` passed
+  the corrected payload straight to `resolve` and kept no copy. That is fine
+  when the write lands — and silently lossy when it doesn't. A CREATE_EVENT
+  whose participant hasn't been accepted yet throws `pendingDependency` by
+  design, so review can settle cards in any order; the card parks in
+  `dependencyWaiters` and is retried after the next successful settle. The retry
+  called `accept(card)` on the **captured, unedited** card, and `accept` folded
+  in only *renames*. So the correction was made, shown to have been made, and
+  then replaced by the extractor's original — which is exactly the shape of
+  defect P5 exists to prevent: the review is supposed to decide.
+- **Fix, in the shape the rename path already had.** Edit-sheet payloads are now
+  held on the view model (`payloadEdits`, keyed by card id) exactly as renames
+  are held keyed by ref, and `editedPayload` composes both — the rename applies
+  *on top of* the edited payload, so a card that gets one does not lose the
+  other. `accept` is the single place that resolves with `.acceptEdited`, so
+  every path through it (first tap, accept-all, dependency retry) carries every
+  correction.
+- **The retry now reads the live card, not a snapshot.** `dependencyWaiters`
+  holds ids; a card edited while it sits waiting is re-submitted as it now is.
+  This was the second half of the bug and would have survived a fix to the first.
+- **The card re-renders.** `whenLine` is display derived from the payload and was
+  never recomputed, so even a *successful* edit left the old date on screen.
+  `rebuildDisplay` now derives it alongside `mappedFact`.
+- **Verified by reverting.** `ReviewEditTests` (4 cases: edit-then-block,
+  block-then-edit, render, rename+edit composition) pass on the fix and all four
+  fail without it, each on the assertion that names the defect. Full app suite
+  26/26 on iPhone 17; `swift build` clean.
+- **Gate is not green at HEAD, and this change is not why.**
+  `FactAnswerTests.testRolePhrasingsStillAnswerTheRole` fails on a clean tree at
+  751abe2 — "what is Eliah's role?" and "what is Eliah's title?" both answer nil
+  where they should answer "intern". The app target is not part of the SPM
+  package, so nothing here touches it. Untouched, and owed a fix of its own.
