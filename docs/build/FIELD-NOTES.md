@@ -1128,6 +1128,81 @@ every ◊ against that. Only then is a provider or prompt comparison meaningful.
 *Nearly drew four false conclusions from single samples tonight before running
 the same prompt twice.*
 
+### FN-38 · The verbatim promise is enforced nowhere in the product — open
+
+`ExtractionPayload.swift:112` says it plainly: `verbatim` is an *"exact substring
+of the transcript (PIPE-6)"*. Nothing checks that. Not the schema, not the
+funnel, not `SyncEngine`. The only thing that has ever verified it is the eval
+grader, which is not in the product. `SyncEngine` interpolates the model's string
+straight into the proposal rationale — curly-quoted — and the review card renders
+it, so whatever the model returns is shown to Abdoul as his own words.
+
+**What the model actually returns, measured over 10 runs (979 quoted fields):**
+
+| | count | |
+| --- | --- | --- |
+| byte-exact substring | 889 | 90.8% |
+| identical after whitespace normalisation | 11 | |
+| near-identical — a filler or connector differs | 69 | |
+| altered wording | 9 | |
+| no close match (candidate fabrication) | **1** | lowest similarity anywhere: **0.780** |
+
+**Zero fabrications.** The first pass through this data claimed two, at
+similarity 0.29 and 0.53. Both were artifacts of a strided window search that
+never tested the right offset — re-checked exhaustively, one is an exact match
+differing only by a newline (1.000) and the other is 0.961, where the model wrote
+*"but yeah, so we we we went to japan"* against a source reading *"and yeah so we
+we we went to japan"*. It kept the stutter and changed the connector.
+
+So the honest reading, which is not the one PIPE-6 has been reporting:
+
+**The extractor is faithful.** It reproduces disfluent speech — stutters
+included — and misses byte-exactness on connectives and filler words. PIPE-6
+scores a dropped "um" identically to an invented sentence, which is why
+"PIPE-6: FAIL" has read as a catastrophe for two days while describing hygiene.
+
+**The exposure is still real, and is the actual defect.** The observed
+fabrication rate is zero, but that is a property of this model on this corpus,
+not of the system. Nothing would stop a fabricated quote reaching the review
+card, because nothing looks. The guard is warranted by the absence of a check,
+not by the presence of a failure.
+
+**Fix — snap-to-source at ingestion.** Do not trust the model's copy. Find the
+best-matching window in the transcript and store *the transcript's own slice*.
+Above threshold the record is exact by construction; below it, the claim is
+rejected as unsupported. The threshold is derivable rather than guessed: every
+observed near-miss sits at ≥ 0.78 and 89 of 90 at ≥ 0.85, so **0.85 accepts every
+faithful quote in this corpus while still rejecting genuine invention.**
+Ambiguity risk is low — across a full run, zero exact quotes occurred more than
+once in their transcript, so snapping cannot silently relocate provenance;
+11 quotes under 25 characters are the only cases worth a length guard.
+
+This makes PIPE-6 true by construction rather than by measurement, which is
+worth more than a check only the eval harness runs.
+
+**Implemented 2026-08-08** — `VerbatimSnapper`, applied inside the extractor
+where the transcript is already in hand, so the guarantee holds for everything
+downstream without threading a transcript through `SyncEngine`. Comparison is
+punctuation-insensitive: the hardest real near-miss scored 0.812 with commas
+attached and 0.938 without, so a transcription comma in "yeah," was the whole
+difference between keeping a faithful quote and dropping it. Snap counts ride on
+the telemetry, because a rising `rejected` is the only signal that the model has
+started inventing.
+
+**Deliberately not applied to `ReplayExtractor`.** Recorded fixtures stay raw, so
+the eval keeps measuring what the *model* produced while the product ships what
+the *snapper* guarantees. Conflating those would hide a degrading extractor
+behind a working guard.
+
+*Was deferred while a k=10 collection was in flight: its grading stage rebuilds the
+Swift target, so editing the pipeline would have changed the code under a running
+measurement.*
+
+*The display question this raises is a real DESIGN decision — whether a memory
+card shows "we we we went to japan" or a cleaned rendering. Snap-to-source is
+what makes it safe to answer either way: the record stays exact, the rendering is
+free to be kind.*
+
 ---
 
 ## Session notes

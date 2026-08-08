@@ -38,3 +38,8 @@ docs/evals/runs/*/run-*/
 
 __pycache__/
 *.pyc
+
+# Judge verdicts, cached by (transcript, claim, judge model, prompt version).
+# Regenerable and billable-once; not worth versioning, but deleting it costs
+# real money to rebuild.
+docs/evals/judge-cache/

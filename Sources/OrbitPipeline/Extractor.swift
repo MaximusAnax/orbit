@@ -44,6 +44,11 @@ public struct ExtractionTelemetry: Sendable, Codable {
     /// here would be the same defect as the prompt-version allow-list (FN-35):
     /// a configuration that quietly differs from the one you asked for.
     public var decodeParamsRejected: [String]
+    /// How many quoted fields were exact, corrected to the transcript's own
+    /// slice, or dropped for having no anchor (FN-38). Recorded because a
+    /// rising `rejected` count is the signal that the model has started
+    /// inventing, and nothing else in the system would notice.
+    public var verbatim: VerbatimSnapper.Report
 
     enum CodingKeys: String, CodingKey {
         case promptTokens = "prompt_tokens"
@@ -53,12 +58,14 @@ public struct ExtractionTelemetry: Sendable, Codable {
         case attempts
         case decodeParams = "decode_params"
         case decodeParamsRejected = "decode_params_rejected"
+        case verbatim
     }
 
     public init(promptTokens: Int? = nil, completionTokens: Int? = nil,
                 totalTokens: Int? = nil, latencySeconds: Double = 0,
                 attempts: Int = 1, decodeParams: [String: String] = [:],
-                decodeParamsRejected: [String] = []) {
+                decodeParamsRejected: [String] = [],
+                verbatim: VerbatimSnapper.Report = .init()) {
         self.promptTokens = promptTokens
         self.completionTokens = completionTokens
         self.totalTokens = totalTokens
@@ -66,6 +73,7 @@ public struct ExtractionTelemetry: Sendable, Codable {
         self.attempts = attempts
         self.decodeParams = decodeParams
         self.decodeParamsRejected = decodeParamsRejected
+        self.verbatim = verbatim
     }
 }
 
@@ -355,7 +363,12 @@ public struct OpenAIExtractor: Extractor {
                 guard let text = message["content"] as? String else {
                     throw ExtractorError.badResponse("no message content in response")
                 }
-                let payload = try JSONDecoder().decode(ExtractionPayload.self, from: Data(text.utf8))
+                let decoded = try JSONDecoder().decode(ExtractionPayload.self, from: Data(text.utf8))
+                // PIPE-6 by construction, not by inspection: every quoted field
+                // becomes the transcript's own slice, and a claim whose quote
+                // cannot be found is dropped before it can be rendered to the
+                // owner as something they said (FN-38).
+                let (payload, snapReport) = VerbatimSnapper.snap(decoded, to: transcript)
                 let usage = top["usage"] as? [String: Any]
                 let telemetry = ExtractionTelemetry(
                     promptTokens: usage?["prompt_tokens"] as? Int,
@@ -364,7 +377,8 @@ public struct OpenAIExtractor: Extractor {
                     latencySeconds: Date().timeIntervalSince(started),
                     attempts: attempt,
                     decodeParams: recorded,
-                    decodeParamsRejected: dropped.sorted())
+                    decodeParamsRejected: dropped.sorted(),
+                    verbatim: snapReport)
                 return ExtractionResult(payload: payload, modelID: model,
                                         promptVersion: ExtractionPrompt.version,
                                         telemetry: telemetry)
