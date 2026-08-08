@@ -45,7 +45,7 @@ public struct ExtractionTelemetry: Sendable, Codable {
     /// a configuration that quietly differs from the one you asked for.
     public var decodeParamsRejected: [String]
     /// How many quoted fields were exact, corrected to the transcript's own
-    /// slice, or dropped for having no anchor (FN-38). Recorded because a
+    /// slice, or dropped for having no anchor (FN-40). Recorded because a
     /// rising `rejected` count is the signal that the model has started
     /// inventing, and nothing else in the system would notice.
     public var verbatim: VerbatimSnapper.Report
@@ -379,7 +379,7 @@ public struct OpenAIExtractor: Extractor {
                 // PIPE-6 by construction, not by inspection: every quoted field
                 // becomes the transcript's own slice, and a claim whose quote
                 // cannot be found is dropped before it can be rendered to the
-                // owner as something they said (FN-38).
+                // owner as something they said (FN-40).
                 let (payload, snapReport) = VerbatimSnapper.snap(decoded, to: transcript)
                 let usage = top["usage"] as? [String: Any]
                 let telemetry = ExtractionTelemetry(

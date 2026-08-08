@@ -3,7 +3,7 @@ import Foundation
 /// Makes PIPE-6 true by construction instead of true by measurement.
 ///
 /// `ExtractionPayload` has always declared `verbatim` to be an exact substring of
-/// the transcript, and nothing in the product ever checked (FN-38). `SyncEngine`
+/// the transcript, and nothing in the product ever checked (FN-40). `SyncEngine`
 /// interpolates the model's string into the proposal rationale and the review
 /// card renders it in quotation marks, so whatever the model returns is shown to
 /// the owner as their own words. A promise that only the eval harness verifies is

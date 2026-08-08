@@ -30,7 +30,7 @@ hurt where the repetition was reinforcing. And residence assertions fell 33 → 
 the over-suppression pattern v7 showed — a shorter rule loses the "these ARE
 residences" half first.
 
-**What this closes.** FN-41's dilution hypothesis is refuted at this scale: prompt
+**What this closes.** FN-43's dilution hypothesis is refuted at this scale: prompt
 length is not what caused the v7 hardship regression, and the accretion pattern is
 not, by itself, hurting. Rule *content* remains the explanation to chase.
 
@@ -45,7 +45,7 @@ sentence.
 ## Original pre-registration, unedited
 
 
-FN-41 raised a hypothesis the v7 comparison could not test: that the extraction
+FN-43 raised a hypothesis the v7 comparison could not test: that the extraction
 prompt has grown long enough that **each added rule now trades one item for
 another**. v7 improved 21 required items and regressed 20 (sign test p = 1.000),
 and degraded `condition_hardship` from 10/10 runs to 6/10 despite touching
@@ -114,7 +114,7 @@ surprising and useful result, and it argues *for* redundancy rather than against
 it.
 
 **If neither** (the honest most-likely outcome, given 21-up-20-down last time) —
-form is neutral at this scale, and FN-41's hardship regression came from rule
+form is neutral at this scale, and FN-43's hardship regression came from rule
 *content*, not from how the prompt is written. The next experiment would then be
 v8 minus rule 35 only. This outcome would also be a small, useful licence: if
 halving the prompt costs nothing, keep the short one, because it is cheaper per
@@ -130,7 +130,7 @@ items that move — plus the three specific things v7 bought, which must survive
 - residence assertions at ~17 total, with `self location/167th` restored by v8's
   narrowed rule 35
 
-And the FN-41 watch item: `condition_hardship` back toward 10/10, or not.
+And the FN-43 watch item: `condition_hardship` back toward 10/10, or not.
 
 ## A hazard found while setting this up
 
@@ -142,4 +142,4 @@ job is enough to do it.
 
 Nothing was corrupted here (checked: the bundle held v8 and every fixture is
 stamped `v8`), but it is the same shape as FN-35: a configuration that changes
-under you with no error and no way to tell from the output. Recorded as FN-42.
+under you with no error and no way to tell from the output. Recorded as FN-44.

@@ -1128,7 +1128,7 @@ every ◊ against that. Only then is a provider or prompt comparison meaningful.
 *Nearly drew four false conclusions from single samples tonight before running
 the same prompt twice.*
 
-### FN-38 · The verbatim promise is enforced nowhere in the product — open
+### FN-40 · The verbatim promise is enforced nowhere in the product — open
 
 `ExtractionPayload.swift:112` says it plainly: `verbatim` is an *"exact substring
 of the transcript (PIPE-6)"*. Nothing checks that. Not the schema, not the
@@ -1203,7 +1203,7 @@ card shows "we we we went to japan" or a cleaned rendering. Snap-to-source is
 what makes it safe to answer either way: the record stays exact, the rendering is
 free to be kind.*
 
-### FN-39 · The round-trip gate was a lottery; it now gates on measured stability — closed 2026-08-08
+### FN-41 · The round-trip gate was a lottery; it now gates on measured stability — closed 2026-08-08
 
 The k=10 collection scored 9 · 8 · 8 · 7 · 10 · 9 · 10 · 9 · 8 · 9 on an
 all-or-nothing round-trip. Nothing changed between those runs. A gate demanding
@@ -1242,7 +1242,7 @@ plainly is not landing.
 "should CI tolerate this" but "is the thing underneath it a defect or is the
 check wrong". Here it was a defect, three times.*
 
-### FN-40 · `residence` is asserted from anywhere a person was mentioned — mostly closed 2026-08-08
+### FN-42 · `residence` is asserted from anywhere a person was mentioned — mostly closed 2026-08-08
 
 The clearest product defect in the k=10 data, and it reproduces across four
 different memos. The model handles `origin` correctly — Elia from New York City
@@ -1299,7 +1299,7 @@ Concourse" is a residence by any reading and v7 now drops it nine times in ten
 distinguish the good ones. Rule 35 needs a clause admitting first-person
 "I lived at X" before this closes.
 
-### FN-41 · The hardship thread degraded from an unrelated prompt edit — open · watch
+### FN-43 · The hardship thread degraded from an unrelated prompt edit — open · watch
 
 v7 changed three rules, all about residence, hedge spans, and closeness. None
 touches hardship. `condition_hardship` threads on the hardship memo nonetheless
@@ -1329,7 +1329,7 @@ appended to will eventually regress something every time it is improved, and
 single-run evaluation cannot see it happening. This one was visible only because
 two ten-run collections were compared item by item.*
 
-### FN-42 · A running measurement can be switched onto a different prompt by an unrelated edit — open
+### FN-44 · A running measurement can be switched onto a different prompt by an unrelated edit — open
 
 `ExtractionPrompt.latestVersion` resolves from the bundled resources **at
 runtime**, on every call. That is the fix from FN-35 and it is the right design —
@@ -1362,7 +1362,7 @@ failing loudly on drift. The aggregator should refuse to grade a collection whos
 fixtures disagree about `prompt_version`. Deferred while the v8/v9 collections
 run, for exactly the reason this note describes.
 
-### FN-43 · Three of the thirteen permanent misses, diagnosed — open · deliberately not fixed yet
+### FN-45 · Three of the thirteen permanent misses, diagnosed — open · deliberately not fixed yet
 
 The k=10 aggregate found 13 required items the extractor never produces in any
 run. Three of those turned out to be the dropped hedges (fixed in v7, now 70–90%).
@@ -1395,7 +1395,7 @@ great, but this is about Elia."* Roger is named inside a portrait about someone
 else. Whether he was *there* is genuinely unclear, and the golden wants the
 question asked rather than an attendance assumed either way.
 
-**Why nothing is being written for these now.** FN-41 raised the possibility that
+**Why nothing is being written for these now.** FN-43 raised the possibility that
 this prompt has grown long enough that each new rule costs an old one — 21 items
 up, 20 down at v7, and a hardship regression from an edit that never touched
 hardship. The dilution experiment is running. Writing three more rules into a
@@ -1408,7 +1408,7 @@ where it already belongs, 2 and 3 into a single statement about uncertain
 attendance. If it is not, they can be appended. **The experiment decides the
 form, not just the content.**
 
-### FN-44 · The judge does not agree with Abdoul — κ = 0.14 — open · invalidates every precision number
+### FN-46 · The judge does not agree with Abdoul — κ = 0.14 — open · invalidates every precision number
 
 The audit EVALS §3.5 has always specified finally ran. Abdoul adjudicated 40
 claims blind, with rationales. Against the j4 judge:
@@ -1434,7 +1434,7 @@ error is now known rather than guessed.
 | `Ama — location — residence [Chicago]` | "flew in from Chicago, not resides" | supported |
 
 The last one is the instructive one — **I had cited it as one of the judge's
-strongest catches**, and FN-40 leans on the same reading. Abdoul, who was in the
+strongest catches**, and FN-42 leans on the same reading. Abdoul, who was in the
 room, reads it as supported. The owner's standard is *"does this fairly
 represent what I said"*; my adversarial prompt ("default to unsupported when
 uncertain") built something meaningfully stricter, and I then read its strictness
@@ -1458,8 +1458,8 @@ as rigour.
 independently, which is the best evidence they are real:
 
 - *"he's thinking about moving back to atlanta, which means he doesnt live there
-  now"* — FN-40, in one line.
-- *"this is previous employment though"* (Priya/DeepMind) — FN-43's tense
+  now"* — FN-42, in one line.
+- *"this is previous employment though"* (Priya/DeepMind) — FN-45's tense
   finding, found without seeing it.
 - *"Startup School was an event, not actual education"*, and again on Salesforce
   Futureforce: *"Its not education but it was an event yes."* **A new defect:
@@ -1502,7 +1502,7 @@ my own reading, called that validation, and was wrong in a direction my own
 review could not see — I share the model's bias toward literalism. Only the owner
 had the missing information, and it took forty claims to surface it.*
 
-### FN-45 · P5's amendment, built — and two traps found building it — closed 2026-08-08
+### FN-47 · P5's amendment, built — and two traps found building it — closed 2026-08-08
 
 The batched confirmation P5 now permits, with INV-5b enforced rather than
 asserted. `acceptAll` takes the set of card ids the view actually rendered and
@@ -1537,7 +1537,7 @@ while the correct convention sat in the file next to mine. The stall was real
 `summary` for `title`), so the skip was hiding a genuine defect in the test.
 
 *The recurring shape, now five instances tonight: FN-35's allow-list, the CA
-bundle in adjudicate.py, FN-42's prompt swap, the judge's silent unavailability,
+bundle in adjudicate.py, FN-44's prompt swap, the judge's silent unavailability,
 and this. Every one produced output indistinguishable from success. Green is not
 evidence; green plus a count you looked at is.*
 

@@ -1,7 +1,7 @@
 import XCTest
 @testable import OrbitPipeline
 
-/// FN-38 — PIPE-6 by construction.
+/// FN-40 — PIPE-6 by construction.
 ///
 /// The cases below are not invented: each is a real quote from the k=10
 /// collection of 2026-08-08, paired with the real Eliah transcript, chosen

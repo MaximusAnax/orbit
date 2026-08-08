@@ -79,7 +79,7 @@ def sign_test(up, down):
 
 
 def residence_claims(path):
-    """The FN-40 defect, counted directly: residence assertions per run."""
+    """The FN-42 defect, counted directly: residence assertions per run."""
     out = []
     for rd in sorted(d for d in path.iterdir() if d.is_dir() and d.name.startswith("run-")):
         n = 0
@@ -152,7 +152,7 @@ def main():
 
     # --- the targeted defect -------------------------------------------------
     ra, rb = residence_claims(a_path), residence_claims(b_path)
-    print(f"\n## FN-40: `location = residence` assertions per run\n")
+    print(f"\n## FN-42: `location = residence` assertions per run\n")
     print(f"- {a_path.name}: {spread(ra)}  · total {sum(ra)}")
     print(f"- {b_path.name}: {spread(rb)}  · total {sum(rb)}")
     if ra and rb:
