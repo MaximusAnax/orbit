@@ -1502,6 +1502,45 @@ my own reading, called that validation, and was wrong in a direction my own
 review could not see — I share the model's bias toward literalism. Only the owner
 had the missing information, and it took forty claims to surface it.*
 
+### FN-45 · P5's amendment, built — and two traps found building it — closed 2026-08-08
+
+The batched confirmation P5 now permits, with INV-5b enforced rather than
+asserted. `acceptAll` takes the set of card ids the view actually rendered and
+settles only those, and `Card.bulkEligible` holds back three kinds outright:
+
+- **DISAMBIGUATE cards** — answering a question in bulk is guessing, which is
+  the one thing the ask exists to prevent.
+- **`PROPOSE_STATE`** — the most consequential thing the extractor proposes,
+  INV-24 gated, gets its own look.
+- **`condition_hardship` threads** — INV-20. Someone's illness or grief is not
+  something to accept in passing, and a review flow that sweeps it up with an
+  employment change has misunderstood what it is holding.
+
+A bulk accept that leaves cards behind now says so ("two below are worth your own
+look") — silence would read as a bug rather than as intent.
+
+**Trap 1: the app tests could not run locally, and had not been.** `xcodebuild
+test` fails signing the SPM resource bundles — *"bundle format unrecognized"* —
+which looks exactly like a broken build. A full DerivedData wipe did not fix it.
+It is not a local defect: CI passes `CODE_SIGNING_ALLOWED=NO` and has always
+worked. `scripts/check.sh` only *builds* the app target, so every app test has
+been green in CI and unrunnable at the desk, and nobody would notice from the
+gate. `check.sh` now has an opt-in `ORBIT_APP_TESTS=1` stage carrying that flag
+and a comment explaining it, so the next person loses minutes rather than an hour.
+
+**Trap 2: my own tests passed by not running.** The first version used `XCTSkip`
+when the flow stalled. Four tests skipped, zero graded, and xcodebuild printed
+**TEST SUCCEEDED**. `PortraitFlowTests` already warns about exactly this — *"A
+stalled flow is a FAILURE, not a skip"* — and I wrote the anti-pattern anyway
+while the correct convention sat in the file next to mine. The stall was real
+(my fixture used invented field names — `person_ref` for `subject_ref`,
+`summary` for `title`), so the skip was hiding a genuine defect in the test.
+
+*The recurring shape, now five instances tonight: FN-35's allow-list, the CA
+bundle in adjudicate.py, FN-42's prompt swap, the judge's silent unavailability,
+and this. Every one produced output indistinguishable from success. Green is not
+evidence; green plus a count you looked at is.*
+
 ---
 
 ## Session notes

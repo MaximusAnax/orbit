@@ -586,6 +586,9 @@ struct TranscriptReviewView: View {
 }
 
 struct ReviewView: View {
+    /// Cards a group accept deliberately did not settle, per group. Shown so a
+    /// bulk accept that leaves things behind reads as intent rather than a bug.
+    @State private var heldBack: [String: Int] = [:]
     @ObservedObject var vm: ReviewViewModel
     @Environment(\.room) var room
 
@@ -602,9 +605,24 @@ struct ReviewView: View {
                                 Text(group.name).memoryVoice(size: 16, weight: .semibold)
                                     .foregroundStyle(Tokens.ink(room))
                                 Spacer()
-                                if group.cards.count > 1 {
-                                    TertiaryButton("all \(Copy.yes.lowercased())") { vm.acceptAll(in: group) }
+                                // Only offered when more than one card can
+                                // actually be settled together — a button that
+                                // accepts one thing is just a slower "Yes".
+                                if group.cards.filter(\.bulkEligible).count > 1 {
+                                    TertiaryButton("all \(Copy.yes.lowercased())") {
+                                        // INV-5b: this ForEach lays out every
+                                        // card in the group, so every id is
+                                        // genuinely on screen. If this list ever
+                                        // truncates, pass only what it renders.
+                                        let onScreen = Set(group.cards.map(\.id))
+                                        let outcome = vm.acceptAll(in: group, rendered: onScreen)
+                                        heldBack[group.id] = outcome.held
+                                    }
                                 }
+                            }
+                            if let n = heldBack[group.id], n > 0 {
+                                Text(Copy.heldForYou(n)).interfaceVoice(size: 11.5)
+                                    .foregroundStyle(Tokens.inkMuted(room))
                             }
                             ForEach(group.cards) { card in
                                 ProposalCardView(vm: vm, card: card)

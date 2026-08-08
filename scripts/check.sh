@@ -42,6 +42,12 @@ fi
 # The app target is NOT part of the SPM package: apps/OrbitApp/** (Transcription,
 # AppModel, Screens, ViewModels) is compiled by nothing above. Build it when the
 # Apple toolchain is here; say so plainly when it isn't.
+# ORBIT_APP_TESTS=1 also runs the app unit/view-model suite on a simulator.
+# Off by default because a cold simulator boot exceeds the per-push budget
+# (EVALS §1) — CI runs it on every push. Note CODE_SIGNING_ALLOWED=NO: without
+# it xcodebuild fails signing the SPM resource bundles, which reads as a test
+# failure and is not one. That cost half an hour to work out; the flag is here
+# so nobody rediscovers it.
 if command -v xcodebuild >/dev/null 2>&1 && command -v xcodegen >/dev/null 2>&1; then
   echo "== iOS app target (xcodegen + xcodebuild) =="
   # honour a local whisper overlay so the gate never regenerates the project
@@ -65,4 +71,15 @@ else
   echo "== all checks that RAN passed — but this gate was not complete =="
   printf '%s\n' "$SKIPPED" | while IFS= read -r s; do echo "   SKIPPED: $s"; done
   echo "   Green above covers only the stages that ran. Do not read it as more."
+fi
+
+if [ "${ORBIT_APP_TESTS:-0}" = "1" ] && command -v xcodebuild >/dev/null 2>&1; then
+  echo "== app unit + view-model tests (simulator) =="
+  DEVICE="${ORBIT_SIM:-iPhone 17 Pro}"
+  ( cd apps/OrbitApp \
+    && xcodebuild test \
+         -project OrbitApp.xcodeproj -scheme OrbitApp \
+         -destination "platform=iOS Simulator,name=$DEVICE" \
+         -only-testing:OrbitAppTests \
+         CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E "Executed [0-9]+ tests|TEST (SUCCEEDED|FAILED)" | tail -3 )
 fi

@@ -146,7 +146,7 @@ final class PortraitFlowTests: XCTestCase {
     func testINV23_selfNeverSurfaces() async throws {
         let app = try makeApp()
         let rvm = try await portraitReview(app)
-        for group in rvm.groups { rvm.acceptAll(in: group) }
+        for group in rvm.groups { rvm.acceptAll(in: group, rendered: Set(group.cards.map(\.id))) }
 
         // search: name shape never returns the self row
         let hits = try OrbitSearchProxy.people(app: app, query: "Abdoul")
