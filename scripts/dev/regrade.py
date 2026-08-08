@@ -43,23 +43,32 @@ spec = importlib.util.spec_from_file_location("adj", ROOT / "scripts/dev/adjudic
 adj = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(adj)
 
-MATCH_PROMPT_VERSION = "m1"
+MATCH_PROMPT_VERSION = "m3"
 
 SYSTEM = """You grade fact-extraction against a required-facts contract.
 
 You are given a REQUIRED FACT and several CANDIDATE facts a model extracted from \
-the same transcript. Decide whether any candidate expresses the required fact.
+the same transcript. Decide whether any candidate *records* the required fact.
 
-A candidate matches ONLY if it means the same thing. Different wording is fine. \
-A different category label is fine when the claim is the same — "played \
-basketball" recorded as a life event rather than an interest is still the same \
-fact about the person.
+Judge the CANDIDATE CLAIM — its subject, its category and its object. The quote \
+shown beside each candidate is context for what the speaker said; it is NOT the \
+claim. A candidate whose quote mentions the required fact while the claim itself \
+records something else does NOT match. What gets stored is the claim.
 
-A candidate does NOT match when the meaning differs, however close it looks:
-- "wants to move to Atlanta" vs "lives in Atlanta" — a goal is not a location
-- "interned at Google" vs "works at Google" — different employment claims
-- a fact about the wrong person, however similar
-- a broader or narrower claim than the required one
+A candidate matches when it means the same thing. Different wording is fine, and \
+a different category label is fine WHEN THE CLAIM IS UNCHANGED — "played \
+basketball" recorded as a life event rather than an interest is the same fact.
+
+A candidate does NOT match when the category changes what is being asserted:
+- required "goal: move to Atlanta" vs candidate "location: residence" — NO. One \
+says where someone wants to go, the other says where they live, and the quote \
+saying "thinking about moving" does not rescue it: the stored claim is a \
+residence.
+- required "goal: X" vs candidate "life_event: X" — NO if it asserts X happened \
+rather than is wanted.
+- "interned at Google" vs "works at Google" — NO.
+- a fact about the wrong person, however similar — NO.
+- a broader or narrower claim than the required one — NO.
 
 If nothing matches, say so. Defaulting to no-match is correct when unsure.
 
@@ -143,6 +152,13 @@ def main():
             fixture = json.loads(f.read_text())
             gr = measure.Grader(memo, g, fixture)
             source = (ROOT / fixture["source"]).read_text()
+            # Resolve refs to names. Showing the judge "education = attended
+            # [entity_2]" asks it to grade a string it cannot read — the same
+            # defect the precision pass hit at j1.
+            names = {e["ref"]: e.get("name_as_heard") or e["ref"]
+                     for e in fixture["payload"].get("entities") or []}
+            names.update({pp["ref"]: pp.get("name_as_heard") or pp["ref"]
+                          for pp in fixture["payload"].get("people") or []})
             for ra in g.get("required_assertions", []):
                 subj, pred, cont = ra.get("subject"), ra.get("predicate"), ra.get("contains")
                 strict_total += 1
@@ -154,7 +170,10 @@ def main():
                 scored = sorted(
                     cands,
                     key=lambda a: -overlap(cont, f"{a['predicate']} {a.get('object_value')} {a.get('verbatim')}"))
-                top = [f"{a['predicate']} = {a.get('object_value')}  (said: \"{(a.get('verbatim') or '')[:90]}\")"
+                top = [f"CLAIM: {a['predicate']} = {a.get('object_value')}"
+                       + (f" [{names.get(a.get('object_entity_ref') or a.get('object_person_ref'), a.get('object_entity_ref') or a.get('object_person_ref'))}]"
+                          if (a.get('object_entity_ref') or a.get('object_person_ref')) else "")
+                       + f"   | supporting quote (context only): \"{(a.get('verbatim') or '')[:90]}\""
                        for a in scored[:5]]
                 if not top:
                     continue

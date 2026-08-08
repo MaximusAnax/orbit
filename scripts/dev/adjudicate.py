@@ -49,6 +49,7 @@ import json
 import os
 import pathlib
 import sys
+import re
 import ssl
 import time
 import urllib.error
@@ -68,7 +69,7 @@ except ImportError:
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 CACHE = ROOT / "docs/evals/judge-cache"
-JUDGE_PROMPT_VERSION = "j1"
+JUDGE_PROMPT_VERSION = "j4"
 JUDGE_MODEL = os.environ.get("ORBIT_JUDGE_MODEL", "gpt-5.1")
 
 # Deliberately conservative. The first run of this file flagged "reserved with
@@ -94,8 +95,25 @@ Your job is to REFUTE. Look for the ways the claim overreaches:
 - changes the meaning of the relation ("wants to move to Atlanta" is NOT \
 "lives in Atlanta"; "interned at" is NOT "works at")
 
+The transcript is one person talking — the speaker, named in the claim. Facts \
+about the speaker are first-person statements ("I was from the Bronx"); do not \
+refuse them for lacking a name. Pronouns resolve normally within the excerpt.
+
 A claim is supported ONLY if a careful reader of this transcript alone would \
 agree it is exactly what was said. Paraphrase is fine; added meaning is not.
+
+Four things are CORRECT behaviour and must never be refuted:
+- **A hedged claim marked "stated tentatively" has recorded the speaker's \
+uncertainty properly.** Refuting it for being uncertain is backwards — that flag \
+is the system doing its job.
+- **Dates derived from era anchors stated in the transcript.** The capture date \
+is 2026-07-29. "Started two weeks ago" legitimately becomes a mid-July date, and \
+"we're going into our senior year" legitimately dates earlier years. Only refuse \
+a date with no basis in the transcript at all.
+- **A "we" statement split into one claim per person.** "We both study computer \
+science" correctly yields a claim for each of them.
+- **Pronoun references resolved using the opening of the transcript**, which \
+names who is being discussed even when the excerpt does not repeat the name.
 
 If you are uncertain, answer unsupported. Reply with JSON only:
 {"supported": true|false, "why": "<12 words or fewer>"}"""
@@ -105,33 +123,63 @@ def sha(*parts):
     return hashlib.sha256("||".join(parts).encode()).hexdigest()[:32]
 
 
-def claims_of(payload):
-    """Every claim-bearing item the model emitted, flattened for adjudication."""
+def claims_of(payload, owner="Abdoul"):
+    """Every claim-bearing item the model emitted, rendered for adjudication.
+
+    References are RESOLVED to names first. The j1 pass did not do this and the
+    judge was shown claims like `person_3 - life_event - entity_1`, then asked
+    whether the transcript supported them. It refuted things like
+    "employment = intern" for "lacking the employer" when the assertion carried
+    an `object_entity_ref` pointing straight at Google. Those refutations were
+    artifacts of the rendering, not findings about the model — the same defect
+    as the grader's own blob(), which could not see entity-shaped objects either.
+    An unreadable claim is not a claim the judge can grade.
+    """
+    people = {p["ref"]: p.get("name_as_heard") or p["ref"]
+              for p in payload.get("people") or []}
+    ents = {e["ref"]: e.get("name_as_heard") or e["ref"]
+            for e in payload.get("entities") or []}
+    who = lambda ref: f"{owner} (the speaker)" if ref == "self" else people.get(ref, ref)
+
     out = []
     for a in payload.get("assertions") or []:
-        subject = a.get("subject_ref")
-        obj = a.get("object_value") or a.get("object_entity_ref") or a.get("object_person_ref")
+        parts = []
+        if a.get("object_value"):
+            parts.append(str(a["object_value"]))
+        if a.get("object_entity_ref"):
+            parts.append(f"[{ents.get(a['object_entity_ref'], a['object_entity_ref'])}]")
+        if a.get("object_person_ref"):
+            parts.append(f"[{who(a['object_person_ref'])}]")
+        obj = " ".join(parts) or "(no object)"
+        flags = []
+        if a.get("hedged"):
+            flags.append("stated tentatively")
+        if a.get("source_kind") and a["source_kind"] != "firsthand":
+            flags.append(f"source: {a['source_kind']}")
+        if a.get("valid_from") or a.get("valid_to"):
+            flags.append(f"from {a.get('valid_from') or '?'} to {a.get('valid_to') or 'open'}")
+        suffix = f"  ({'; '.join(flags)})" if flags else ""
         out.append({
             "kind": "assertion",
-            "text": f"{subject} — {a.get('predicate')} — {obj}",
+            "text": f"{who(a.get('subject_ref'))} — {a.get('predicate')} — {obj}{suffix}",
             "verbatim": a.get("verbatim") or "",
-            "subject_ref": subject,
+            "subject_ref": a.get("subject_ref"),
             "hedged": bool(a.get("hedged")),
             "raw": a,
         })
     for e in payload.get("episodes") or []:
         out.append({
             "kind": "episode",
-            "text": f"episode: {e.get('title')} ({e.get('occurred_at')})",
+            "text": f"episode: {e.get('title')} (occurred {e.get('occurred_at')})",
             "verbatim": e.get("narrative") or "",
             "subject_ref": None, "hedged": False, "raw": e,
         })
-    for s in payload.get("state_declarations") or []:
+    for s_ in payload.get("state_declarations") or []:
         out.append({
             "kind": "state_declaration",
-            "text": f"state: {s.get('state')}",
-            "verbatim": s.get("quote") or "",
-            "subject_ref": s.get("person_ref"), "hedged": False, "raw": s,
+            "text": f"relationship state of {who(s_.get('person_ref'))}: {s_.get('state')}",
+            "verbatim": s_.get("quote") or "",
+            "subject_ref": s_.get("person_ref"), "hedged": False, "raw": s_,
         })
     return out
 
@@ -148,14 +196,40 @@ def stage_a(claim, source, people):
     v = claim["verbatim"]
     if not v:
         return False, "no verbatim — nothing anchors this claim to the transcript"
-    if v not in source:
-        return False, "verbatim is not a contiguous slice of the transcript"
+    if v not in source and not locatable(v, source):
+        return False, "quote has no anchor in the transcript, even fuzzily"
     low = v.lower()
     if not claim["hedged"] and claim["kind"] == "assertion":
         hit = next((h for h in HEDGES if h in low), None)
         if hit:
             return False, f"hedge {hit!r} in the quote but hedged=false"
     return None, None
+
+
+def locatable(quote, source, threshold=0.85):
+    """Mirror of Swift `VerbatimSnapper.locate` — would production find this?"""
+    def toks(t):
+        return [w for w in re.findall(r"[\w']+", t.lower()) if w]
+    q, srcs = toks(quote), toks(source)
+    if not q or not srcs or len(q) > 400:
+        return False
+    anchors = set(q[:3])
+    starts = [i for i, w in enumerate(srcs) if w in anchors] or range(len(srcs))
+    for start in starts:
+        for span in (len(q), int(len(q) * 1.25) + 1):
+            win = srcs[start:min(start + span, len(srcs))]
+            if not win:
+                continue
+            # LCS length
+            prev = [0] * (len(win) + 1)
+            for x in q:
+                cur = [0] * (len(win) + 1)
+                for j, y in enumerate(win):
+                    cur[j + 1] = prev[j] + 1 if x == y else max(prev[j + 1], cur[j])
+                prev = cur
+            if prev[len(win)] / max(len(q), len(win)) >= threshold:
+                return True
+    return False
 
 
 def window(source, quote, radius=700):
@@ -172,7 +246,11 @@ def window(source, quote, radius=700):
     if i < 0:
         return source, False
     lo, hi = max(0, i - radius), min(len(source), i + len(quote) + radius)
-    return ("..." if lo else "") + source[lo:hi] + ("..." if hi < len(source) else ""), True
+    head = source[:500]
+    body = ("..." if lo else "") + source[lo:hi] + ("..." if hi < len(source) else "")
+    if lo > 500:
+        return f"OPENING OF THE TRANSCRIPT (who is being discussed):\n{head}...\n\nEXCERPT:\n{body}", True
+    return body, True
 
 
 def judge(claim, source, cache_only=False):
@@ -298,7 +376,11 @@ def main():
                 if not v.get("supported"):
                     unsupported.append((run, memo, claim, v.get("why", ""), "judge"))
                     per_run[run][1] += 1
-                if len(sample) < sample_n:
+                # Sample REFUTATIONS, spread across memos — the j4 sample was
+                # first-30-completed, so it filled with dom and eliah and caught
+                # the pedantic tail while missing every strong catch. A review
+                # sample that is not representative cannot validate anything.
+                if sample_n and not v.get("supported"):
                     sample.append({"memo": memo, "claim": claim["text"],
                                    "verbatim": claim["verbatim"][:160], "judge": v})
 
@@ -343,6 +425,16 @@ def main():
             print(f"| {n} | {memo} | `{text[:58]}` | {seen[(memo, text)][:52]} |")
 
     if sample:
+        by_memo = {}
+        for x in sample:
+            by_memo.setdefault(x["memo"], []).append(x)
+        spread, i = [], 0
+        while len(spread) < sample_n and any(v[i:] for v in by_memo.values()):
+            for v in by_memo.values():
+                if i < len(v) and len(spread) < sample_n:
+                    spread.append(v[i])
+            i += 1
+        sample = spread
         out = target / "judge-sample.json"
         out.write_text(json.dumps(sample, indent=2))
         print(f"\n{len(sample)} adjudications written for human review: {out}")

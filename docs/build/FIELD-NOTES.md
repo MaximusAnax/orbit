@@ -1242,6 +1242,48 @@ plainly is not landing.
 "should CI tolerate this" but "is the thing underneath it a defect or is the
 check wrong". Here it was a defect, three times.*
 
+### FN-40 · `residence` is asserted from anywhere a person was mentioned — open
+
+The clearest product defect in the k=10 data, and it reproduces across four
+different memos. The model handles `origin` correctly — Elia from New York City
+(10/10), the speaker from the Bronx (10/10), Nikos from Greece (8/10) are all
+right. It is `residence` that goes wrong, and always the same way: **any place
+associated with a person becomes a place they live.**
+
+| claim | runs | what the transcript actually says |
+| --- | --- | --- |
+| Leon — residence [Atlanta] | 9/10 | he is *thinking about moving* back there |
+| Ama — residence [Chicago] | 8/10 | she *flew in from* Chicago |
+| Jen — residence [Berkeley] | 6/10 | her *studio* is in Berkeley |
+| Philly — residence [Pacific Northwest] | 4/10 | he *interned* there one summer |
+| Roger — residence [Pacific Northwest] | 4/10 | same summer, same internship |
+
+Thirty-one wrong residence claims across ten runs, on a corpus of eleven memos.
+
+This is not a taxonomy quibble. Where someone lives is a load-bearing fact in
+Orbit — it drives who is nearby, what a reunion means, whether "when are you next
+in town" is a sensible thing to surface. A goal to move recorded as an address is
+a false memory of the ordinary kind: plausible, specific, and wrong.
+
+Two prompt rules already aim near this and neither lands. **Rule 17** ("Origin is
+not residence — say which, every time") governs origin, which is exactly the
+case that already works. **Rule 20** ("A meeting place is not a fact about the
+person") covers where an encounter happened. Neither covers *travelled from*,
+*works in*, *interned in*, or *intends to move to* — and those are four of the
+five failures.
+
+The rule that would: **a `location` assertion requires the speaker to say where
+the person IS — lives, moved, is based, is from, grew up. Somewhere they went,
+worked, studied, or hope to go is not where they live.** A stated intention to
+move is a `goal`, and the Atlanta case is simultaneously this defect and a missed
+required fact (`leon/goal/atlanta`), which is what a category error looks like
+from both sides of the ledger.
+
+*Found by the precision pass rather than the recall pass — the goldens never
+enumerated these as forbidden, so the enumerated-forbidden design could not have
+caught them. This is the first defect that only existed because PIPE-4 got a
+denominator.*
+
 ---
 
 ## Session notes
