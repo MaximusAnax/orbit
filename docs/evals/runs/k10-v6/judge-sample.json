@@ -1,0 +1,227 @@
+[
+  {
+    "memo": "contradiction",
+    "claim": "person-1 \u2014 employment \u2014 entity-1",
+    "verbatim": "he's at Anthropic now",
+    "judge": {
+      "supported": true,
+      "why": "Transcript explicitly says he is at Anthropic now"
+    }
+  },
+  {
+    "memo": "contradiction",
+    "claim": "person-1 \u2014 employment \u2014 entity-1",
+    "verbatim": "started two weeks ago",
+    "judge": {
+      "supported": false,
+      "why": "Claim omits that it\u2019s employment specifically at Anthropic"
+    }
+  },
+  {
+    "memo": "contradiction",
+    "claim": "person-1 \u2014 trait \u2014 energized",
+    "verbatim": "he seems really energized by it",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says he seems really energized"
+    }
+  },
+  {
+    "memo": "contradiction",
+    "claim": "person-1 \u2014 relation \u2014 same team",
+    "verbatim": "Same team as that guy Omar he always talks about",
+    "judge": {
+      "supported": true,
+      "why": "Text explicitly says he is on the same team"
+    }
+  },
+  {
+    "memo": "correction",
+    "claim": "person-1 \u2014 employment \u2014 ent-2",
+    "verbatim": "She was at DeepMind the whole time before her current thing.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says she was at DeepMind before current role"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "person_dom \u2014 life_event \u2014 attendee",
+    "verbatim": "at Y Combinator Startup School, I spent a lot of time with Dom",
+    "judge": {
+      "supported": false,
+      "why": "Being there doesn\u2019t explicitly state he was an attendee"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "person_dom \u2014 relation \u2014 friend of Leon",
+    "verbatim": "Dom, Dominic, who was Leon's friend",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says Dom was Leon\u2019s friend"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "person_leon \u2014 relation \u2014 roommate of Sekou",
+    "verbatim": "Leon is Sekou's roommate",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says \u201cLeon is Sekou\u2019s roommate.\u201d"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "self \u2014 life_event \u2014 attendee",
+    "verbatim": "at Y Combinator Startup School, I spent a lot of time with Dom",
+    "judge": {
+      "supported": false,
+      "why": "Claim type \u2018life_event \u2014 attendee\u2019 not stated in transcript"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "self \u2014 trait \u2014 very social",
+    "verbatim": "we were both very social, so it ended up going really well",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says \u201cwe were both very social.\u201d"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "person_dom \u2014 trait \u2014 very social",
+    "verbatim": "we were both very social, so it ended up going really well",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says Dom and speaker were both very social"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "person_dom \u2014 preference \u2014 entity_veganism",
+    "verbatim": "He's vegan, so it was really interesting talking to him about the philosophical implications of why he made that decision.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly states Dom is vegan"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "person_dom \u2014 education \u2014 student",
+    "verbatim": "He goes to University of Michigan",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says Dom goes to University of Michigan"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "person_dom \u2014 education \u2014 senior",
+    "verbatim": "he's also a senior just like me",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says Dom is a senior"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "person_dom \u2014 education \u2014 entity_computer_science",
+    "verbatim": "he's studying, like, I think, computer science and, like, policy or something like that, something along those lines. Definitely computer science, but, like, I ",
+    "judge": {
+      "supported": false,
+      "why": "Speaker is uncertain; uses hedging about Dom\u2019s studies"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "person_dom \u2014 interest \u2014 entity_philosophy",
+    "verbatim": "We ended up talking about a lot of philosophy every once in a while",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says they talked philosophy together regularly"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "person_dom \u2014 concern \u2014 critical of inhumane methods",
+    "verbatim": "The person, the person that Dom got upset at was doing research into, like, essentially making, like, fish farms more efficient by, like, increasing their, like",
+    "judge": {
+      "supported": false,
+      "why": "Transcript never says Dom criticized the methods themselves"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "person_1 \u2014 relation \u2014 best friend",
+    "verbatim": "this guy is truly, I think, my best friend in the entire world.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly calls Elia Tapia their best friend"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "person_1 \u2014 trait \u2014 super smart",
+    "verbatim": "he's, I mean, he's super smart.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly describes him as super smart"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "person_1 \u2014 trait \u2014 funny",
+    "verbatim": "He's funny.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly describes him as funny"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "person_1 \u2014 location \u2014 origin",
+    "verbatim": "We're both from New York City.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says both are from New York City"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "self \u2014 location \u2014 origin",
+    "verbatim": "I was from the Bronx",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says they were from the Bronx"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "person_1 \u2014 location \u2014 origin",
+    "verbatim": "he was from Washington Heights.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says he was from Washington Heights"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "self \u2014 location \u2014 residence",
+    "verbatim": "because I lived on 167th and Grand Concourse.",
+    "judge": {
+      "supported": false,
+      "why": "Address given; not clearly marked as current residence"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "self \u2014 education \u2014 undergrad",
+    "verbatim": "we go to Carnegie Mellon",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says they go to Carnegie Mellon"
+    }
+  }
+]

@@ -49,8 +49,22 @@ import json
 import os
 import pathlib
 import sys
+import ssl
+import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
+
+# python.org builds on macOS ship without a usable CA bundle, so every HTTPS
+# call raises CERTIFICATE_VERIFY_FAILED. The first judge run hit this and,
+# because a failed verdict degraded to "judge unavailable", it kept going and
+# would have printed a clean-looking precision number over 873 silent failures.
+# Same defect as FN-35: a fallback you cannot distinguish from success.
+try:
+    import certifi
+    SSL_CTX = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    SSL_CTX = ssl.create_default_context()
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 CACHE = ROOT / "docs/evals/judge-cache"
@@ -144,6 +158,23 @@ def stage_a(claim, source, people):
     return None, None
 
 
+def window(source, quote, radius=700):
+    """The transcript around the quote, not the whole thing.
+
+    Sending a 1,847-word portrait with each of its ~100 claims would cost about
+    3M tokens for one pass. The support for a claim lives next to the sentence
+    it came from, so a window is both cheaper and a sharper question. Falls back
+    to the whole transcript when it is short or the quote cannot be located.
+    """
+    if len(source) <= 2 * radius or not quote:
+        return source, False
+    i = source.find(quote[:60])
+    if i < 0:
+        return source, False
+    lo, hi = max(0, i - radius), min(len(source), i + len(quote) + radius)
+    return ("..." if lo else "") + source[lo:hi] + ("..." if hi < len(source) else ""), True
+
+
 def judge(claim, source, cache_only=False):
     key = sha(sha(source), json.dumps(claim["raw"], sort_keys=True),
               JUDGE_MODEL, JUDGE_PROMPT_VERSION)
@@ -156,12 +187,15 @@ def judge(claim, source, cache_only=False):
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         return None
+    ctx, windowed = window(source, claim["verbatim"])
     body = {
         "model": JUDGE_MODEL,
         "messages": [
             {"role": "system", "content": JUDGE_SYSTEM},
             {"role": "user", "content":
-             f"TRANSCRIPT:\n<<<\n{source}\n>>>\n\nCLAIM:\n{claim['text']}\n"
+             ("TRANSCRIPT EXCERPT (the claim came from here):"
+              if windowed else "TRANSCRIPT:")
+             + f"\n<<<\n{ctx}\n>>>\n\nCLAIM:\n{claim['text']}\n"
              f"QUOTED AS:\n{claim['verbatim']}"},
         ],
         "response_format": {"type": "json_object"},
@@ -172,23 +206,40 @@ def judge(claim, source, cache_only=False):
         data=json.dumps(body).encode(),
         headers={"Content-Type": "application/json",
                  "Authorization": f"Bearer {api_key}"})
-    try:
-        with urllib.request.urlopen(req, timeout=180) as r:
-            text = json.loads(r.read())["choices"][0]["message"]["content"]
-        verdict = json.loads(text)
-    except (urllib.error.URLError, KeyError, json.JSONDecodeError, TimeoutError) as e:
-        return {"supported": None, "why": f"judge unavailable: {type(e).__name__}"}
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(req, timeout=180, context=SSL_CTX) as r:
+                text = json.loads(r.read())["choices"][0]["message"]["content"]
+            verdict = json.loads(text)
+            break
+        except (urllib.error.URLError, KeyError, json.JSONDecodeError,
+                TimeoutError, OSError) as e:
+            if attempt == 3:
+                return {"supported": None, "why": f"judge unavailable: {type(e).__name__}"}
+            time.sleep(2 ** attempt * 1.5)
     hit.write_text(json.dumps(verdict))
     return verdict
+
+
+def fixture_files(target):
+    """Every fixture under `target` — a plain fixtures dir, or a whole k-run
+    collection with run-* subdirectories."""
+    runs = sorted(d for d in target.iterdir() if d.is_dir() and d.name.startswith("run-"))
+    if runs:
+        return [(d.name, f) for d in runs for f in sorted(d.glob("*.json"))]
+    return [(target.name, f) for f in sorted(target.glob("*.json"))]
 
 
 def main():
     if len(sys.argv) < 2:
         sys.exit(__doc__)
-    fixtures = pathlib.Path(sys.argv[1])
-    if not fixtures.is_absolute():
-        fixtures = ROOT / fixtures
+    target = pathlib.Path(sys.argv[1])
+    if not target.is_absolute():
+        target = ROOT / target
     use_judge = "--judge" in sys.argv
+    workers = 6
+    if "--workers" in sys.argv:
+        workers = int(sys.argv[sys.argv.index("--workers") + 1])
     sample_n = 0
     if "--sample" in sys.argv:
         i = sys.argv.index("--sample")
@@ -196,69 +247,103 @@ def main():
 
     total = 0
     unsupported = []
-    undecided = 0
-    sample = []
+    pending = []          # survived Stage A; needs the judge
+    per_run = {}          # run -> [total, unsupported]
 
-    for f in sorted(fixtures.glob("*.json")):
-        fixture = json.loads(f.read_text())
+    for run, f in fixture_files(target):
+        try:
+            fixture = json.loads(f.read_text())
+        except json.JSONDecodeError:
+            continue
         if "payload" not in fixture:
             continue
         source = (ROOT / fixture["source"]).read_text()
-        payload = fixture["payload"]
-        people = {p["ref"] for p in payload.get("people") or []}
-        for claim in claims_of(payload):
+        people = {p["ref"] for p in fixture["payload"].get("people") or []}
+        per_run.setdefault(run, [0, 0])
+        for claim in claims_of(fixture["payload"]):
             total += 1
+            per_run[run][0] += 1
             verdict, reason = stage_a(claim, source, people)
             if verdict is False:
-                unsupported.append((f.stem, claim, reason, "mechanical"))
-                continue
-            if use_judge:
-                v = judge(claim, source)
-                if v is None or v.get("supported") is None:
-                    undecided += 1
-                elif not v.get("supported"):
-                    unsupported.append((f.stem, claim, v.get("why", ""), "judge"))
-                if len(sample) < sample_n:
-                    sample.append({"memo": f.stem, "claim": claim["text"],
-                                   "verbatim": claim["verbatim"][:160],
-                                   "judge": v})
+                unsupported.append((run, f.stem, claim, reason, "mechanical"))
+                per_run[run][1] += 1
             else:
-                undecided += 1
+                pending.append((run, f.stem, claim, source))
 
-    # Stage A abstains rather than approves, so "undecided" is not the same as
-    # "unmeasured": every claim WAS checked structurally and survived. Dividing
-    # by only the decided claims turns 1 mechanical catch out of 80 into
-    # "precision 0.0%", which is arithmetically true and grossly misleading —
-    # the first run of this file printed exactly that. The denominator is every
-    # claim emitted; what changes with --judge is how much of the semantic
-    # question has been asked.
+    undecided = len(pending)
+    sample = []
+    if use_judge and pending:
+        print(f"judging {len(pending)} claims with {workers} workers "
+              f"({JUDGE_MODEL}, cached)...", file=sys.stderr)
+        def work(item):
+            run, memo, claim, source = item
+            return item, judge(claim, source)
+
+        # Fail fast rather than reporting a number built on nothing: if the
+        # first handful cannot reach the judge, the run is broken, not strict.
+        probe = [judge(c, s_) for _, _, c, s_ in pending[:3]]
+        if all(p is None or p.get("supported") is None for p in probe):
+            why = next((p.get("why") for p in probe if p), "no response")
+            sys.exit(f"FAIL: judge unreachable ({why}). Refusing to report a "
+                     f"precision number that would be built on silent failures.")
+        done = 0
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for (run, memo, claim, source), v in pool.map(work, pending):
+                done += 1
+                if done % 100 == 0:
+                    print(f"  {done}/{len(pending)}", file=sys.stderr)
+                if v is None or v.get("supported") is None:
+                    continue                      # stays undecided
+                undecided -= 1
+                if not v.get("supported"):
+                    unsupported.append((run, memo, claim, v.get("why", ""), "judge"))
+                    per_run[run][1] += 1
+                if len(sample) < sample_n:
+                    sample.append({"memo": memo, "claim": claim["text"],
+                                   "verbatim": claim["verbatim"][:160], "judge": v})
+
     precision = (total - len(unsupported)) / total if total else 0.0
+    mech = sum(1 for u in unsupported if u[4] == "mechanical")
+    judged = sum(1 for u in unsupported if u[4] == "judge")
 
-    print(f"# PIPE-4 precision — {fixtures.name}\n")
+    print(f"# PIPE-4 precision — {target.name}\n")
     print(f"claims emitted            : {total}")
-    print(f"structurally unsupported  : {sum(1 for u in unsupported if u[3] == 'mechanical')}")
+    print(f"structurally unsupported  : {mech}")
     if use_judge:
-        print(f"judged unsupported        : {sum(1 for u in unsupported if u[3] == 'judge')}")
+        print(f"judged unsupported        : {judged}")
         print(f"judge unavailable         : {undecided}")
-    print(f"\n**precision = {precision:.1%}**   (EVALS PIPE-4 target ◊ ≥ 97%)")
+    print(f"\n**precision = {precision:.1%}**   (EVALS PIPE-4 target \u25ca >= 97%)")
+
+    if len(per_run) > 1:
+        rates = sorted((t - u) / t for t, u in per_run.values() if t)
+        print(f"\nper-run spread: median {rates[len(rates)//2]:.1%} \u00b7 "
+              f"min {rates[0]:.1%} \u00b7 max {rates[-1]:.1%}  (n={len(rates)} runs)")
+
     if not use_judge:
-        print(f"\n⚠️  Stage A only — a CEILING, not the measurement. {total - len(unsupported)} "
-              "claims passed the structural checks (resolvable subject, real "
-              "quote, hedge intact) and were never asked the semantic question: "
-              "*does the transcript actually support this?* Run with --judge.")
+        print(f"\n\u26a0\ufe0f  Stage A only \u2014 a CEILING, not the measurement. "
+              f"{total - len(unsupported)} claims passed the structural checks and "
+              "were never asked the semantic question. Run with --judge.")
     else:
         print(f"\nJudge: {JUDGE_MODEL} / prompt {JUDGE_PROMPT_VERSION}, adversarial. "
               "Same model family as the extractor, so treat this as an upper "
               "bound until validated against Abdoul (--sample N).")
 
-    if unsupported:
-        print(f"\n## Unsupported claims ({len(unsupported)})\n")
-        for memo, claim, reason, how in unsupported[:40]:
-            print(f"- **{memo}** [{how}] `{claim['text'][:70]}`")
-            print(f"    → {reason}")
+    # Repeated failures matter more than one-offs: a claim the model gets wrong
+    # in every run is a defect; one it gets wrong once is variance.
+    from collections import Counter
+    repeat = Counter((memo, claim["text"]) for _, memo, claim, _, _ in unsupported)
+    if repeat:
+        print(f"\n## Unsupported claims by persistence\n")
+        print("| runs | memo | claim | why |")
+        print("| --- | --- | --- | --- |")
+        seen = {}
+        for run, memo, claim, why, how in unsupported:
+            seen.setdefault((memo, claim["text"]), why)
+        for (memo, text), n in repeat.most_common(30):
+            print(f"| {n} | {memo} | `{text[:58]}` | {seen[(memo, text)][:52]} |")
 
     if sample:
-        out = fixtures / "judge-sample.json"
+        out = target / "judge-sample.json"
         out.write_text(json.dumps(sample, indent=2))
         print(f"\n{len(sample)} adjudications written for human review: {out}")
         print("A judge nobody has checked is an opinion with a percentage sign.")
