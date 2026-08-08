@@ -193,6 +193,16 @@ def stage_a(claim, source, people):
     ref = claim["subject_ref"]
     if ref and ref != "self" and ref not in people:
         return False, f"subject_ref {ref!r} resolves to nobody in the payload"
+    # Rule 27: an assertion must carry at least one object. Abdoul's audit
+    # caught `Maya — concern — (no object)` on the hardship memo — the judge
+    # accepted it, and Stage A had no check for it either. An assertion with
+    # nothing on the right-hand side asserts nothing, and this one was about the
+    # most sensitive fact in the corpus.
+    if claim["kind"] == "assertion":
+        raw = claim["raw"]
+        if not (raw.get("object_value") or raw.get("object_entity_ref")
+                or raw.get("object_person_ref")):
+            return False, "assertion carries no object at all (rule 27)"
     v = claim["verbatim"]
     if not v:
         return False, "no verbatim — nothing anchors this claim to the transcript"

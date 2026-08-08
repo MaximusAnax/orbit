@@ -1329,6 +1329,158 @@ appended to will eventually regress something every time it is improved, and
 single-run evaluation cannot see it happening. This one was visible only because
 two ten-run collections were compared item by item.*
 
+### FN-42 · A running measurement can be switched onto a different prompt by an unrelated edit — open
+
+`ExtractionPrompt.latestVersion` resolves from the bundled resources **at
+runtime**, on every call. That is the fix from FN-35 and it is the right design —
+adding a prompt is one file, and an unknown version fails loudly. It also means:
+
+- write `extraction-prompt-v9.md` into `Sources/` while a v8 collection is
+  running — harmless, the bundle is untouched
+- then build, for any reason at all — and the running job starts extracting with
+  v9 partway through the corpus
+
+And the trigger is not exotic. `overnight.sh`'s grading stage calls
+`aggregate.py --roundtrip`, which shells into `swift run`, which **rebuilds on
+any source change**. So editing any Swift file, or adding a prompt, during a job
+is sufficient. The collection would finish, report cleanly, and contain two
+prompts' output under one label — with the per-fixture `prompt_version` stamp as
+the only evidence, which nothing currently checks.
+
+Caught before it bit: v9 was written to `Sources/` mid-v8-run, and the build was
+deliberately withheld until the job finished. Verified at the time that the
+bundle held only v8 and all fixtures were stamped `v8`.
+
+Same family as FN-35 and the CA-bundle failure in adjudicate.py: **a
+configuration that changes underneath you, produces plausible output, and gives
+you no way to tell from the result.** Three instances now, which makes it a
+pattern in this codebase rather than three accidents.
+
+**Fix:** resolve the prompt version once at collection start, write it into the
+manifest, and have every extraction assert the resolved version still matches —
+failing loudly on drift. The aggregator should refuse to grade a collection whose
+fixtures disagree about `prompt_version`. Deferred while the v8/v9 collections
+run, for exactly the reason this note describes.
+
+### FN-43 · Three of the thirteen permanent misses, diagnosed — open · deliberately not fixed yet
+
+The k=10 aggregate found 13 required items the extractor never produces in any
+run. Three of those turned out to be the dropped hedges (fixed in v7, now 70–90%).
+Three more are diagnosed here. **No rule is being written for them yet**, and
+that restraint is the point — see the bottom of this note.
+
+**1. `correction: priya/employment/deepmind` — a tense failure, not a recall one.**
+The model emits the DeepMind employment in **10/10 runs**. It fails the golden
+because the golden wants `closed: true` and the model leaves `valid_to` null, so
+a job Priya *had* is recorded as a job she *has*. Rule 13 already says exactly
+this ("'he interned at Google' is a CLOSED interval… never promote a past stint
+to a current fact") and it is not landing. Worth noting the shape: this reads as
+a missing fact in the recall column while actually being a wrong fact, which is
+the more serious of the two.
+
+**2. `futureforce: ambiguity attendance/lake` — hedged attendance recorded as
+certain.** The transcript: *"So if I remember correctly, it was CJ, Grace, Abdul,
+and Lake. Yeah, and I believe that was all."* The speaker is explicitly unsure
+who was there. The golden wants an `attendance` ambiguity; the model produces a
+confident participant list.
+
+This one is more than a missed item. Attendance drives contact rhythm, "last
+seen", and co-attendance edges (INV-11, INV-13) — so a guessed attendee quietly
+becomes a fact about a relationship that never happened. P4 says uncertainty is
+stored, not resolved, and a hedged guest list is precisely uncertainty.
+
+**3. `eliah: ambiguity attendance/roger` — mentioned versus present.** *"So it was
+him, Philly, and this other guy named Roger… Roger and Philly are also really
+great, but this is about Elia."* Roger is named inside a portrait about someone
+else. Whether he was *there* is genuinely unclear, and the golden wants the
+question asked rather than an attendance assumed either way.
+
+**Why nothing is being written for these now.** FN-41 raised the possibility that
+this prompt has grown long enough that each new rule costs an old one — 21 items
+up, 20 down at v7, and a hardship regression from an edit that never touched
+hardship. The dilution experiment is running. Writing three more rules into a
+prompt suspected of being too long, while measuring whether it is too long, would
+confound the only test that can answer it and would be the accretion reflex the
+hypothesis is about.
+
+If dilution is real, these three get folded into existing rules — 1 into rule 13
+where it already belongs, 2 and 3 into a single statement about uncertain
+attendance. If it is not, they can be appended. **The experiment decides the
+form, not just the content.**
+
+### FN-44 · The judge does not agree with Abdoul — κ = 0.14 — open · invalidates every precision number
+
+The audit EVALS §3.5 has always specified finally ran. Abdoul adjudicated 40
+claims blind, with rationales. Against the j4 judge:
+
+| | |
+| --- | --- |
+| claims both scored | 31 (9 marked unsure, excluded) |
+| raw agreement | 58.1% |
+| **Cohen's kappa** | **0.14** — poor (<0.4) |
+
+Barely above chance. **Every precision figure in this repo is therefore
+provisional**, including the 70.5% in the k=10 report, and the direction of the
+error is now known rather than guessed.
+
+**The judge is over-strict, 11 times to 2.** It refuses reasonable reading:
+
+| claim | judge's objection | Abdoul |
+| --- | --- | --- |
+| `Elia — education — major [computer science]` | "says he studies CS, not that it's his major" | supported |
+| `Dom — life_event — attendee [YC Startup School]` | "shows Dom present, not an attendee" | supported |
+| `Abdoul — education — undergrad [Carnegie Mellon]` | "no enrollment dates stated" | supported |
+| `Sarah Okafor — employment — nurse [UCSF]` | "starting a job is not current employment" | supported |
+| `Ama — location — residence [Chicago]` | "flew in from Chicago, not resides" | supported |
+
+The last one is the instructive one — **I had cited it as one of the judge's
+strongest catches**, and FN-40 leans on the same reading. Abdoul, who was in the
+room, reads it as supported. The owner's standard is *"does this fairly
+represent what I said"*; my adversarial prompt ("default to unsupported when
+uncertain") built something meaningfully stricter, and I then read its strictness
+as rigour.
+
+**Two in the dangerous direction — accepted by the judge, refused by Abdoul.**
+
+1. `Maya — concern — (no object)` on the hardship memo. His note: *"The concern
+   is her mother's disease."* The assertion has **no object at all** — no value,
+   no entity, no person — so it records that Maya is concerned about nothing.
+   Rule 27 forbids exactly this, the extractor did it anyway, the judge waved it
+   through, and Stage A had no check for it. Three layers, and the one that
+   caught it was the human. 3 of 908 assertions corpus-wide, two of them on the
+   most sensitive content there is.
+2. `Marcus — life_event — sold company [Shopify]`. His note: *"the company that
+   Marcus sold was TO Shopify. It wasn't Shopify itself that was sold."* The
+   object slot holds the buyer. A structurally valid, well-quoted, entirely
+   wrong fact — and nothing mechanical can see it.
+
+**His rationales, which are the real deliverable.** Four confirm findings reached
+independently, which is the best evidence they are real:
+
+- *"he's thinking about moving back to atlanta, which means he doesnt live there
+  now"* — FN-40, in one line.
+- *"this is previous employment though"* (Priya/DeepMind) — FN-43's tense
+  finding, found without seeing it.
+- *"Startup School was an event, not actual education"*, and again on Salesforce
+  Futureforce: *"Its not education but it was an event yes."* **A new defect:
+  attending an event is being recorded as `education`.** Twice, in two memos.
+- *"This is referencing someone that made dom get upset… the only thing about
+  dom that could be derived is that he didnt like conversation surrounding fish
+  farms"* — an employment claim built from a third party's job.
+
+**Done immediately:** Stage A now enforces rule 27 mechanically. Free,
+deterministic, and it would have caught the Maya case without a judge.
+
+**Still open:** j5 needs to move toward the owner's bar, not further from it —
+relax on reasonable inference, tighten on empty objects and wrong-slot objects.
+And κ must be re-measured after, because a judge tuned to agree with 31 audited
+claims has been fitted to them; the next audit needs fresh claims.
+
+*The lesson is not that the judge is bad. It is that I validated it twice against
+my own reading, called that validation, and was wrong in a direction my own
+review could not see — I share the model's bias toward literalism. Only the owner
+had the missing information, and it took forty claims to surface it.*
+
 ---
 
 ## Session notes

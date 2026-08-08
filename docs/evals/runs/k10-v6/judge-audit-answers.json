@@ -1,0 +1,137 @@
+{
+ "09e5afdf53dc": {
+  "verdict": "unsure",
+  "why": "I'm reading the memo as saying that the sold company is Shopify. But the company that Marcus sold was TO Shopify. It wasn't Shopify itself that was sold."
+ },
+ "12c083202135": {
+  "verdict": "yes"
+ },
+ "13b2503e4438": {
+  "verdict": "unsure",
+  "why": "\"Started two weeks ago\" on its own does give enough info. It should be \"started at anthropic two weeks ago\". That would make more sense."
+ },
+ "163e9befe5f4": {
+  "verdict": "yes"
+ },
+ "1aae2c78abd7": {
+  "verdict": "unsure",
+  "why": "well, the design systems team doesnt necessarily mean that she's a designer. It could be an engineer working on design systems. I wonder if theres a better way to handle this."
+ },
+ "2885a3c97cea": {
+  "verdict": "yes"
+ },
+ "3e28a12f231e": {
+  "verdict": "unsure",
+  "why": "I don't know why it's marked as a hardship, but this is repeated from earlier."
+ },
+ "460f408ab6bd": {
+  "verdict": "yes"
+ },
+ "5d1810df9122": {
+  "verdict": "unsure",
+  "why": "Well, this is saying that Abdoul, the speaker, is Eliah's best friend. But it should be that Eliah is Abdoul's best friend. Of course, ideally its mutual, but only one direction is supported by the transcript."
+ },
+ "5dc02231da9b": {
+  "verdict": "no"
+ },
+ "657123af5c18": {
+  "verdict": "yes"
+ },
+ "669955606f89": {
+  "verdict": "yes"
+ },
+ "7a265b697f91": {
+  "verdict": "no",
+  "why": "Well, he's thinking about moving back to atlanta, which means he doesnt live there now."
+ },
+ "7c2d89ab27a1": {
+  "verdict": "no",
+  "why": "Startup School was an event, not actual education."
+ },
+ "89378d673149": {
+  "verdict": "yes"
+ },
+ "8d7854d8e389": {
+  "verdict": "no",
+  "why": "Its not education but it was an event yes."
+ },
+ "91b01caf4262": {
+  "verdict": "yes"
+ },
+ "92817cd98992": {
+  "verdict": "yes"
+ },
+ "9499cbc85134": {
+  "verdict": "yes"
+ },
+ "94f0bfa51a29": {
+  "verdict": "unsure",
+  "why": "technically this is previous employment"
+ },
+ "9e2f0402f048": {
+  "verdict": "yes"
+ },
+ "a424c16f8a8c": {
+  "verdict": "yes"
+ },
+ "a453be37e34f": {
+  "verdict": "yes"
+ },
+ "aee5e4576a63": {
+  "verdict": "yes"
+ },
+ "b2bbdf84e6db": {
+  "verdict": "yes"
+ },
+ "b79425a0b6b5": {
+  "verdict": "yes"
+ },
+ "b8246e1770b4": {
+  "verdict": "yes",
+  "why": "this is previous employment though"
+ },
+ "bab0551ac817": {
+  "verdict": "yes"
+ },
+ "beebc7104705": {
+  "verdict": "yes"
+ },
+ "d615da5c641b": {
+  "verdict": "unsure",
+  "why": "Not sure if this is a relation. Its a meeting event sure, but not a relation."
+ },
+ "d94dbe9f1fe7": {
+  "verdict": "yes"
+ },
+ "db925d5df8b0": {
+  "verdict": "yes"
+ },
+ "dbc8352d2c93": {
+  "verdict": "yes"
+ },
+ "dd3634013ea2": {
+  "verdict": "unsure",
+  "why": "This isn't education, it's an event."
+ },
+ "e46ccede81e1": {
+  "verdict": "unsure",
+  "why": "the pottery studio is there doesnt mean her residence is there"
+ },
+ "e47a065282fa": {
+  "verdict": "yes"
+ },
+ "e7e8f0465cfc": {
+  "verdict": "yes"
+ },
+ "eaab4870882d": {
+  "verdict": "no",
+  "why": "This is referencing someone that made dom get upset. the only thing about dom that could be derrived from this is that he(dom) didnt like conversation surrounding fish farms and inhumane ways of producing livestock."
+ },
+ "f37d973b98ec": {
+  "verdict": "no",
+  "why": "The concern is her mother's disease."
+ },
+ "f4dac7dc710c": {
+  "verdict": "yes"
+ }
+}
