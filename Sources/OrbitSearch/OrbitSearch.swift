@@ -307,13 +307,28 @@ public struct Searcher {
         guard let predicate = Self.predicateKeywords.first(where: {
             Self.mentions($0.keys, in: lower)
         })?.predicate else { return nil }
-        // find the person named in the query
-        let nameTokens = terms(of: lower)
-            .filter { !Self.stopwords.contains($0) }
-            .filter { !Self.predicateKeywords.flatMap(\.keys).contains($0) }
+        // Find the person named in the query. Predicate keywords are dropped
+        // first because `peopleMatching` is fuzzy — "city" is within edit
+        // distance 2 of "Cindy", so a vocabulary word tried as a name can beat
+        // the actual name standing next to it.
+        //
+        // But some of that vocabulary is also a name: Job is a name, so is
+        // Grace, and a contact could be called City. Dropping their tokens
+        // outright means the one person whose name is a keyword can never be
+        // asked about. So the strict pass runs first and keeps its precedence,
+        // and the unfiltered pass runs only when it found nobody — the case
+        // that returns no fact answer at all today, which makes the fallback
+        // strictly additive rather than a new way to be wrong.
+        let meaningful = terms(of: lower).filter { !Self.stopwords.contains($0) }
+        let keywords = Set(Self.predicateKeywords.flatMap(\.keys))
         var found: PersonHit?
-        for token in nameTokens {
+        for token in meaningful where !keywords.contains(token) {
             if let hit = try peopleMatching(nameQuery: token).first { found = hit; break }
+        }
+        if found == nil {
+            for token in meaningful where keywords.contains(token) {
+                if let hit = try peopleMatching(nameQuery: token).first { found = hit; break }
+            }
         }
         guard let person = found else { return nil }
         let rows = try reader.db.query(

@@ -252,4 +252,42 @@ final class FactAnswerTests: XCTestCase {
         }
         XCTAssertEqual(a.factAnswer, "Google")
     }
+
+    /// Keyword tokens are dropped before person matching because the matcher is
+    /// fuzzy — but some of that vocabulary is also a name. Job is a name; so is
+    /// a contact called City or Org. Dropping their tokens outright meant the
+    /// one person whose name is a keyword could never be asked about, and every
+    /// token in "where does Job work?" is a keyword.
+    func testAPersonWhoseNameIsAKeywordIsStillFound() throws {
+        let job = try edits.createPerson(displayName: "Job")
+        try entity("e_google", "Google")
+        try fact(subject: job, predicate: "employment", value: "intern",
+                 entity: "e_google", verbatim: "he interned at Google")
+
+        let answer = try Searcher(reader: store.reader).search("where does Job work?")
+        guard case .answer(let a) = answer else {
+            return XCTFail("expected an answer band, got \(answer)")
+        }
+        XCTAssertEqual(a.factAnswer, "Google",
+                       "every token here is a predicate keyword, including the name")
+    }
+
+    /// The precedence the fallback must not disturb: when a real name is
+    /// present, it wins outright. "city" is within edit distance 2 of "Cindy",
+    /// so trying vocabulary as a name first would answer about the wrong
+    /// person — which is why the strict pass runs first and the fallback only
+    /// runs when it found nobody.
+    func testVocabularyNeverOutranksARealName() throws {
+        let cindy = try edits.createPerson(displayName: "Cindy")
+        try entity("e_sf", "San Francisco", kind: "place")
+        try fact(subject: cindy, predicate: "location", value: "residence",
+                 entity: "e_sf", verbatim: "she's been in San Francisco ever since")
+
+        let answer = try Searcher(reader: store.reader).search("what city is Cindy based in?")
+        guard case .answer(let a) = answer else {
+            return XCTFail("expected an answer band, got \(answer)")
+        }
+        XCTAssertEqual(a.factAnswer, "San Francisco")
+        XCTAssertEqual(a.firsthand.first?.name, "Cindy")
+    }
 }
