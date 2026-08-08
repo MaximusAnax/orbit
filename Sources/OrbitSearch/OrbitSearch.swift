@@ -225,17 +225,31 @@ public struct Searcher {
     /// door (FIELD-NOTES FN-38's lesson: sweep the siblings, so "university"
     /// and "college" are here too rather than waiting to be reported).
     static let predicateKeywords: [(keys: [String], predicate: String)] = [
-        // Two-word keys where the bare noun would be an unsafe substring: "org"
-        // is inside "Morgan" and "city" inside "capacity", so a query naming a
-        // person would route itself into a fact lookup. The phrase carries the
-        // same meaning with none of the collisions.
         (["work", "works", "working", "job", "company", "employer",
-          "role", "title", "position", "what org", "which org"], "employment"),
-        (["live", "lives", "living", "based", "from",
-          "what city", "which city"], "location"),
+          "role", "title", "position", "org"], "employment"),
+        (["live", "lives", "living", "based", "from", "city"], "location"),
         (["study", "studied", "studying", "school", "degree",
           "university", "college"], "education"),
     ]
+
+    /// Does this text *mention* one of these cues, as a word rather than as a
+    /// run of letters?
+    ///
+    /// These lists are matched against free English, and the naked `contains`
+    /// they used to be matched with reads "position" inside "disposition",
+    /// "title" inside "entitled", "company" inside "accompany" and "org" inside
+    /// "Morgan" — each one routing a query into a fact lookup it has nothing to
+    /// do with, and the last one triggered by an ordinary person's name. Adding
+    /// vocabulary made the collisions likelier, so the matcher is fixed rather
+    /// than the vocabulary trimmed around it.
+    ///
+    /// Single words match whole tokens; multi-word cues stay substring, which is
+    /// safe because a phrase cannot hide inside a longer word.
+    static func mentions(_ cues: [String], in lower: String) -> Bool {
+        let tokens = Set(lower.components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { $0.count >= 2 })
+        return cues.contains { $0.contains(" ") ? lower.contains($0) : tokens.contains($0) }
+    }
 
     /// "Where does James work?" → the current fact, with its evidence.
     /// Controlled qualifiers: values that describe the *shape* of a fact rather
@@ -274,7 +288,7 @@ public struct Searcher {
     /// the door, and a second list that only ever returned the default would
     /// have looked like it was deciding something.
     static func wantsEntity(_ lower: String) -> Bool {
-        entitySeekingCues.contains { lower.contains($0) }
+        mentions(entitySeekingCues, in: lower)
     }
 
     static func factAnswer(_ row: Row, asksWhere: Bool) -> String? {
@@ -290,8 +304,8 @@ public struct Searcher {
     }
 
     func factLookup(lower: String, query: String) throws -> Answer? {
-        guard let predicate = Self.predicateKeywords.first(where: { pk in
-            pk.keys.contains { lower.contains($0) }
+        guard let predicate = Self.predicateKeywords.first(where: {
+            Self.mentions($0.keys, in: lower)
         })?.predicate else { return nil }
         // find the person named in the query
         let nameTokens = terms(of: lower)

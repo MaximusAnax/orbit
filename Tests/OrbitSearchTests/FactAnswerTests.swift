@@ -223,4 +223,33 @@ final class FactAnswerTests: XCTestCase {
                            "\(query) asks for the school; 'undergrad' is a qualifier")
         }
     }
+
+    /// Cues are words, not runs of letters. Under substring matching "position"
+    /// hides in "disposition", "title" in "entitled", "company" in "accompany"
+    /// and "org" in the name Morgan — so a plain question about a person routed
+    /// itself into an employment lookup and answered with a fact nobody asked
+    /// about. Every case here is a *non*-answer: the query must fall through to
+    /// the generic search, which is what "no fact answer" looks like.
+    func testALetterRunInsideAWordIsNotACue() throws {
+        let morgan = try edits.createPerson(displayName: "Morgan")
+        try entity("e_google", "Google")
+        try fact(subject: morgan, predicate: "employment", value: "intern",
+                 entity: "e_google", verbatim: "she interned at Google")
+
+        for query in ["what is Morgan's disposition?",
+                      "what is Morgan entitled to?",
+                      "who did Morgan accompany?"] {
+            let answer = try Searcher(reader: store.reader).search(query)
+            if case .answer(let a) = answer, a.factAnswer != nil {
+                XCTFail("\(query) is not an employment question; answered \(a.factAnswer!)")
+            }
+        }
+
+        // The control: the same person, asked properly, still answers.
+        let asked = try Searcher(reader: store.reader).search("where does Morgan work?")
+        guard case .answer(let a) = asked else {
+            return XCTFail("expected an answer band, got \(asked)")
+        }
+        XCTAssertEqual(a.factAnswer, "Google")
+    }
 }
