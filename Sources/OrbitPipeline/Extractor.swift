@@ -179,18 +179,24 @@ public enum ExtractionPrompt {
 
     /// Highest `extraction-prompt-vN.md` actually bundled — derived, so adding a
     /// prompt is one file rather than a file plus a list to remember.
-    public static var latestVersion: String {
-        let prefix = "extraction-prompt-v"
-        let suffix = ".md"
-        let versions = (Bundle.module.urls(forResourcesWithExtension: "md",
-                                           subdirectory: "Resources") ?? [])
-            .compactMap { url -> Int? in
-                let name = url.fileNamePortable
-                guard name.hasPrefix(prefix), name.hasSuffix(suffix) else { return nil }
-                return Int(name.dropFirst(prefix.count).dropLast(suffix.count))
-            }
-        return "v\(versions.max() ?? 1)"
-    }
+    ///
+    /// Probed by lookup rather than by listing the bundle: `Bundle.urls(for…)`
+    /// vends `[NSURL]` on Linux and `[URL]` on Darwin, so every way of reading a
+    /// name off those elements diverges (FIELD-NOTES FN-38). `url(forResource:)`
+    /// returns `URL?` on both, and asking for a specific name is the same
+    /// question anyway. Computed once — the answer cannot change at runtime.
+    public static let latestVersion: String = {
+        // Scans past a gap rather than stopping at the first miss, so a deleted
+        // intermediate version can't silently pin the default to an older prompt.
+        let ceiling = 64
+        var highest = 1
+        for n in 1...ceiling where Bundle.module.url(forResource: "extraction-prompt-v\(n)",
+                                                     withExtension: "md",
+                                                     subdirectory: "Resources") != nil {
+            highest = n
+        }
+        return "v\(highest)"
+    }()
 
     public static func system() throws -> String {
         guard let url = Bundle.module.url(forResource: "extraction-prompt-\(version)",

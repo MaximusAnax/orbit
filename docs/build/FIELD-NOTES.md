@@ -1128,6 +1128,72 @@ every ◊ against that. Only then is a provider or prompt comparison meaningful.
 *Nearly drew four false conclusions from single samples tonight before running
 the same prompt twice.*
 
+### FN-38 · Foundation path APIs that are a different type on each platform — closed 2026-08-08
+
+`ExtractionPrompt.latestVersion` derived the newest bundled prompt by calling
+the URL path-extension member. That call **compiles on macOS and does not
+compile on Linux**, where Foundation exposes it as a `URL?` property:
+
+```
+error: cannot call value of non-function type 'URL?'
+```
+
+So the `app` workflow (macOS) went green while `core` (Linux) failed, on two
+consecutive commits. The asymmetry is the lesson: **macOS-only verification is
+not verification of this package**, because the trust core is built on Linux by
+design (BUILD §1.2 — the invariant suite must run without an Apple toolchain).
+
+The first fix reached for `lastPathComponent` and produced a *third* red run:
+
+```
+error: value of optional type 'String?' must be unwrapped to refer to member
+'hasPrefix' of wrapped base type 'String'
+```
+
+`lastPathComponent` and `pathExtension` are `String` on Darwin and `String?` on
+Linux, so the fix had swapped one Darwin-only spelling for another. A sweep then
+found a fourth instance queued behind it — `orbit-evals` sorted memo URLs by
+`lastPathComponent`, which `String?` cannot do either.
+
+The shim that replaced all of those then produced a **fourth** red run, on the
+same line as the first:
+
+```
+error: value of type 'NSURL' has no member 'fileNamePortable'
+```
+
+`Bundle.urls(forResourcesWithExtension:subdirectory:)` vends `[NSURL]` on Linux
+and `[URL]` on Darwin. So the element type itself diverges, and *no* accessor
+written against `URL` — portable shim included — can be read off it. The listing
+call was the actual defect, not the accessor; three fixes in a row had been
+treating the symptom.
+
+**The correction that generalizes:** fixing the reported line is not fixing the
+class, and neither is fixing the reported *accessor*. Two changes close it.
+`URL.path` is `String` on both platforms, so one shim in OrbitCore —
+`fileNamePortable` / `fileStemPortable` — replaces the accessor uses, and
+`ExtractionPrompt.latestVersion` stops listing the bundle at all: it probes
+`Bundle.url(forResource:withExtension:)`, which returns `URL?` on both, for each
+candidate version. Asking for the name you want is the same question as listing
+and filtering for it, minus the platform-divergent collection. It scans past a
+gap rather than stopping at the first miss, so deleting an intermediate prompt
+cannot silently pin the default to an older one.
+
+`scripts/lint-writepath.sh` now bans all three divergent accessors *and* both
+bundle-listing calls across `Sources/` and `Tests/` (everything Linux CI
+compiles), rather than just whichever spelling was last reported; the guard
+skips comment lines, since its own explanation names the APIs. Each guard was
+verified by planting a violation: the lint fails and names the file and line,
+and passes once it is removed.
+
+*Worth keeping: this is the same shape as FN-25 (an enum gaining an associated
+value silently withdrew Equatable). Both were changes that type-check in one
+configuration and not another, and neither could be caught from the cloud
+session, where no Swift compiler exists at all. Four red runs for one finding,
+because each of the first three fixes addressed the line that was reported
+instead of the class it belonged to. The cheap move — sweep for every sibling
+of the reported failure before pushing — was available every time.*
+
 ---
 
 ## Session notes
@@ -1148,32 +1214,3 @@ counts are real, the Deck's anatomy (progress bars → ember caps tag → serif 
 main → sans sub) matches, both rooms translate, and the three search shapes
 exist. The divergences were in the **signature moves** — the small things §5
 says carry the whole feeling.
-
-### FN-37 · A Foundation API that is a method on Darwin and a property on Linux — closed 2026-08-08
-
-`ExtractionPrompt.latestVersion` derived the newest bundled prompt by calling
-the URL path-extension member. That call **compiles on macOS and does not
-compile on Linux**, where Foundation exposes it as a `URL?` property:
-
-```
-error: cannot call value of non-function type 'URL?'
-```
-
-So the `app` workflow (macOS) went green while `core` (Linux) failed, on two
-consecutive commits. The asymmetry is the lesson: **macOS-only verification is
-not verification of this package**, because the trust core is built on Linux by
-design (BUILD §1.2 — the invariant suite must run without an Apple toolchain).
-
-A second, unreached instance sat in `orbit-evals`' memo discovery and would have
-been the next red build once the first was fixed.
-
-Both now use `lastPathComponent` plus string trimming, and
-`scripts/lint-writepath.sh` bans the call outright across `Sources/` and
-`Tests/` — everything Linux CI compiles. The guard skips comment lines, since
-its own explanation names the API. Verified by planting a violation: the lint
-fails and names the file and line.
-
-*Worth keeping: this is the same shape as FN-25 (an enum gaining an associated
-value silently withdrew Equatable). Both were changes that type-check in one
-configuration and not another, and neither could be caught from the cloud
-session, where no Swift compiler exists at all.*
