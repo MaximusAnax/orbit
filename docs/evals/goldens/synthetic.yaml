@@ -1,0 +1,174 @@
+# Goldens for the synthetic corpus (EVALS §3.1 required coverage). Draft status —
+# synthetic sources are authored, so these are self-consistent by construction;
+# ratification confirms the POLICY each one encodes.
+
+- memo: hardship
+  source: docs/evals/corpus/synthetic/hardship.txt
+  status: draft
+  required_people:
+    - {key: maya, name_like: maya}
+  required_assertions:
+    - {subject: maya, predicate: employment, contains: figma}
+    - {subject: maya, predicate: concern, contains: parkinson}
+  required_threads:
+    - {subject: maya, contains: parkinson, archetype: condition_hardship,
+       why: "INV-20: remembered permanently, prompted never"}
+  attribution_expectations:
+    - {subject: maya, contains: parkinson, source_kind: secondhand}
+  forbidden:
+    - {kind: thread_archetype_for, contains: parkinson, not_archetype: condition_hardship,
+       why: "classifying grief as a promptable process is the product's worst failure"}
+    - {kind: loop, contains: be there,
+       why: "an intention to be present is not an obligation ledger entry"}
+
+- memo: correction
+  source: docs/evals/corpus/synthetic/correction.txt
+  status: draft
+  seeds:
+    people: [{id: person-priya, name: Priya}]
+    assertions:
+      - {person: person-priya, predicate: employment, object_value: Google,
+         verbatim: works at Google, open: true}
+  required_corrections:
+    - {subject: priya, kind: never_true, object_like: google,
+       why: "Decision 2: 'never worked there' is CORRECT (retraction), not CLOSE"}
+  required_assertions:
+    - {subject: priya, predicate: employment, contains: deepmind, closed: true}
+  forbidden:
+    - {kind: correction, correction_kind: no_longer_true, contains: google,
+       why: "closing would falsely record that the Google fact was once true"}
+    - {kind: person_match, name_like: priya, match: new}
+
+- memo: homonym
+  source: docs/evals/corpus/synthetic/homonym.txt
+  status: draft
+  seeds:
+    people: [{id: person-sarah-chen, name: Sarah Chen}]
+  required_people:
+    - {key: sarah_o, name_like: okafor, match: new,
+       why: "explicit disambiguation in source: 'Not Sarah Chen'"}
+  required_assertions:
+    - {subject: sarah_o, predicate: employment, contains: ucsf}
+    - {subject: sarah_o, predicate: life_event, contains: nursing boards}
+  required_loops:
+    - {subject: sarah_o, direction: abdoul_owes, contains: climbing}
+  forbidden:
+    - {kind: person_match, name_like: sarah, match: existing,
+       why: "linking to Sarah Chen despite the explicit distinction = identity failure"}
+
+- memo: secondhand-chain
+  source: docs/evals/corpus/synthetic/secondhand-chain.txt
+  status: draft
+  seeds:
+    people: [{id: person-alex, name: Alex}, {id: person-leon, name: Leon}]
+  required_people:
+    - {key: marcus, name_like: marcus, status: known_of,
+       why: "never met — no orbit, no maintenance, discovery-only (§7.3)"}
+  required_assertions:
+    - {subject: marcus, predicate: life_event, contains: shopify, source_kind: secondhand, hedged: true}
+    - {subject: leon, predicate: goal, contains: atlanta, source_kind: secondhand}
+  required_hedges:
+    - "I think his name is Marcus"
+  required_threads:
+    - {subject: leon, contains: atlanta, archetype: decision}
+  attribution_expectations:
+    - {subject: marcus, contains: shopify, source_kind: secondhand}
+    - {subject: leon, contains: atlanta, source_kind: secondhand}
+  forbidden:
+    - {kind: assertion_source, subject: marcus, source_kind: firsthand,
+       why: "hearsay marked firsthand manufactures unearned confidence (PIPE-7 Critical)"}
+    - {kind: person_status, name_like: marcus, status: active}
+
+- memo: group-ramble
+  source: docs/evals/corpus/synthetic/group-ramble.txt
+  status: draft
+  seeds:
+    people: [{id: person-kevin, name: Kevin}]
+  required_people:
+    - {key: tunde, name_like: tunde}
+    - {key: ama, name_like: ama}
+    - {key: jen, name_like: jen}
+    - {key: deji, name_like: deji}
+    - {key: unknown1, name_like: 49ers, status: provisional,
+       why: "a name half-caught is a provisional row, not a guess (Decision 5)"}
+  required_assertions:
+    - {subject: ama, predicate: relation, contains: tunde}
+    - {subject: ama, predicate: skill, contains: epidemiology, hedged: true}
+    - {subject: jen, predicate: employment, contains: pottery}
+    - {subject: kevin, predicate: goal, contains: woodworking}
+    - {subject: tunde, predicate: life_event, contains: mom}
+  required_hedges:
+    - "I want to say"
+    - "biotech I think"
+  required_loops:
+    - {subject: tunde, direction: abdoul_owes, contains: cook}
+  required_threads:
+    - {subject: kevin, contains: woodworking, archetype: decision}
+  required_ambiguities:
+    - {kind: subject, contains: rugby, min_candidates: 2,
+       why: "planted ambiguity (PIPE-9): the extractor must ask, not assign"}
+  forbidden:
+    - {kind: assertion, contains: rugby,
+       why: "the rugby claim may exist ONLY inside the ambiguity, never as a top-level assertion"}
+
+- memo: silence
+  source: docs/evals/corpus/synthetic/silence.txt
+  status: draft
+  expect_empty: true            # zero proposals is the correct output
+
+- memo: contradiction
+  source: docs/evals/corpus/synthetic/contradiction.txt
+  status: draft
+  seeds:
+    people: [{id: person-james, name: James}]
+    assertions:
+      - {person: person-james, predicate: employment, object_value: Stripe,
+         verbatim: works at Stripe, open: true}
+  required_people:
+    - {key: omar, name_like: omar, status: known_of}
+  required_assertions:
+    - {subject: james, predicate: employment, contains: anthropic}
+  sync_expectations:            # graded by the Swift pipeline tests, not the payload matcher
+    - {op: CLOSE, target_contains: stripe,
+       why: "a contradicted open fact closes via proposal — never silently overwritten"}
+  forbidden:
+    - {kind: correction, contains: stripe,
+       why: "nothing says Stripe was never true — this is supersession, not retraction"}
+
+# FIELD-NOTES FN-10 / FN-12 / FN-14 / FN-20 / FN-31 — the tag-discipline memo.
+#
+# Every one of those notes is the same failure wearing a different hat:
+# `object_value` used as a free-text summary instead of the tag DATA-MODEL §2
+# defines ("tag the concept, keep the sentence"). One memo exercises all of them,
+# because a fix for one that breaks another is exactly what kept happening.
+- memo: tag-discipline
+  source: docs/evals/corpus/synthetic/tag-discipline.txt
+  status: draft
+  required_people:
+    - {key: priya, name_like: priya}
+  required_entities:
+    - {key: anthropic, name_like: anthropic}
+    - {key: cmu, name_like: carnegie}
+    - {key: oakland, name_like: oakland}
+  required_assertions:
+    # FN-10: the employer is the ENTITY; the role is a short literal beside it.
+    - {subject: priya, predicate: employment, entity: anthropic,
+       why: "FN-10: the org belongs in object_entity_ref, never as prose"}
+    # FN-12: education carries the school as entity and the status as a literal.
+    - {subject: priya, predicate: education, entity: cmu,
+       why: "FN-12: 'alumna' is a status qualifier, not the object"}
+    # FN-2/FN-20: origin and residence are both true and must not close each other.
+    - {subject: priya, predicate: location, contains: residence,
+       why: "FN-2 option B: the qualifier says which kind of location this is"}
+  forbidden:
+    # FN-10's headline symptom: the rambling clause landing in the tag slot.
+    - {kind: object_value_longer_than, predicate: skill, words: 12,
+       why: "FN-10: a paragraph in object_value defeats having two fields — §17 queries traverse tags"}
+    - {kind: object_value_longer_than, predicate: employment, words: 8,
+       why: "FN-10: a role title is short; the sentence lives in verbatim"}
+    # FN-14: a person's name inside object_value cannot be corrected by renaming.
+    - {kind: object_value_contains_person_name, predicate: relation,
+       why: "FN-14: the related person belongs in object_person_ref, not spelled into prose"}
+    # FN-31: dates must not claim more precision than the source gave.
+    - {kind: date_precision_exceeds_source, contains: march,
+       why: "FN-31: 'started in March' is month precision — a day was never said"}

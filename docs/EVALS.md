@@ -27,6 +27,8 @@ The corollary that makes this framework durable: **when the docs and the checks 
 
 Cross-cutting suites: **PRIV** (privacy/egress), **PERF** (latency budgets), and the **principle traceability matrix** (§7).
 
+*As built (2026-07-31 — the framework above is the spec; this note records where the running rigs sit against it, per the rule that divergences are registered, not silently absorbed):* L0 and L1 run on every push (`core` workflow, Linux). L2 splits: the model-level journeys and the design-law lint run on every push, but the **XCUITest tap-budget halves are dispatch-only** because a cold simulator boot exceeds the push budget — registered for ratification (RATIFICATION §4.7). L3 is Abdoul's, unautomated by definition. There is **no nightly job** and no snapshot/pixel rig: where a check below says "run nightly" it currently runs per-push instead, and the rendered-pixel design checks (D-1's sweep, D-3's node census, D-4…D-7) have no automated tier at all — they are graded by eye on device (T3). `design_lint.py` prints exactly this for each check it cannot grade.
+
 **Definition of Done for any feature:** L0 green · relevant L1 goldens at-or-above threshold · relevant journeys updated and green · design lint green · principle matrix row updated if the feature touches a principle · new capabilities arrive eval-first (§5.4).
 
 ---

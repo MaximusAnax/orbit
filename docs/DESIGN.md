@@ -330,21 +330,42 @@ The brief is the flagship; every other surface inherits:
 
 ### Deferred surfaces — designed later, deliberately, not forgotten
 
-These have data-model support and inventoried use cases but no designed screen yet. Each is profile-reached or rare-tier, so deferral costs little now — but every one must eventually exist:
+These have data-model support and inventoried use cases but no designed screen yet. Each is profile-reached or rare-tier, so deferral costs little now — but every one must eventually exist.
 
-- **Timeline mini-page** — the §6.1 collapse row's destination. Chronological events for one person; the §6 "how this person changed" view lives here.
-- **Contact mini-page ("Reach her")** — the other collapse row: contact points with tap-to-act affordances and the §7.8 unverified-until-used rendering for voice-derived handles.
+*This list is design intent, not a status board — BUILD.md §8 is the status board. Build state is noted per item and kept current.*
+
+- **Timeline mini-page** — the §6.1 collapse row's destination. Chronological events for one person; the §6 "how this person changed" view lives here. **Built (M3).**
+- **Contact mini-page ("Reach her")** — the other collapse row: contact points with tap-to-act affordances and the §7.8 unverified-until-used rendering for voice-derived handles. **Built (M3); handles can be entered by hand since 2026-08-07** (FN-26 — a handle is the one field voice capture reliably ruins, so `source: manual` skips the unverified mark). **Tap-to-act is still deferred.**
 - **Orbit-gardening session** — the occasional deliberate pass over relationship states (§12 ORBIT.md): narratives, orbits, cadences. Explicitly a *session* the user enters, never a prompt.
 - **Merge flow** — "these two Sarahs are the same person": candidate surfacing, pointer-merge confirmation, unmerge (DATA-MODEL Decision 6).
 - **Set-aside triage** — re-entering deferred proposals at leisure; currently assumed to reuse the review screen, needs its own entry design.
-- **Export** — the whole memory out, readable (trust-tier use case).
+- **Export** — the whole memory out, readable (trust-tier use case). **Capability built and tested (PRIV-5); no screen yet** — the archive is reachable only from code today.
 - **Brokering/hosting** — "who should come to dinner?" / "who should Maria meet?" A multi-person *selection* surface, not a lookup — the one genuinely new interaction pattern in the deferred set. Hold until the core loop is built and the need is felt in practice.
-- **Backfill portrait onboarding** — the guided first-run capture of long-standing relationships. Fully specified at the data-model level (DATA-MODEL §7.11: subject-participants, skippable serif prompts, pausable sessions, never queued, episodic/semantic history split); golden exists and is ground truth. Flow design proceeds alongside the build; PIPE-12's accuracy number against the production extractor is the remaining gate.
+- **Backfill portrait onboarding** — the guided first-run capture of long-standing relationships. Fully specified at the data-model level (DATA-MODEL §7.11: subject-participants, skippable serif prompts, pausable sessions, never queued, episodic/semantic history split); golden exists and is ground truth. **Built (M5)** — skippable serif prompts, genuinely pausable recording, never queued. PIPE-12's accuracy number against the production extractor remains the open gate.
 - **Usage journal** — the owner's private reflection surface (EVALS.md §8): local-only, feature-level never person-level, questions never goals. Periodic, quiet, probably a mini-page under settings — never a dashboard.
+
+### Surfaces built that this document does not describe
+
+Shipped during the build because the app could not function without them, each
+rendered in the ratified tokens and both room forms, none of them yet ratified
+as design. They are listed for Abdoul's ratify-or-redesign call (RATIFICATION §4):
+
+- **Keys sheet** — the one quiet drawer: two secure fields writing to this phone's keychain. Without it there is no way to give the device an extraction key. Reached from Home's footer row as the word `settings`, per `prototype/home-search-mockup.html` — **ratified 2026-08-07 over the earlier "faint key glyph" wording**, which the mockup predates (FN-25).
+- **Store-failure screen** — plain-ink, no red (D-1): shown when the database cannot open, so the app never looks normal while writing memories to nowhere.
+- **Home resume doors** — plain footer lines for memos parked mid-flow (needs transcription / needs transcript review / needs sync), matching the set-aside line's grammar: a true count in words, tappable, never a badge (D-2/D-9).
+- **Review edit sheet** — P5's "accept with edits" made real: the mapped value, the since-date, or the suggested orbit are editable; the verbatim quote is shown and untouchable.
+- **Working screen** — transcription and extraction are the two steps slow enough to look like nothing is happening. One ember indicator, the step named, and "Leave it running": the work continues and its result lands in the waiting footer rather than seizing whatever screen he moved on to (P10).
+- **Waiting-memo list** — long-press the resume footer for every parked memo, each with the stage it waits on and, where the write layer permits it, a way to let it go. Exists because a recording that never saved could otherwise sit in the footer forever with no exit.
+- **Roster** — Search's empty state lists everyone saved, A–Z. Search answers "where is this person"; nothing answered "who do I have", and the names you have forgotten are exactly the ones you cannot type. Alphabetical is deliberate: P6 forbids people lists sorted by anything implying rank, and recency or closeness are scores wearing an order.
+- **Inline renaming during review** — correcting a misheard name or a spoken shorthand once, on the card that introduces it, updating every card in the run because they all resolve through the same ref. For entities the spoken form survives as an alias (§7.10 guarantee 3).
+- **Desk corrections** — renaming a person and fixing a saved fact's value, so review is no longer the only moment anything can be corrected. Amendments, never overwrites: the verbatim stays (INV-1).
+- **Person retirement** — "Remove this person" withdraws them from the roster, search, the whisper primer and the extraction context while the ledger keeps everything they anchor. Reversible. A hard erase was designed and dropped (FN-29): it would have cost a named exception in all twelve append-only triggers, and the case that motivated it was a mis-extracted row, for which hiding is enough.
 
 ### Open questions
 
 - **Real-photo portrait treatment** — masking, night dimming, and what the print border does with low-quality contact photos. Needs real photos to design against.
 - **App icon** — candidate: the night portrait ring (ember circle on indigo). Unexplored.
 - **Sound** — capture start/stop earcons, if any. Default: silence.
-- **`ink-faint` contrast resolution** — decide bump-size vs darken at first build (§11.1).
+- **`ink-faint` contrast resolution** — ~~decide bump-size vs darken at first build (§11.1)~~ **resolved at M2: darken.** Section tags render at ≥11pt in `ink-muted`; `ink-faint` is reserved for genuinely secondary lines. Enforced by design_lint's ≥11pt rule.
+- **Undo on settled review lines** (§12 flagged it to "re-verify feel during build") — **not built.** Accept/reject is final in the UI today; the ledger records everything, so a wrong accept is correctable via amend and a wrong reject via new evidence. Registered for ratification (RATIFICATION §4.8).
+- **§10.5 pronouns** — the ratified copy ("Reach her") assumes a known pronoun. The build never infers one from a name: where no pronoun has been recorded, the person's name is used ("Reach Sana"). A user-entered pronoun field is deferred. Registered for ratification (RATIFICATION §4.9).

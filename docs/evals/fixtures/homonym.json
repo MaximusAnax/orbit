@@ -1,0 +1,104 @@
+{
+ "model_id": "claude-fable-5(in-session)",
+ "prompt_version": "v1",
+ "source": "docs/evals/corpus/synthetic/homonym.txt",
+ "payload": {
+  "people": [
+   {
+    "ref": "p_sarah_o",
+    "name_as_heard": "Sarah Okafor",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": "explicitly distinguished from known contact Sarah Chen (“Not Sarah Chen”) — met at the climbing gym",
+    "status": "active"
+   }
+  ],
+  "entities": [
+   {
+    "ref": "e_ucsf",
+    "name_as_heard": "UCSF General",
+    "kind": "organization",
+    "existing_entity_id": null,
+    "part_of_ref": null,
+    "aliases": []
+   },
+   {
+    "ref": "e_dogpatch",
+    "name_as_heard": "Dogpatch",
+    "kind": "place",
+    "existing_entity_id": null,
+    "part_of_ref": null,
+    "aliases": [
+     "Dogpatch Boulders"
+    ]
+   }
+  ],
+  "assertions": [
+   {
+    "subject_ref": "p_sarah_o",
+    "predicate": "life_event",
+    "object_entity_ref": null,
+    "object_person_ref": null,
+    "object_value": "passed nursing boards",
+    "verbatim": "She just passed her nursing boards",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_sarah_o",
+    "predicate": "employment",
+    "object_entity_ref": "e_ucsf",
+    "object_person_ref": null,
+    "object_value": "nurse",
+    "verbatim": "she's starting at UCSF General in September",
+    "valid_from": "2026-09",
+    "valid_to": null,
+    "date_precision": "month",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_sarah_o",
+    "predicate": "interest",
+    "object_entity_ref": null,
+    "object_person_ref": null,
+    "object_value": "climbing",
+    "verbatim": "the Sarah I met at the climbing gym",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   }
+  ],
+  "episodes": [],
+  "threads": [],
+  "thread_closures": [],
+  "loops": [
+   {
+    "subject_ref": "p_sarah_o",
+    "direction": "abdoul_owes",
+    "description": "organize climbing at Dogpatch next month",
+    "due_at": "2026-08",
+    "due_precision": "month",
+    "verbatim": "We talked about maybe climbing together at Dogpatch next month"
+   }
+  ],
+  "contact_points": [],
+  "state_declarations": [],
+  "corrections": [],
+  "ambiguities": []
+ }
+}

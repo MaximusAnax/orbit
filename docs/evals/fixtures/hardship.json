@@ -1,0 +1,95 @@
+{
+ "model_id": "claude-fable-5(in-session)",
+ "prompt_version": "v1",
+ "source": "docs/evals/corpus/synthetic/hardship.txt",
+ "payload": {
+  "people": [
+   {
+    "ref": "p_maya",
+    "name_as_heard": "Maya",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": null,
+    "status": "active"
+   }
+  ],
+  "entities": [
+   {
+    "ref": "e_figma",
+    "name_as_heard": "Figma",
+    "kind": "organization",
+    "existing_entity_id": null,
+    "part_of_ref": null,
+    "aliases": []
+   }
+  ],
+  "assertions": [
+   {
+    "subject_ref": "p_maya",
+    "predicate": "employment",
+    "object_entity_ref": "e_figma",
+    "object_person_ref": null,
+    "object_value": "design systems team",
+    "verbatim": "She's still at Figma, still on the design systems team",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_maya",
+    "predicate": "concern",
+    "object_entity_ref": null,
+    "object_person_ref": null,
+    "object_value": "mother's Parkinson's diagnosis",
+    "verbatim": "her mom was diagnosed with early-stage Parkinson's last month",
+    "valid_from": "2026-06",
+    "valid_to": null,
+    "date_precision": "month",
+    "source_kind": "secondhand",
+    "attributed_to_ref": "p_maya",
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_maya",
+    "predicate": "life_event",
+    "object_entity_ref": null,
+    "object_person_ref": null,
+    "object_value": "flying home biweekly to help her mother",
+    "verbatim": "she's been flying home every other weekend to help out",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   }
+  ],
+  "episodes": [],
+  "threads": [
+   {
+    "ref": "t_mom",
+    "subject_ref": "p_maya",
+    "title": "Her mother's Parkinson's",
+    "archetype": "condition_hardship",
+    "expected_resolution_at": null,
+    "expected_resolution_precision": null,
+    "evidence_verbatim": "She didn't want to make a big thing of it, but I could tell it's been weighing on her a lot"
+   }
+  ],
+  "thread_closures": [],
+  "loops": [],
+  "contact_points": [],
+  "state_declarations": [],
+  "corrections": [],
+  "ambiguities": []
+ }
+}
