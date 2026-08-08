@@ -215,10 +215,26 @@ public struct Searcher {
         return Answer(firsthand: firsthand, maybe: maybe, factAnswer: nil)
     }
 
+    /// Which predicate a question is about — and, before that, whether the
+    /// question reaches a fact lookup at all. A query matching nothing here
+    /// falls through to the generic banded search and answers no fact, so this
+    /// list is a gate as much as a router: every phrasing recognised by
+    /// `entitySeekingCues` below has to be admitted here first, or the cue that
+    /// chooses the half of the fact never runs. "What is Eliah's role?" was
+    /// exactly that — recognised as a role question, never let through the
+    /// door (FIELD-NOTES FN-38's lesson: sweep the siblings, so "university"
+    /// and "college" are here too rather than waiting to be reported).
     static let predicateKeywords: [(keys: [String], predicate: String)] = [
-        (["work", "works", "working", "job", "company"], "employment"),
-        (["live", "lives", "living", "based", "from"], "location"),
-        (["study", "studied", "studying", "school", "degree"], "education"),
+        // Two-word keys where the bare noun would be an unsafe substring: "org"
+        // is inside "Morgan" and "city" inside "capacity", so a query naming a
+        // person would route itself into a fact lookup. The phrase carries the
+        // same meaning with none of the collisions.
+        (["work", "works", "working", "job", "company", "employer",
+          "role", "title", "position", "what org", "which org"], "employment"),
+        (["live", "lives", "living", "based", "from",
+          "what city", "which city"], "location"),
+        (["study", "studied", "studying", "school", "degree",
+          "university", "college"], "education"),
     ]
 
     /// "Where does James work?" → the current fact, with its evidence.
@@ -252,17 +268,13 @@ public struct Searcher {
         "based in", "based out of",
     ]
 
-    /// Phrasings that ask for the literal beside the object — the role, the
-    /// status. Checked only when nothing above matched, so "what is his job at
-    /// the company" still reads as a role question.
-    static let literalSeekingCues: [String] = [
-        "job", "role", "title", "position", "what does", "what is he", "what is she",
-    ]
-
+    /// Entity cues win outright; everything else is a question about the
+    /// literal. There is deliberately no second list of role phrasings — the
+    /// role words are predicate keywords above, where they let the question in
+    /// the door, and a second list that only ever returned the default would
+    /// have looked like it was deciding something.
     static func wantsEntity(_ lower: String) -> Bool {
-        if entitySeekingCues.contains(where: { lower.contains($0) }) { return true }
-        if literalSeekingCues.contains(where: { lower.contains($0) }) { return false }
-        return false
+        entitySeekingCues.contains { lower.contains($0) }
     }
 
     static func factAnswer(_ row: Row, asksWhere: Bool) -> String? {

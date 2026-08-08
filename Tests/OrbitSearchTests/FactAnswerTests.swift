@@ -200,4 +200,27 @@ final class FactAnswerTests: XCTestCase {
             XCTAssertEqual(a.factAnswer, "intern", "\(query) asks for the role")
         }
     }
+
+    /// The same gap on the other predicate, found by sweeping the sibling cues
+    /// rather than waiting for it to be reported. `entitySeekingCues` learned
+    /// "what university" and "which college" while `predicateKeywords` never
+    /// did, so those questions could not reach a fact lookup at all — the cue
+    /// that would have chosen the school never ran.
+    func testSchoolPhrasingsReachTheFactLookup() throws {
+        let eliah = try edits.createPerson(displayName: "Eliah")
+        try entity("e_cmu", "Carnegie Mellon")
+        try fact(subject: eliah, predicate: "education", value: "undergrad",
+                 entity: "e_cmu", verbatim: "she did her undergrad at CMU")
+
+        for query in ["what university did Eliah go to?",
+                      "which college did Eliah go to?",
+                      "what school did Eliah go to?"] {
+            let answer = try Searcher(reader: store.reader).search(query)
+            guard case .answer(let a) = answer else {
+                return XCTFail("expected an answer band for \(query), got \(answer)")
+            }
+            XCTAssertEqual(a.factAnswer, "Carnegie Mellon",
+                           "\(query) asks for the school; 'undergrad' is a qualifier")
+        }
+    }
 }
