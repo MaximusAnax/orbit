@@ -91,7 +91,12 @@ public struct Searcher {
     // MARK: name shape
 
     /// Direct name search — exact, prefix, and misspelled (distance ≤ 2).
-    func peopleMatching(nameQuery: String) throws -> [PersonHit] {
+    ///
+    /// `fuzzy: false` drops the misspelling tolerance and accepts only an exact
+    /// or prefix hit. Callers that are guessing whether a word is a name at all
+    /// want that: at distance ≤ 2 the word "role" matches a contact named Rose,
+    /// and answering about Rose is worse than not answering.
+    func peopleMatching(nameQuery: String, fuzzy: Bool = true) throws -> [PersonHit] {
         let tokens = terms(of: nameQuery)
         guard !tokens.isEmpty, tokens.count <= 3 else { return [] }
         let people = try reader.db.query(
@@ -111,7 +116,7 @@ public struct Searcher {
                     if candidate.hasPrefix(q) { return 0 }
                     return editDistance(q, candidate)
                 }.min() ?? Int.max
-                if best > 2 { matched = false; break }
+                if best > (fuzzy ? 2 : 0) { matched = false; break }
                 total += best
             }
             if matched {
@@ -312,22 +317,34 @@ public struct Searcher {
         // distance 2 of "Cindy", so a vocabulary word tried as a name can beat
         // the actual name standing next to it.
         //
-        // But some of that vocabulary is also a name: Job is a name, so is
-        // Grace, and a contact could be called City. Dropping their tokens
-        // outright means the one person whose name is a keyword can never be
-        // asked about. So the strict pass runs first and keeps its precedence,
-        // and the unfiltered pass runs only when it found nobody — the case
-        // that returns no fact answer at all today, which makes the fallback
-        // strictly additive rather than a new way to be wrong.
+        // But some of that vocabulary is also a name: Job is a name, and a
+        // contact could be called City. Dropping their tokens outright means
+        // the one person whose name is a keyword can never be asked about.
+        //
+        // The rescue is deliberately narrow, because "guess that a vocabulary
+        // word is a name" is how you answer confidently about the wrong person.
+        // Two guards. It runs only when *every* meaningful token is a keyword —
+        // so a query that named someone and simply failed to resolve them falls
+        // through to the generic search rather than latching onto a word. And
+        // it matches exact/prefix only: at the usual distance ≤ 2, "role" finds
+        // a contact named Rose and "city" finds Cindy, which would turn a
+        // no-answer into a wrong answer about a real person.
         let meaningful = terms(of: lower).filter { !Self.stopwords.contains($0) }
         let keywords = Set(Self.predicateKeywords.flatMap(\.keys))
+        let (vocabulary, names) = (meaningful.filter { keywords.contains($0) },
+                                   meaningful.filter { !keywords.contains($0) })
         var found: PersonHit?
-        for token in meaningful where !keywords.contains(token) {
+        for token in names {
             if let hit = try peopleMatching(nameQuery: token).first { found = hit; break }
         }
-        if found == nil {
-            for token in meaningful where keywords.contains(token) {
-                if let hit = try peopleMatching(nameQuery: token).first { found = hit; break }
+        // No `found == nil` here: when there are no name tokens the loop above
+        // ran zero times, so the emptiness check already implies it.
+        if names.isEmpty {
+            for token in vocabulary {
+                if let hit = try peopleMatching(nameQuery: token, fuzzy: false).first {
+                    found = hit
+                    break
+                }
             }
         }
         guard let person = found else { return nil }

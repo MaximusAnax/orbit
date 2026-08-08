@@ -290,4 +290,39 @@ final class FactAnswerTests: XCTestCase {
         XCTAssertEqual(a.factAnswer, "San Francisco")
         XCTAssertEqual(a.firsthand.first?.name, "Cindy")
     }
+
+    /// Guard one on that rescue: it runs only when *every* meaningful token is
+    /// vocabulary. A query that named someone — "he" — and merely failed to
+    /// resolve them must fall through to the generic search rather than latch
+    /// onto the word "city" and answer about a contact who happens to be
+    /// called that.
+    func testAnUnresolvedNameIsNotReplacedByVocabulary() throws {
+        let city = try edits.createPerson(displayName: "City")
+        try entity("e_sf", "San Francisco", kind: "place")
+        try fact(subject: city, predicate: "location", value: "residence",
+                 entity: "e_sf", verbatim: "she's been in San Francisco ever since")
+
+        let answer = try Searcher(reader: store.reader).search("where does he live in the city?")
+        guard case .answer(let a) = answer else {
+            return XCTFail("expected an answer band, got \(answer)")
+        }
+        XCTAssertNil(a.factAnswer, "'he' named someone; the fact is not City's to answer")
+    }
+
+    /// Guard two: the rescue matches exact/prefix only. At the usual edit
+    /// distance ≤ 2, "role" is one character from Rose and "city" two from
+    /// Cindy — so a fuzzy rescue turns a no-answer into a confident answer
+    /// about a real person who was never mentioned.
+    func testVocabularyIsNeverFuzzyMatchedToAName() throws {
+        let rose = try edits.createPerson(displayName: "Rose")
+        try entity("e_google", "Google")
+        try fact(subject: rose, predicate: "employment", value: "intern",
+                 entity: "e_google", verbatim: "she interned at Google")
+
+        let answer = try Searcher(reader: store.reader).search("what is the role?")
+        guard case .answer(let a) = answer else {
+            return XCTFail("expected an answer band, got \(answer)")
+        }
+        XCTAssertNil(a.factAnswer, "'role' is one edit from Rose and still not her name")
+    }
 }
