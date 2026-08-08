@@ -1242,7 +1242,7 @@ plainly is not landing.
 "should CI tolerate this" but "is the thing underneath it a defect or is the
 check wrong". Here it was a defect, three times.*
 
-### FN-40 · `residence` is asserted from anywhere a person was mentioned — open
+### FN-40 · `residence` is asserted from anywhere a person was mentioned — mostly closed 2026-08-08
 
 The clearest product defect in the k=10 data, and it reproduces across four
 different memos. The model handles `origin` correctly — Elia from New York City
@@ -1283,6 +1283,51 @@ from both sides of the ledger.
 enumerated these as forbidden, so the enumerated-forbidden design could not have
 caught them. This is the first defect that only existed because PIPE-4 got a
 denominator.*
+
+**Fixed by prompt v7 rule 35, measured over a second k=10 collection.** Residence
+assertions fell from 51 to 17 (median 5 → 1 per run). Leon/Atlanta 9/10 → 0,
+Ama/Chicago 8/10 → 0, Roger/Pacific-Northwest 4/10 → 0, Jen/Berkeley 6/10 → 1.
+Tunde/Oakland survives at 6/10, correctly — *"it's his new place in Oakland"*.
+
+Best of all, Atlanta was not merely suppressed: `leon/goal/atlanta` went from 10%
+to **100%**, so the fact landed in the category it always belonged to. A fix that
+recategorises beats a fix that deletes.
+
+**Left open because the rule overcorrected.** "I lived on 167th and Grand
+Concourse" is a residence by any reading and v7 now drops it nine times in ten
+(60% → 10%). The rule taught the model to distrust place-mentions and it does not
+distinguish the good ones. Rule 35 needs a clause admitting first-person
+"I lived at X" before this closes.
+
+### FN-41 · The hardship thread degraded from an unrelated prompt edit — open · watch
+
+v7 changed three rules, all about residence, hedge spans, and closeness. None
+touches hardship. `condition_hardship` threads on the hardship memo nonetheless
+went from **10/10 runs to 6/10** — and not misclassified into another archetype,
+absent entirely. In four runs out of ten, Maya's father's Parkinson's produces no
+thread at all.
+
+INV-20 is not violated: a thread that does not exist raises no prompts, so the
+"never cheerfully raise grief" guarantee holds. This is recall, not safety. But
+it is the highest-stakes content in the corpus, EVALS calls its failure mode the
+worst in the product, and it got worse from an edit that had nothing to do with it.
+
+The suspected mechanism is dilution. The prompt has grown from 15 rules and 621
+words at v1 to 37 rules and 2,872 words at v7 — nearly five times — and the
+paired comparison shows the marginal rule now trading one item for another: 21
+items improved, 20 regressed, sign test p = 1.000. Each rule works on the case it
+was written for while competing for attention with thirty-six others.
+
+That is a hypothesis and this comparison cannot test it, because it changed three
+rules at once and cannot separate "rule 35 did this" from "the prompt got
+longer". The experiment is cheap now the harness exists: v6 plus *only* rule 35,
+and v7 with the oldest rules pruned, each paired against the collections already
+on disk.
+
+*The general worry, which outlives this instance: a prompt that is only ever
+appended to will eventually regress something every time it is improved, and
+single-run evaluation cannot see it happening. This one was visible only because
+two ten-run collections were compared item by item.*
 
 ---
 
