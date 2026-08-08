@@ -17,16 +17,20 @@ if [[ -n "$hits" ]]; then
   fail=1
 fi
 
-# Cross-platform Foundation: `deletingPathExtension` is a METHOD on Darwin and a
-# URL? PROPERTY on Linux, so calling it compiles on macOS and fails the Linux
-# core workflow. That divergence cost two red core runs; the app workflow cannot
-# catch it because it only builds on macOS. Everything under Sources/ and Tests/
-# is compiled by Linux CI, so the call is banned there.
-hits=$(grep -rn "deletingPathExtension()" Sources Tests --include='*.swift' \
+# Cross-platform Foundation: the URL path accessors diverge between platforms.
+# `deletingPathExtension` is a METHOD on Darwin and a URL? PROPERTY on Linux;
+# `lastPathComponent` and `pathExtension` are String on Darwin and String? on
+# Linux. Each spelling compiles on macOS and fails the Linux core workflow, and
+# the app workflow cannot catch it because it only builds on macOS. That cost
+# three red core runs (FIELD-NOTES FN-37). Everything under Sources/ and Tests/
+# is compiled by Linux CI, so all three are banned there. `URL.path` is String
+# on both platforms — use it, via the `fileNamePortable` shim.
+hits=$(grep -rnE "\.(deletingPathExtension|lastPathComponent|pathExtension)\b" \
+  Sources Tests --include='*.swift' \
   | grep -v '^[^:]*:[0-9]*: *//' || true)
 if [[ -n "$hits" ]]; then
-  echo "PORTABILITY VIOLATION: deletingPathExtension() is Darwin-only in this position."
-  echo "Use lastPathComponent + string trimming instead:"
+  echo "PORTABILITY VIOLATION: URL path accessor diverges Darwin/Linux."
+  echo "Use url.path string work (see fileNamePortable) instead:"
   echo "$hits"
   fail=1
 fi

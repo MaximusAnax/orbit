@@ -180,16 +180,12 @@ public enum ExtractionPrompt {
     /// Highest `extraction-prompt-vN.md` actually bundled — derived, so adding a
     /// prompt is one file rather than a file plus a list to remember.
     public static var latestVersion: String {
-        // String work only. On Linux's Foundation the path-extension-stripping
-        // URL member is a property of type URL?, while on Darwin it is a method
-        // returning URL — so the call compiles on macOS and fails the Linux core
-        // workflow, which is exactly how this passed `app` and broke `core`.
         let prefix = "extraction-prompt-v"
         let suffix = ".md"
         let versions = (Bundle.module.urls(forResourcesWithExtension: "md",
                                            subdirectory: "Resources") ?? [])
             .compactMap { url -> Int? in
-                let name = url.lastPathComponent
+                let name = url.fileNamePortable
                 guard name.hasPrefix(prefix), name.hasSuffix(suffix) else { return nil }
                 return Int(name.dropFirst(prefix.count).dropLast(suffix.count))
             }

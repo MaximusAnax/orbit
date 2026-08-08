@@ -235,8 +235,8 @@ func runMeasureLive(runs: Int, concurrency: Int, outLabel: String?) async throws
     let fixturesDir = root.appendingPathComponent("docs/evals/fixtures")
     let files = try FileManager.default.contentsOfDirectory(at: fixturesDir,
                                                             includingPropertiesForKeys: nil)
-        .filter { $0.pathExtension == "json" }
-        .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        .filter { $0.fileNamePortable.hasSuffix(".json") }
+        .sorted { $0.fileNamePortable < $1.fileNamePortable }
 
     struct Memo: Sendable {
         var name: String
@@ -258,17 +258,14 @@ func runMeasureLive(runs: Int, concurrency: Int, outLabel: String?) async throws
         guard let source = meta?["source"] as? String,
               let transcript = try? String(contentsOf: root.appendingPathComponent(source),
                                            encoding: .utf8) else {
-            print("  ! \(file.lastPathComponent): no readable source transcript — skipped")
+            print("  ! \(file.fileNamePortable): no readable source transcript — skipped")
             continue
         }
-        // String work, not the URL path-extension member: it is a method on
-        // Darwin and a property on Linux, so calling it builds on macOS and
-        // fails the Linux core workflow (see ExtractionPrompt.latestVersion).
-        let base = file.lastPathComponent
+        let base = file.fileNamePortable
         let name = (base.hasSuffix(".json") ? String(base.dropLast(5)) : base)
             .lowercased().replacingOccurrences(of: " ", with: "-")
         memos.append(Memo(name: name,
-                          file: file.lastPathComponent,
+                          file: file.fileNamePortable,
                           source: source,
                           transcript: transcript,
                           eventKind: (meta?["event_kind"] as? String) ?? "encounter",
