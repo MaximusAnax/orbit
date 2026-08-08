@@ -403,3 +403,43 @@ unnoticed even without a live run.
 - **Tier honesty unchanged:** T1 rigs and negative controls are green here; no
   Swift compiled in this environment and Actions has still not picked up a job
   since 07-31, so the Swift halves are unbuilt until his Mac runs them.
+
+## 2026-08-08 · Session 5 · Review threads, and one portability class paid for four times
+
+Two strands, both driven by what CI and Bugbot flagged rather than by a plan.
+
+**Eight review threads, all confirmed, all fixed.** Six landed earlier
+(`e6e02f8`): export omitting `person_retirement` and `person_alias` (a PRIV-5
+archive restored on a fresh database lost who was retired), search answering
+qualifiers instead of places, merge-blind last-seen and nondeterministic
+first-met, job-vs-company query routing, the FN-5 status line hiding its own
+backlog, `measure.py` ignoring golden forbidden kinds, resume overwriting
+manifest failures, and missing fixtures skewing recall by moving the
+denominator. Two more arrived on the fixes themselves (`3087aba`): the status
+line counted every retained recording while the re-listen pass only touches
+`confirmed` rows — so a memo in review was reported as waiting on the model in
+one place and waiting on Abdoul in another — and the manifest merge read
+`total_seconds` through `as? Double` alone, which JSON's single number type
+turns into nil, silently restarting the cumulative clock the resume fix existed
+to protect.
+
+**Five of the ten were introduced by the previous round's fix.** That is the
+number worth keeping. Each was a correct fix to the reported defect that moved
+the defect one layer over, and none would have been caught by re-reading the
+change — only by something adversarial reading it fresh.
+
+**FN-38 (renumbered from a collision with FN-37) cost four red `core` runs for
+one finding.** Foundation's URL path accessors and its bundle resource listings
+are different types on Darwin and Linux; three consecutive fixes each replaced
+the spelling that had just been reported with another Darwin-only one. Closed
+by asking a different question — `ExtractionPrompt.latestVersion` now probes
+`Bundle.url(forResource:)` rather than listing and filtering — plus one shim in
+OrbitCore for the accessor uses, and a lint guard covering all five APIs rather
+than the one last reported. The lesson is cheap and was available every time:
+sweep for the siblings of a reported failure before pushing.
+
+**Tier honesty:** T1 rigs and both negative controls are green here; the Swift
+halves are verified by CI, and nothing on this branch has run on a device.
+`scripts/dev/overnight.sh` is still owed — both hosts it needs are blocked by
+this session's egress policy, so the live PIPE numbers remain provisional and
+must come from Abdoul's Mac.
