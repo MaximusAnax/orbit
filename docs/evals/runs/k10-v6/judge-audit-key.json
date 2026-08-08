@@ -1,0 +1,242 @@
+{
+ "09e5afdf53dc": {
+  "claim": "Marcus \u2014 life_event \u2014 sold company [Shopify]  (stated tentatively; source: secondhand)",
+  "judge": true,
+  "memo": "secondhand-chain",
+  "why": "Matches secondhand, tentative report exactly as spoken"
+ },
+ "12c083202135": {
+  "claim": "Nikos \u2014 location \u2014 Greece",
+  "judge": true,
+  "memo": "nikos",
+  "why": "Speaker explicitly says Nikos is from Greece."
+ },
+ "13b2503e4438": {
+  "claim": "James \u2014 life_event \u2014 started two weeks ago",
+  "judge": false,
+  "memo": "contradiction",
+  "why": "Missing crucial context that it\u2019s about Anthropic job"
+ },
+ "163e9befe5f4": {
+  "claim": "Grace \u2014 life_event \u2014 dinner [Thai restaurant]  (stated tentatively; from 2026-07 to open)",
+  "judge": true,
+  "memo": "futureforce",
+  "why": "Speaker lists Grace among people at the Thai dinner"
+ },
+ "1aae2c78abd7": {
+  "claim": "Maya \u2014 employment \u2014 designer [Figma]  (source: secondhand)",
+  "judge": false,
+  "memo": "hardship",
+  "why": "Transcript never states Maya\u2019s specific role or title"
+ },
+ "2885a3c97cea": {
+  "claim": "Ama \u2014 location \u2014 residence [Chicago]",
+  "judge": false,
+  "memo": "group-ramble",
+  "why": "Transcript says she flew in from Chicago, not resides there"
+ },
+ "3e28a12f231e": {
+  "claim": "Maya \u2014 employment \u2014 designer [Figma]",
+  "judge": false,
+  "memo": "hardship",
+  "why": "Transcript never calls her role a designer explicitly"
+ },
+ "460f408ab6bd": {
+  "claim": "Abdoul (the speaker) \u2014 life_event \u2014 bike ride [pier]  (stated tentatively; from 2026-07 to open)",
+  "judge": false,
+  "memo": "futureforce",
+  "why": "Speaker is Abdul\u2019s friend, not Abdoul himself riding"
+ },
+ "5d1810df9122": {
+  "claim": "Elia Tapia \u2014 relation \u2014 best friend [Abdoul (the speaker)]  (stated tentatively)",
+  "judge": true,
+  "memo": "eliah",
+  "why": "Speaker explicitly calls Elia his best friend"
+ },
+ "5dc02231da9b": {
+  "claim": "Marcus \u2014 life_event \u2014 [Shopify]  (stated tentatively; source: secondhand)",
+  "judge": true,
+  "memo": "secondhand-chain",
+  "why": "Matches secondhand, hedged statement about Marcus selling to Shopify"
+ },
+ "657123af5c18": {
+  "claim": "Elia Tapia \u2014 trait \u2014 super smart",
+  "judge": true,
+  "memo": "eliah",
+  "why": "Speaker explicitly describes Elia Tapia as super smart"
+ },
+ "669955606f89": {
+  "claim": "her mom \u2014 concern \u2014 early-stage Parkinson's  (source: secondhand; from 2026-06-01 to open)",
+  "judge": true,
+  "memo": "hardship",
+  "why": "Speaker reports Maya said her mom was diagnosed"
+ },
+ "7a265b697f91": {
+  "claim": "Leon \u2014 location \u2014 residence [Atlanta]  (stated tentatively; source: secondhand)",
+  "judge": false,
+  "memo": "secondhand-chain",
+  "why": "Thinking about moving back is not current residence"
+ },
+ "7c2d89ab27a1": {
+  "claim": "Dominic \u2014 education \u2014 attended [Y Combinator Startup School]",
+  "judge": false,
+  "memo": "dom",
+  "why": "Transcript shows speaker at YC, not Dominic explicitly attending"
+ },
+ "89378d673149": {
+  "claim": "James \u2014 employment \u2014 [Anthropic]  (from 2026-07 to open)",
+  "judge": true,
+  "memo": "contradiction",
+  "why": "Transcript directly states James is at Anthropic now"
+ },
+ "8d7854d8e389": {
+  "claim": "Abdoul (the speaker) \u2014 education \u2014 participant [Salesforce Future Force Tech Accelerator]  (stated tentatively)",
+  "judge": false,
+  "memo": "futureforce",
+  "why": "Transcript never states speaker participated in the program"
+ },
+ "91b01caf4262": {
+  "claim": "Ama \u2014 employment \u2014 [public health]  (stated tentatively)",
+  "judge": true,
+  "memo": "group-ramble",
+  "why": "Speaker tentatively says Ama works in public health"
+ },
+ "92817cd98992": {
+  "claim": "CJ \u2014 life_event \u2014 dinner [Thai restaurant]  (stated tentatively; from 2026-07 to open)",
+  "judge": true,
+  "memo": "futureforce",
+  "why": "Speaker recalls CJ among group at Thai dinner"
+ },
+ "9499cbc85134": {
+  "claim": "Sarah Okafor \u2014 life_event \u2014 passed nursing boards  (source: secondhand)",
+  "judge": true,
+  "memo": "homonym",
+  "why": "Speaker explicitly says Sarah Okafor passed her nursing boards"
+ },
+ "94f0bfa51a29": {
+  "claim": "Priya \u2014 employment \u2014 [DeepMind]",
+  "judge": true,
+  "memo": "correction",
+  "why": "Speaker explicitly says Priya was at DeepMind previously"
+ },
+ "9e2f0402f048": {
+  "claim": "Jen \u2014 employment \u2014 founder [pottery studio]  (from 2026-07 to open)",
+  "judge": false,
+  "memo": "group-ramble",
+  "why": "Transcript says started a studio, not founder or opening date"
+ },
+ "a424c16f8a8c": {
+  "claim": "Abdoul (the speaker) \u2014 life_event \u2014 visited [Golden Gate Bridge]",
+  "judge": true,
+  "memo": "nikos",
+  "why": "Speaker explicitly says they went to look at it"
+ },
+ "a453be37e34f": {
+  "claim": "Elia Tapia \u2014 education \u2014 major [computer science]  (from 2022 to open)",
+  "judge": false,
+  "memo": "eliah",
+  "why": "Speaker says Elia studies CS, not that it\u2019s his major"
+ },
+ "aee5e4576a63": {
+  "claim": "Sarah Okafor \u2014 relation \u2014 climbing partner [climbing gym] [Abdoul (the speaker)]",
+  "judge": false,
+  "memo": "homonym",
+  "why": "Met at climbing gym, but not yet stated as climbing partners"
+ },
+ "b2bbdf84e6db": {
+  "claim": "Dom \u2014 life_event \u2014 attendee [Y Combinator Startup School]",
+  "judge": false,
+  "memo": "dom",
+  "why": "Transcript shows Dom present, not that he was an attendee"
+ },
+ "b79425a0b6b5": {
+  "claim": "Tunde \u2014 location \u2014 residence [Oakland]",
+  "judge": true,
+  "memo": "group-ramble",
+  "why": "Speaker explicitly says Tunde\u2019s new place is in Oakland"
+ },
+ "b8246e1770b4": {
+  "claim": "Priya \u2014 employment \u2014 employment [DeepMind]",
+  "judge": true,
+  "memo": "correction",
+  "why": "Explicitly states Priya was at DeepMind before current role"
+ },
+ "bab0551ac817": {
+  "claim": "Dom \u2014 relation \u2014 friend of Leon [Leon]",
+  "judge": true,
+  "memo": "dom",
+  "why": "Speaker explicitly calls Dom \u201cLeon\u2019s friend.\u201d"
+ },
+ "beebc7104705": {
+  "claim": "James \u2014 employment \u2014 [Anthropic]",
+  "judge": true,
+  "memo": "contradiction",
+  "why": "Speaker explicitly says James is at Anthropic now"
+ },
+ "d615da5c641b": {
+  "claim": "Sarah Okafor \u2014 relation \u2014 met at climbing gym [Abdoul (the speaker)]",
+  "judge": true,
+  "memo": "homonym",
+  "why": "Explicitly says he met Sarah Okafor at the climbing gym"
+ },
+ "d94dbe9f1fe7": {
+  "claim": "Leon \u2014 relation \u2014 roommate of Sekou [Sekou]",
+  "judge": true,
+  "memo": "dom",
+  "why": "Speaker explicitly says \u201cLeon is Sekou\u2019s roommate.\u201d"
+ },
+ "db925d5df8b0": {
+  "claim": "Nikos \u2014 life_event \u2014 visited [Golden Gate Bridge]",
+  "judge": false,
+  "memo": "nikos",
+  "why": "Saw bridge from beach; visit to bridge not stated"
+ },
+ "dbc8352d2c93": {
+  "claim": "Elia Tapia \u2014 education \u2014 undergrad [Carnegie Mellon]  (from 2022 to open)",
+  "judge": false,
+  "memo": "eliah",
+  "why": "Years and undergrad-degree framing not stated in transcript"
+ },
+ "dd3634013ea2": {
+  "claim": "Nikos \u2014 education \u2014 attended [Y Combinator]",
+  "judge": false,
+  "memo": "nikos",
+  "why": "Attended Startup School event, not explicitly Y Combinator itself"
+ },
+ "e46ccede81e1": {
+  "claim": "Jen \u2014 location \u2014 residence [Berkeley]",
+  "judge": false,
+  "memo": "group-ramble",
+  "why": "Only business location mentioned, not where she lives"
+ },
+ "e47a065282fa": {
+  "claim": "Abdoul (the speaker) \u2014 life_event \u2014 dinner [Thai restaurant]  (stated tentatively; from 2026-07 to open)",
+  "judge": false,
+  "memo": "futureforce",
+  "why": "Speaker is Abdul, not Abdoul; name misspelled/unspecified"
+ },
+ "e7e8f0465cfc": {
+  "claim": "Abdoul (the speaker) \u2014 education \u2014 undergrad [Carnegie Mellon]  (from 2022 to open)",
+  "judge": false,
+  "memo": "eliah",
+  "why": "No enrollment dates mentioned; only that they attend CMU now."
+ },
+ "eaab4870882d": {
+  "claim": "Dominic \u2014 employment \u2014 [fish farms]",
+  "judge": false,
+  "memo": "dom",
+  "why": "That research was by another person, not Dominic himself"
+ },
+ "f37d973b98ec": {
+  "claim": "Maya \u2014 concern \u2014 (no object)  (source: secondhand)",
+  "judge": true,
+  "memo": "hardship",
+  "why": "Speaker explicitly says it\u2019s been weighing on her"
+ },
+ "f4dac7dc710c": {
+  "claim": "Sarah Okafor \u2014 employment \u2014 nurse [UCSF General]  (source: secondhand)",
+  "judge": false,
+  "memo": "homonym",
+  "why": "Starting a job is not the same as current employment"
+ }
+}

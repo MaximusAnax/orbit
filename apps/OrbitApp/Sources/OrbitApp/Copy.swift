@@ -159,6 +159,15 @@ enum Copy {
     static let stateCardTag = "In your words"
     static let suggestedPrefix = "suggested: "
 
+    /// Said after a group accept that deliberately left cards behind (INV-5b).
+    /// Avoids the D-11 lexicon — nothing is "remaining" or "pending"; these are
+    /// simply the ones worth a separate look, which is the truth and also the
+    /// kinder reading.
+    static func heldForYou(_ n: Int) -> String {
+        n == 1 ? "one below is worth your own look"
+               : "\(n) below are worth your own look"
+    }
+
     // Onboarding (§7.12) — quiet; one name, then the room
     static let onboardingNamePrompt = "What should Orbit call you?"
     static let onboardingBegin = "Begin"

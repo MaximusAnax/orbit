@@ -1236,6 +1236,419 @@ Worth noting who found what. (1) came from CI; (2)–(4) came from review, each
 one a defect in the fix posted minutes earlier, and none of them surfaced by
 re-reading my own change.
 
+### FN-40 · The verbatim promise is enforced nowhere in the product — open
+
+`ExtractionPayload.swift:112` says it plainly: `verbatim` is an *"exact substring
+of the transcript (PIPE-6)"*. Nothing checks that. Not the schema, not the
+funnel, not `SyncEngine`. The only thing that has ever verified it is the eval
+grader, which is not in the product. `SyncEngine` interpolates the model's string
+straight into the proposal rationale — curly-quoted — and the review card renders
+it, so whatever the model returns is shown to Abdoul as his own words.
+
+**What the model actually returns, measured over 10 runs (979 quoted fields):**
+
+| | count | |
+| --- | --- | --- |
+| byte-exact substring | 889 | 90.8% |
+| identical after whitespace normalisation | 11 | |
+| near-identical — a filler or connector differs | 69 | |
+| altered wording | 9 | |
+| no close match (candidate fabrication) | **1** | lowest similarity anywhere: **0.780** |
+
+**Zero fabrications.** The first pass through this data claimed two, at
+similarity 0.29 and 0.53. Both were artifacts of a strided window search that
+never tested the right offset — re-checked exhaustively, one is an exact match
+differing only by a newline (1.000) and the other is 0.961, where the model wrote
+*"but yeah, so we we we went to japan"* against a source reading *"and yeah so we
+we we went to japan"*. It kept the stutter and changed the connector.
+
+So the honest reading, which is not the one PIPE-6 has been reporting:
+
+**The extractor is faithful.** It reproduces disfluent speech — stutters
+included — and misses byte-exactness on connectives and filler words. PIPE-6
+scores a dropped "um" identically to an invented sentence, which is why
+"PIPE-6: FAIL" has read as a catastrophe for two days while describing hygiene.
+
+**The exposure is still real, and is the actual defect.** The observed
+fabrication rate is zero, but that is a property of this model on this corpus,
+not of the system. Nothing would stop a fabricated quote reaching the review
+card, because nothing looks. The guard is warranted by the absence of a check,
+not by the presence of a failure.
+
+**Fix — snap-to-source at ingestion.** Do not trust the model's copy. Find the
+best-matching window in the transcript and store *the transcript's own slice*.
+Above threshold the record is exact by construction; below it, the claim is
+rejected as unsupported. The threshold is derivable rather than guessed: every
+observed near-miss sits at ≥ 0.78 and 89 of 90 at ≥ 0.85, so **0.85 accepts every
+faithful quote in this corpus while still rejecting genuine invention.**
+Ambiguity risk is low — across a full run, zero exact quotes occurred more than
+once in their transcript, so snapping cannot silently relocate provenance;
+11 quotes under 25 characters are the only cases worth a length guard.
+
+This makes PIPE-6 true by construction rather than by measurement, which is
+worth more than a check only the eval harness runs.
+
+**Implemented 2026-08-08** — `VerbatimSnapper`, applied inside the extractor
+where the transcript is already in hand, so the guarantee holds for everything
+downstream without threading a transcript through `SyncEngine`. Comparison is
+punctuation-insensitive: the hardest real near-miss scored 0.812 with commas
+attached and 0.938 without, so a transcription comma in "yeah," was the whole
+difference between keeping a faithful quote and dropping it. Snap counts ride on
+the telemetry, because a rising `rejected` is the only signal that the model has
+started inventing.
+
+**Deliberately not applied to `ReplayExtractor`.** Recorded fixtures stay raw, so
+the eval keeps measuring what the *model* produced while the product ships what
+the *snapper* guarantees. Conflating those would hide a degrading extractor
+behind a working guard.
+
+*Was deferred while a k=10 collection was in flight: its grading stage rebuilds the
+Swift target, so editing the pipeline would have changed the code under a running
+measurement.*
+
+*The display question this raises is a real DESIGN decision — whether a memory
+card shows "we we we went to japan" or a cleaned rendering. Snap-to-source is
+what makes it safe to answer either way: the record stays exact, the rendering is
+free to be kind.*
+
+### FN-41 · The round-trip gate was a lottery; it now gates on measured stability — closed 2026-08-08
+
+The k=10 collection scored 9 · 8 · 8 · 7 · 10 · 9 · 10 · 9 · 8 · 9 on an
+all-or-nothing round-trip. Nothing changed between those runs. A gate demanding
+10/10 fails eight times in ten, and **a gate that fails at random is one a team
+learns to ignore** — the worst outcome available, because it disarms every real
+regression the gate would otherwise catch.
+
+Measured per check across the same 10 runs:
+
+| pass rate | check |
+| --- | --- |
+| 100% | 7 checks — silence, INV-5, self-row routing, Stripe untouched, CORRECT-not-CLOSE, hardship archetype, Abdul DISAMBIGUATE |
+| 80% | eliah: `PROPOSE_STATE` exactly once (INV-24) |
+| 60% | contradiction: contradicted fact draws CLOSE |
+| 30% | eliah: three `CREATE_EVENT` episodes |
+
+**Seven of ten checks are perfectly stable.** The gate now blocks on those and
+reports the other three with their measured rate. A check absent from
+`docs/evals/check-stability.json` is treated as must-pass, so new checks are
+blocking by default and the safe direction is the default.
+
+Two things this is *not*:
+
+**It is not a licence.** The rate is a ratchet, exactly like every EVALS §6
+threshold: it may rise, never fall. A flickering check whose rate drops has
+regressed even though no single run can prove it.
+
+**It is not acceptance of the three.** INV-24 passing 80% of runs means a
+*constitutional* guarantee is violated in one run out of five. That is worse
+than a check that fails outright, because it will reach production
+unpredictably. It is recorded so it stays visible while it is fixed — the
+episode check at 30% is the extraction defect prompt rule 34 was written for and
+plainly is not landing.
+
+*The general shape, worth keeping: when a check flickers, the question is never
+"should CI tolerate this" but "is the thing underneath it a defect or is the
+check wrong". Here it was a defect, three times.*
+
+### FN-42 · `residence` is asserted from anywhere a person was mentioned — mostly closed 2026-08-08
+
+The clearest product defect in the k=10 data, and it reproduces across four
+different memos. The model handles `origin` correctly — Elia from New York City
+(10/10), the speaker from the Bronx (10/10), Nikos from Greece (8/10) are all
+right. It is `residence` that goes wrong, and always the same way: **any place
+associated with a person becomes a place they live.**
+
+| claim | runs | what the transcript actually says |
+| --- | --- | --- |
+| Leon — residence [Atlanta] | 9/10 | he is *thinking about moving* back there |
+| Ama — residence [Chicago] | 8/10 | she *flew in from* Chicago |
+| Jen — residence [Berkeley] | 6/10 | her *studio* is in Berkeley |
+| Philly — residence [Pacific Northwest] | 4/10 | he *interned* there one summer |
+| Roger — residence [Pacific Northwest] | 4/10 | same summer, same internship |
+
+Thirty-one wrong residence claims across ten runs, on a corpus of eleven memos.
+
+This is not a taxonomy quibble. Where someone lives is a load-bearing fact in
+Orbit — it drives who is nearby, what a reunion means, whether "when are you next
+in town" is a sensible thing to surface. A goal to move recorded as an address is
+a false memory of the ordinary kind: plausible, specific, and wrong.
+
+Two prompt rules already aim near this and neither lands. **Rule 17** ("Origin is
+not residence — say which, every time") governs origin, which is exactly the
+case that already works. **Rule 20** ("A meeting place is not a fact about the
+person") covers where an encounter happened. Neither covers *travelled from*,
+*works in*, *interned in*, or *intends to move to* — and those are four of the
+five failures.
+
+The rule that would: **a `location` assertion requires the speaker to say where
+the person IS — lives, moved, is based, is from, grew up. Somewhere they went,
+worked, studied, or hope to go is not where they live.** A stated intention to
+move is a `goal`, and the Atlanta case is simultaneously this defect and a missed
+required fact (`leon/goal/atlanta`), which is what a category error looks like
+from both sides of the ledger.
+
+*Found by the precision pass rather than the recall pass — the goldens never
+enumerated these as forbidden, so the enumerated-forbidden design could not have
+caught them. This is the first defect that only existed because PIPE-4 got a
+denominator.*
+
+**Fixed by prompt v7 rule 35, measured over a second k=10 collection.** Residence
+assertions fell from 51 to 17 (median 5 → 1 per run). Leon/Atlanta 9/10 → 0,
+Ama/Chicago 8/10 → 0, Roger/Pacific-Northwest 4/10 → 0, Jen/Berkeley 6/10 → 1.
+Tunde/Oakland survives at 6/10, correctly — *"it's his new place in Oakland"*.
+
+Best of all, Atlanta was not merely suppressed: `leon/goal/atlanta` went from 10%
+to **100%**, so the fact landed in the category it always belonged to. A fix that
+recategorises beats a fix that deletes.
+
+**Left open because the rule overcorrected.** "I lived on 167th and Grand
+Concourse" is a residence by any reading and v7 now drops it nine times in ten
+(60% → 10%). The rule taught the model to distrust place-mentions and it does not
+distinguish the good ones. Rule 35 needs a clause admitting first-person
+"I lived at X" before this closes.
+
+### FN-43 · The hardship thread degraded from an unrelated prompt edit — open · watch
+
+v7 changed three rules, all about residence, hedge spans, and closeness. None
+touches hardship. `condition_hardship` threads on the hardship memo nonetheless
+went from **10/10 runs to 6/10** — and not misclassified into another archetype,
+absent entirely. In four runs out of ten, Maya's father's Parkinson's produces no
+thread at all.
+
+INV-20 is not violated: a thread that does not exist raises no prompts, so the
+"never cheerfully raise grief" guarantee holds. This is recall, not safety. But
+it is the highest-stakes content in the corpus, EVALS calls its failure mode the
+worst in the product, and it got worse from an edit that had nothing to do with it.
+
+The suspected mechanism is dilution. The prompt has grown from 15 rules and 621
+words at v1 to 37 rules and 2,872 words at v7 — nearly five times — and the
+paired comparison shows the marginal rule now trading one item for another: 21
+items improved, 20 regressed, sign test p = 1.000. Each rule works on the case it
+was written for while competing for attention with thirty-six others.
+
+That is a hypothesis and this comparison cannot test it, because it changed three
+rules at once and cannot separate "rule 35 did this" from "the prompt got
+longer". The experiment is cheap now the harness exists: v6 plus *only* rule 35,
+and v7 with the oldest rules pruned, each paired against the collections already
+on disk.
+
+*The general worry, which outlives this instance: a prompt that is only ever
+appended to will eventually regress something every time it is improved, and
+single-run evaluation cannot see it happening. This one was visible only because
+two ten-run collections were compared item by item.*
+
+### FN-44 · A running measurement can be switched onto a different prompt by an unrelated edit — open
+
+`ExtractionPrompt.latestVersion` resolves from the bundled resources **at
+runtime**, on every call. That is the fix from FN-35 and it is the right design —
+adding a prompt is one file, and an unknown version fails loudly. It also means:
+
+- write `extraction-prompt-v9.md` into `Sources/` while a v8 collection is
+  running — harmless, the bundle is untouched
+- then build, for any reason at all — and the running job starts extracting with
+  v9 partway through the corpus
+
+And the trigger is not exotic. `overnight.sh`'s grading stage calls
+`aggregate.py --roundtrip`, which shells into `swift run`, which **rebuilds on
+any source change**. So editing any Swift file, or adding a prompt, during a job
+is sufficient. The collection would finish, report cleanly, and contain two
+prompts' output under one label — with the per-fixture `prompt_version` stamp as
+the only evidence, which nothing currently checks.
+
+Caught before it bit: v9 was written to `Sources/` mid-v8-run, and the build was
+deliberately withheld until the job finished. Verified at the time that the
+bundle held only v8 and all fixtures were stamped `v8`.
+
+Same family as FN-35 and the CA-bundle failure in adjudicate.py: **a
+configuration that changes underneath you, produces plausible output, and gives
+you no way to tell from the result.** Three instances now, which makes it a
+pattern in this codebase rather than three accidents.
+
+**Fix:** resolve the prompt version once at collection start, write it into the
+manifest, and have every extraction assert the resolved version still matches —
+failing loudly on drift. The aggregator should refuse to grade a collection whose
+fixtures disagree about `prompt_version`. Deferred while the v8/v9 collections
+run, for exactly the reason this note describes.
+
+### FN-45 · Three of the thirteen permanent misses, diagnosed — open · deliberately not fixed yet
+
+The k=10 aggregate found 13 required items the extractor never produces in any
+run. Three of those turned out to be the dropped hedges (fixed in v7, now 70–90%).
+Three more are diagnosed here. **No rule is being written for them yet**, and
+that restraint is the point — see the bottom of this note.
+
+**1. `correction: priya/employment/deepmind` — a tense failure, not a recall one.**
+The model emits the DeepMind employment in **10/10 runs**. It fails the golden
+because the golden wants `closed: true` and the model leaves `valid_to` null, so
+a job Priya *had* is recorded as a job she *has*. Rule 13 already says exactly
+this ("'he interned at Google' is a CLOSED interval… never promote a past stint
+to a current fact") and it is not landing. Worth noting the shape: this reads as
+a missing fact in the recall column while actually being a wrong fact, which is
+the more serious of the two.
+
+**2. `futureforce: ambiguity attendance/lake` — hedged attendance recorded as
+certain.** The transcript: *"So if I remember correctly, it was CJ, Grace, Abdul,
+and Lake. Yeah, and I believe that was all."* The speaker is explicitly unsure
+who was there. The golden wants an `attendance` ambiguity; the model produces a
+confident participant list.
+
+This one is more than a missed item. Attendance drives contact rhythm, "last
+seen", and co-attendance edges (INV-11, INV-13) — so a guessed attendee quietly
+becomes a fact about a relationship that never happened. P4 says uncertainty is
+stored, not resolved, and a hedged guest list is precisely uncertainty.
+
+**3. `eliah: ambiguity attendance/roger` — mentioned versus present.** *"So it was
+him, Philly, and this other guy named Roger… Roger and Philly are also really
+great, but this is about Elia."* Roger is named inside a portrait about someone
+else. Whether he was *there* is genuinely unclear, and the golden wants the
+question asked rather than an attendance assumed either way.
+
+**Why nothing is being written for these now.** FN-43 raised the possibility that
+this prompt has grown long enough that each new rule costs an old one — 21 items
+up, 20 down at v7, and a hardship regression from an edit that never touched
+hardship. The dilution experiment is running. Writing three more rules into a
+prompt suspected of being too long, while measuring whether it is too long, would
+confound the only test that can answer it and would be the accretion reflex the
+hypothesis is about.
+
+If dilution is real, these three get folded into existing rules — 1 into rule 13
+where it already belongs, 2 and 3 into a single statement about uncertain
+attendance. If it is not, they can be appended. **The experiment decides the
+form, not just the content.**
+
+### FN-46 · The judge does not agree with Abdoul — κ = 0.14 — open · invalidates every precision number
+
+The audit EVALS §3.5 has always specified finally ran. Abdoul adjudicated 40
+claims blind, with rationales. Against the j4 judge:
+
+| | |
+| --- | --- |
+| claims both scored | 31 (9 marked unsure, excluded) |
+| raw agreement | 58.1% |
+| **Cohen's kappa** | **0.14** — poor (<0.4) |
+
+Barely above chance. **Every precision figure in this repo is therefore
+provisional**, including the 70.5% in the k=10 report, and the direction of the
+error is now known rather than guessed.
+
+**The judge is over-strict, 11 times to 2.** It refuses reasonable reading:
+
+| claim | judge's objection | Abdoul |
+| --- | --- | --- |
+| `Elia — education — major [computer science]` | "says he studies CS, not that it's his major" | supported |
+| `Dom — life_event — attendee [YC Startup School]` | "shows Dom present, not an attendee" | supported |
+| `Abdoul — education — undergrad [Carnegie Mellon]` | "no enrollment dates stated" | supported |
+| `Sarah Okafor — employment — nurse [UCSF]` | "starting a job is not current employment" | supported |
+| `Ama — location — residence [Chicago]` | "flew in from Chicago, not resides" | supported |
+
+The last one is the instructive one — **I had cited it as one of the judge's
+strongest catches**, and FN-42 leans on the same reading. Abdoul, who was in the
+room, reads it as supported. The owner's standard is *"does this fairly
+represent what I said"*; my adversarial prompt ("default to unsupported when
+uncertain") built something meaningfully stricter, and I then read its strictness
+as rigour.
+
+**Two in the dangerous direction — accepted by the judge, refused by Abdoul.**
+
+1. `Maya — concern — (no object)` on the hardship memo. His note: *"The concern
+   is her mother's disease."* The assertion has **no object at all** — no value,
+   no entity, no person — so it records that Maya is concerned about nothing.
+   Rule 27 forbids exactly this, the extractor did it anyway, the judge waved it
+   through, and Stage A had no check for it. Three layers, and the one that
+   caught it was the human. 3 of 908 assertions corpus-wide, two of them on the
+   most sensitive content there is.
+2. `Marcus — life_event — sold company [Shopify]`. His note: *"the company that
+   Marcus sold was TO Shopify. It wasn't Shopify itself that was sold."* The
+   object slot holds the buyer. A structurally valid, well-quoted, entirely
+   wrong fact — and nothing mechanical can see it.
+
+**His rationales, which are the real deliverable.** Four confirm findings reached
+independently, which is the best evidence they are real:
+
+- *"he's thinking about moving back to atlanta, which means he doesnt live there
+  now"* — FN-42, in one line.
+- *"this is previous employment though"* (Priya/DeepMind) — FN-45's tense
+  finding, found without seeing it.
+- *"Startup School was an event, not actual education"*, and again on Salesforce
+  Futureforce: *"Its not education but it was an event yes."* **A new defect:
+  attending an event is being recorded as `education`.** Twice, in two memos.
+  Quantified afterwards across the three collections — 5/81 education assertions
+  in v6 (6%), 13/98 in v7 (13%), 3/81 in v8 (4%), almost all of them Y Combinator
+  Startup School. Small and noisy at these counts, so the *rate* is not worth
+  chasing; the defect is worth fixing because a programme someone attended for a
+  weekend should not sit in a profile beside their degree.
+- *"This is referencing someone that made dom get upset… the only thing about
+  dom that could be derived is that he didnt like conversation surrounding fish
+  farms"* — an employment claim built from a third party's job.
+
+**Done immediately:** Stage A now enforces rule 27 mechanically. Free,
+deterministic, and it would have caught the Maya case without a judge.
+
+**Still open — and the shape of j5 is now clear.** Sorting the 11 over-strict
+refusals, they are not eleven problems but two:
+
+1. **Ordinary role inference, refused seven times.** `major` for "studies CS",
+   `attendee` for "was present at", `undergrad` for "we go to Carnegie Mellon",
+   `founder` for "started a studio", `nurse` for a nursing job starting,
+   `climbing partner` for people who met climbing. The judge demands the exact
+   word appear in the transcript. Abdoul allows the ordinary reading. The rule:
+   *a claim may name the role or status that what was said ordinarily implies;
+   it may not add a fact the speaker did not give.*
+2. **Owner confusion, three times**, all on the futureforce memo — the judge
+   rejected claims about the speaker because the transcript says "Abdul" and the
+   context says "Abdoul". That memo exists *because* of that collision, and the
+   judge fell into the exact trap the extractor is graded on avoiding. The rule:
+   *the `Owner:` line names the speaker; first-person statements are theirs.*
+
+Two general rules, not eleven patches — which matters, because a judge tuned
+claim-by-claim against 31 audited items has been fitted to them. κ must be
+re-measured on a **fresh sample** afterwards; re-scoring the same 40 would only
+report how well I fitted the answer key.
+
+*The lesson is not that the judge is bad. It is that I validated it twice against
+my own reading, called that validation, and was wrong in a direction my own
+review could not see — I share the model's bias toward literalism. Only the owner
+had the missing information, and it took forty claims to surface it.*
+
+### FN-47 · P5's amendment, built — and two traps found building it — closed 2026-08-08
+
+The batched confirmation P5 now permits, with INV-5b enforced rather than
+asserted. `acceptAll` takes the set of card ids the view actually rendered and
+settles only those, and `Card.bulkEligible` holds back three kinds outright:
+
+- **DISAMBIGUATE cards** — answering a question in bulk is guessing, which is
+  the one thing the ask exists to prevent.
+- **`PROPOSE_STATE`** — the most consequential thing the extractor proposes,
+  INV-24 gated, gets its own look.
+- **`condition_hardship` threads** — INV-20. Someone's illness or grief is not
+  something to accept in passing, and a review flow that sweeps it up with an
+  employment change has misunderstood what it is holding.
+
+A bulk accept that leaves cards behind now says so ("two below are worth your own
+look") — silence would read as a bug rather than as intent.
+
+**Trap 1: the app tests could not run locally, and had not been.** `xcodebuild
+test` fails signing the SPM resource bundles — *"bundle format unrecognized"* —
+which looks exactly like a broken build. A full DerivedData wipe did not fix it.
+It is not a local defect: CI passes `CODE_SIGNING_ALLOWED=NO` and has always
+worked. `scripts/check.sh` only *builds* the app target, so every app test has
+been green in CI and unrunnable at the desk, and nobody would notice from the
+gate. `check.sh` now has an opt-in `ORBIT_APP_TESTS=1` stage carrying that flag
+and a comment explaining it, so the next person loses minutes rather than an hour.
+
+**Trap 2: my own tests passed by not running.** The first version used `XCTSkip`
+when the flow stalled. Four tests skipped, zero graded, and xcodebuild printed
+**TEST SUCCEEDED**. `PortraitFlowTests` already warns about exactly this — *"A
+stalled flow is a FAILURE, not a skip"* — and I wrote the anti-pattern anyway
+while the correct convention sat in the file next to mine. The stall was real
+(my fixture used invented field names — `person_ref` for `subject_ref`,
+`summary` for `title`), so the skip was hiding a genuine defect in the test.
+
+*The recurring shape, now five instances tonight: FN-35's allow-list, the CA
+bundle in adjudicate.py, FN-44's prompt swap, the judge's silent unavailability,
+and this. Every one produced output indistinguishable from success. Green is not
+evidence; green plus a count you looked at is.*
+
 ---
 
 ## Session notes

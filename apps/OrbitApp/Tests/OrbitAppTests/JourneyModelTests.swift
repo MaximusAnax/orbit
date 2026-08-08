@@ -71,7 +71,7 @@ final class JourneyModelTests: XCTestCase {
         let audio = try app.store.db.scalar("SELECT raw_audio_ref FROM event")
         XCTAssertNil(audio.stringValue, "audio ref must be cleared on full-model confirm")
 
-        for group in rvm.groups { rvm.acceptAll(in: group) }
+        for group in rvm.groups { rvm.acceptAll(in: group, rendered: Set(group.cards.map(\.id))) }
         XCTAssertTrue(rvm.allSettled, "every card settles under accept-all")
 
         // N accepted assertions, provenance total (INV-18)

@@ -101,6 +101,28 @@ These details matter. They are often what makes a relationship feel personal.
 
 Orbit should preserve historical context rather than continuously overwriting the past.
 
+**On quoting, amended 2026-08-08.** Fidelity has been enforced as an exact
+substring: every quote the system stores must match the transcript byte for
+byte, and any deviation counted as a Critical failure alongside outright
+invention. Measurement across 979 quoted fields found **zero fabrications** — the
+extractor never made a quote up — while only 90.8% were byte-exact. The gap was
+almost entirely dropped filler: an "um" tidied out of a sentence, scored the same
+as a manufactured memory.
+
+Two different promises had been collapsed into one rule. They are now separate:
+
+- **The words must be the speaker's.** Absolute, unchanged, and the reason this
+  section exists. A quote containing anything Abdoul did not say is false memory.
+- **The stored form is the transcript's own slice.** Also absolute, but this is
+  now a *mechanical guarantee rather than a request*: the system locates each
+  quote in the transcript and stores that text, so exactness holds by
+  construction and a quote it cannot find is dropped rather than shown.
+
+What changes is severity, not fidelity. A tidied filler is a defect to fix, not a
+constitutional breach; an invented quote remains the worst thing the product can
+do. Grading them identically told us nothing for two days while a real defect —
+places asserted as homes — sat unmeasured.
+
 ---
 
 ## 4. The Core Data Model
@@ -610,11 +632,47 @@ When the system is uncertain, it should ask or flag uncertainty. It should not c
 
 *Uncertainty is better than false memory.*
 
+**Amended 2026-08-08.** This principle has always been read as an asymmetry —
+inventing is critical, missing is recoverable, because re-extraction can pick up
+later what it dropped today. Measurement shows that is only half true, and the
+half it gets wrong matters.
+
+Running the same transcript ten times: **9 required facts appeared in only one or
+two runs**, and re-running genuinely does recover those. But **5 appeared in
+none**. For those, re-extraction with the same model recovers nothing, ever —
+the fact is not deferred, it is gone, and calling it "recoverable" hid a
+permanent loss behind a word.
+
+So the asymmetry now reads: **a flickering miss is recoverable and may wait; a
+stable miss is a defect with a deadline.** The distinction is measurable — run
+the extraction k times and look — and it is the difference between a fact that
+will arrive eventually and one that never will.
+
 ### Principle 5: Nothing Is Final Without Confirmation
 
 The system may propose changes. It should not silently finalize important changes to a person's profile. Abdoul must be able to review, edit, accept, reject, or defer.
 
 *The system can remember for you, but it cannot decide what is true for you.*
+
+**Amended 2026-08-08: confirmation is a decision, not a tap count.** Written
+before there was an extractor, this principle assumed a handful of proposals per
+memo. The real numbers: a portrait produces **56 proposals**, a group event 39,
+and even the single-person Nikos memo — the one Journey J-1 budgets at **≤12
+taps** — produces 16. Read as one deliberate tap per claim, P5 and Principle 3
+(*capture should be effortless*) contradict each other outright, and the
+contradiction gets worse the more the extractor improves.
+
+The resolution is that **a confirmation is a considered human decision, not a
+unit of UI interaction.** Accepting a coherent group — "everything in this
+person's employment section", "all six facts from this paragraph" — is one
+decision about content Abdoul has actually read, and it satisfies this principle
+fully. What remains forbidden is unchanged and is the whole point: nothing may be
+written that he has not seen, no default may be accept, no timer or scroll may
+stand in for a decision, and anything the system is unsure of stays out of the
+bulk path and gets asked about individually.
+
+*Reviewing is reading, not tapping. The system may batch the tap; it may never
+batch the reading.*
 
 ### Principle 6: Relationships Are Not Scores
 

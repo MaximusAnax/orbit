@@ -108,6 +108,29 @@ final class ReviewViewModel: ObservableObject, Identifiable {
         /// screen twice and made every fact look like an unprocessed transcript
         /// span. Compared on content, not on the quoting, so a hedge note or any
         /// rationale that adds something still shows.
+        /// INV-5b: may this card be settled by a group accept?
+        ///
+        /// P5 was amended (2026-08-08) so a confirmation is one considered
+        /// decision over content that was read, rather than one tap per claim —
+        /// a portrait produces 56 proposals against a 12-decision budget. The
+        /// amendment permits batching the tap; it does not permit batching the
+        /// *judgement*, so anything the system is unsure of, or that costs too
+        /// much to get wrong, leaves the bulk path and is asked on its own.
+        var bulkEligible: Bool {
+            guard settled == nil else { return false }
+            // A DISAMBIGUATE is a question. Answering it in bulk would be
+            // guessing, which is the one thing the ask exists to prevent.
+            if question != nil || !candidates.isEmpty { return false }
+            // A relationship-state declaration is the most consequential thing
+            // the extractor proposes and is INV-24 gated. It gets its own look.
+            if op == .proposeState || stateSuggestion != nil { return false }
+            // INV-20: hardship is remembered, never prompted — and never
+            // swept up in an "all yes". Someone's illness or grief is not
+            // something to accept in passing.
+            if op == .openThread, payload.contains("condition_hardship") { return false }
+            return true
+        }
+
         var rationaleEchoesQuote: Bool {
             let stripped = rationale
                 .trimmingCharacters(in: CharacterSet(charactersIn: "\u{201C}\u{201D}\" "))
@@ -367,11 +390,26 @@ final class ReviewViewModel: ObservableObject, Identifiable {
         }
     }
 
-    /// Per-person accept-all (ratified interactive behavior).
-    func acceptAll(in group: PersonGroup) {
-        for card in group.cards where card.settled == nil && card.question == nil {
-            accept(card)
-        }
+    /// Per-person accept-all (ratified interactive behaviour; P5 as amended).
+    ///
+    /// `rendered` is the set of card ids the view actually laid out. Passing the
+    /// whole group is correct only while the group renders in full — INV-5b
+    /// forbids resolving a proposal that was collapsed, virtualised away or
+    /// filtered out, because the reviewer cannot have read it. Taking the set as
+    /// a parameter puts that contract at the API boundary: a future card list
+    /// that truncates passes fewer ids and the rest are simply left alone,
+    /// rather than being accepted unseen.
+    ///
+    /// Returns what was held back, so the UI can say so. A bulk accept that
+    /// silently leaves cards behind looks broken; one that says why is doing
+    /// its job.
+    @discardableResult
+    func acceptAll(in group: PersonGroup, rendered: Set<String>) -> (accepted: Int, held: Int) {
+        let eligible = group.cards.filter { rendered.contains($0.id) && $0.bulkEligible }
+        let eligibleIDs = Set(eligible.map(\.id))
+        let held = group.cards.filter { $0.settled == nil && !eligibleIDs.contains($0.id) }
+        for card in eligible { accept(card) }
+        return (eligible.count, held.count)
     }
 
     /// Cards whose accept hit a dependency that hasn't been accepted yet
