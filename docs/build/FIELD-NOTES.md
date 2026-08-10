@@ -1670,7 +1670,7 @@ main → sans sub) matches, both rooms translate, and the three search shapes
 exist. The divergences were in the **signature moves** — the small things §5
 says carry the whole feeling.
 
-### FN-48 · A fact stated about a group lands on only one of them — **v11 fixes it (60% → 100%); promotion is Abdoul's call** · prompt
+### FN-48 · A fact stated about a group lands on only one of them — **closed 2026-08-10 (v11 promoted)** · prompt
 
 A device capture said, of two people met together, *"she goes to Harvard she
 both of them go to Harvard"*. Gladys carries the fact. Whether Catherine does is
@@ -1831,3 +1831,17 @@ is retracted** — those regressions were never established as dilution.
 `activeVersion` still `v8`. Promoting v11 is a decision, not a derivation: the
 benefit is measured on a purpose-built golden, the cost is below the
 instrument's resolution, and 56 words is the smallest form the rule has taken.
+
+**2026-08-10 · closed — v11 promoted (Abdoul).** `activeVersion = "v11"`; probe
+confirms `RESOLVED=v11` with no env override and rule 38 present in the shipped
+text. The Harvard case reaches the device on the next build.
+
+Recorded honestly, because the basis is asymmetric: the benefit is measured
+(60% → 100%, 0/17 regressed, on a golden collected for it) and the cost is
+**unmeasurable at this size**, not measured-and-zero. FN-51 is the reason, and it
+is the thing to fix before the next bump — not this rule.
+
+One consequence to respect: v11's header still reads "v3 is the active prompt,
+promoted without that run", inherited byte-identical from v8 so that rule 38 was
+the only variable. That text is model input (FN-50). **Correcting it edits the
+shipped prompt and voids this measurement** — it waits for FN-50's `---` split.

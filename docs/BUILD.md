@@ -69,7 +69,7 @@ The four ratified documents say what Orbit is, what its data means, what it look
     comparison, and the ratification packet's provisional PIPE numbers remain
     v1-measured until the first `swift run orbit-evals measure --live`.
   - **The active prompt is named, not derived — `ExtractionPrompt.activeVersion`,
-    currently `v8`.** It was derived from the highest bundled file until
+    currently `v11`.** It was derived from the highest bundled file until
     2026-08-08, which meant *creating* a prompt promoted it; the dilution
     experiment ended that by measuring v9 losing 7 points of recall to v8 for
     half the words. Newest is not best, so promotion is now a measurement result
@@ -77,9 +77,23 @@ The four ratified documents say what Orbit is, what its data means, what it look
     build resolved v6, and then v8 — a version named in prose beside a version
     resolved in code is a second place to be wrong, so the prose now points at
     the constant instead of restating it.
-  - **Bundled but not active: `v10`** (v8 + rule 38, group facts distribute to
-    each named member — FN-48). Unmeasured by construction; promoting it means
-    a paired comparison against v8, not a point estimate.
+  - **v11 promoted 2026-08-10 (Abdoul), on an asymmetric basis that is worth
+    stating.** v11 is v8 + rule 38 in 56 words (FN-48). Its *benefit* is measured
+    against a golden collected for it — the distributed fact 60% → 100%, 0 of 17
+    regressed. Its *cost* is not measured and cannot be at this size: 24% of
+    required items swing ≥60 points between collections, and v10 and v11 produced
+    identical splits from edits nine times apart in length (**FN-51**). A bump
+    from here clears the golden-run rule in letter — a paired run is attached —
+    while the rule's spirit, that measurement decides, now outruns what the
+    measurement can resolve. FN-51 is the blocker on that, not this prompt.
+  - **Bundled but not active: `v9`, `v10`.** v10 is the same rule at eight times
+    the length; its rejection is recorded as unproven rather than demonstrated
+    (2026-08-10-v10-paired.md).
+  - **Do not edit a prompt file's header to correct stale prose.** `system()`
+    sends the whole file, so the header is model input (**FN-50**): editing it
+    changes the shipped prompt and voids the measurement attached to it. v11's
+    header still says "v3 is the active prompt" for exactly this reason. The fix
+    is the `---` split in FN-50, done between measurements and measured itself.
 
 ### 1.4 Verification tiers
 

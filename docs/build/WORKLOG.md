@@ -605,3 +605,27 @@ Three things, in the order they had to happen.
 - **`activeVersion` unchanged at `v8`.** Promoting v11 is Abdoul's call and is
   recorded as such: measured benefit on a purpose-built golden, cost below the
   instrument's floor.
+
+## 2026-08-10 (later still) · v11 promoted
+
+`ExtractionPrompt.activeVersion` = `"v11"` (Abdoul, in session). Probe: `ACTIVE=v11
+RESOLVED=v11`, first line `# Orbit extraction prompt — v11`, rule 38 present —
+with no `ORBIT_PROMPT_VERSION` set, which is the thing worth checking, since the
+whole of the last two days' measurement ran under an override.
+
+- **What the promotion rests on, stated so it is not misread later.** Benefit:
+  measured, on a golden collected for the purpose — the distributed fact
+  60% → 100%, 0 of 17 regressed. Cost: *unmeasurable*, not zero. FN-51 says 24%
+  of required items swing ≥60 points between collections and that v10 and v11
+  produced identical splits from edits nine times apart in length. The golden-run
+  rule (§1.3) is satisfied in letter — a paired run is attached to the commit —
+  while its spirit now outruns the instrument. That is FN-51's problem to fix,
+  and the honest thing is to say so at the moment of promotion rather than after
+  the next surprise.
+- **BUILD.md §1.3 gains a standing warning** that a prompt file's header must not
+  be edited to correct stale prose: `system()` ships the whole file, so the
+  header is model input, and editing it voids whatever measurement is attached.
+  v11's header still names v3 as active for precisely that reason.
+- **iOS build regenerated from `project-whisper.yml`**, not `project.yml` — the
+  vendored whisper framework is what makes on-device transcription work, and the
+  plain spec silently drops it.

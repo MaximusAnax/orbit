@@ -190,7 +190,19 @@ public enum ExtractionPrompt {
     /// This is one constant, not a validation list: the FN-35 bug was an
     /// allow-list that *substituted a different value* on a miss. A missing
     /// resource here fails loudly in `system()`, naming the file it wanted.
-    public static let activeVersion = "v8"
+    ///
+    /// **v11 promoted 2026-08-10 (Abdoul), and what that rests on is asymmetric.**
+    /// v11 is v8 plus rule 38 — a fact stated about a group belongs to each
+    /// named member — in 56 words, with the file header held byte-identical to
+    /// v8 so the rule is the only variable (FN-50). Benefit is measured on a
+    /// golden collected for it: the distributed fact goes 60% → 100%, 0 of 17
+    /// items regressed (docs/evals/measurements/2026-08-10-v11-paired.md). Cost
+    /// is *not* measured, because it cannot be at this size — 24% of required
+    /// items swing ≥60 points between collections, and v10 and v11 produced the
+    /// identical 15/26/48 split from edits nine times apart in length (FN-51).
+    /// So this promotion is a judgement on a measured benefit against an
+    /// unmeasurable cost, not a number clearing a bar.
+    public static let activeVersion = "v11"
 
     public static var version: String {
         ProcessInfo.processInfo.environment["ORBIT_PROMPT_VERSION"] ?? Self.activeVersion
