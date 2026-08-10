@@ -1,0 +1,37 @@
+# Executable mirror of EVALS.md §3.3/§4 thresholds (BUILD.md §4.4).
+# ◊ thresholds are null until first RATIFIED measurement — CI treats null as
+# report-only. Once a value lands here it may only tighten; loosening requires an
+# EVALS.md diff in the same commit (the ratchet, mechanically).
+#
+# 2026-07-29: a PROVISIONAL measurement exists (docs/evals/measurements/
+# 2026-07-29-provisional.md, in-session extractor, all targets met). Values stay
+# null pending (a) the production endpoint and (b) Abdoul's ratification.
+pipe:
+  PIPE-1:  {target: ">=0.95", value: null, note: "post-name-match pass; needs audio (T3)"}
+  PIPE-1b: {target: "==0",    value: null, note: "identity fragmentation count"}
+  PIPE-2:  {target: "<=0.12", value: null, note: "WER; needs audio (T3)"}
+  PIPE-3:  {target: ">=0.90", value: null}
+  PIPE-4:  {target: ">=0.97", value: null, critical_floor: "no invented fact may survive to a proposal"}
+  PIPE-5:  {target: "==1.0",  value: 1.0, ratified: false, note: "zero-tolerance; binary"}
+  PIPE-6:  {target: "==1.0",  value: 1.0, ratified: false, note: "mechanical substring check"}
+  PIPE-7:  {target: "==0",    value: 0, ratified: false}
+  PIPE-8:  {target: "==0",    value: null, note: "measured by INV-7 suite + live usage"}
+  PIPE-9:  {target: ">=0.90", value: null}
+  PIPE-10: {target: ">=0.85", value: null}
+  PIPE-11: {target: ">=0.85", value: null}
+  PIPE-12: {target: "gate",   value: null, note: "awaits production extractor (EVALS §9)"}
+  PIPE-13: {target: "<=0.05", value: null}
+  PIPE-14: {target: "==1.0",  value: null, note: "rule-based; lands with M3"}
+  PIPE-15: {target: "calibrate", value: null, note: "k and flicker boundary provisional"}
+  PIPE-16: {target: "pass",   value: null}
+perf:
+  PERF-1: {target: "<=150ms", value: null, tier: T3}
+  PERF-2: {target: "<=400ms", value: null, tier: T3}
+  PERF-3: {target: "<=300ms", value: null, tier: T3}
+  PERF-4: {target: "<=1.5x realtime", value: null, tier: T3}
+  PERF-5: {target: "<=20s/3min", value: null, tier: T3}
+  PERF-6: {target: "<=1.5s", value: null, tier: T3}
+friction:
+  J-1: {target: "<=12 taps", value: null}
+  J-2: {target: "<=20 taps", value: null}
+  J-3: {target: "<=3 taps",  value: null}

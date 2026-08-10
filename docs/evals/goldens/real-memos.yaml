@@ -1,0 +1,72 @@
+# Draft goldens for the three interaction memos — authored from the transcripts,
+# status: draft (awaiting Abdoul's ratification; the Eliah golden is the only
+# owner-ratified ground truth). Same contract semantics as eliah.yaml.
+
+- memo: nikos
+  source: mock_memos/transcripts/Nikos.txt
+  status: draft
+  required_people:
+    - {key: nikos, name_like: nikos}
+  required_assertions:
+    - {subject: nikos, predicate: location, contains: greece}
+    - {subject: nikos, predicate: life_event, contains: startup school}
+    - {subject: nikos, predicate: trait, contains: kind}
+  required_entities:
+    - {contains: picnic, part_of_contains: startup school,
+       why: "§7.10: the picnic is its own entity joined by part_of, never flattened"}
+  forbidden:
+    - {kind: loop, contains: hang, why: "'didn't get a chance to keep hanging out' is history, not an obligation"}
+    - {kind: thread, why: "nothing in this memo has a plausible future resolution"}
+    - {kind: state_declaration, why: "warmth is not a declaration (INV-24)"}
+
+- memo: dom
+  source: mock_memos/transcripts/Dom.txt
+  status: draft
+  seeds:                       # harness pre-seeds these known contacts
+    people: [{id: person-leon, name: Leon}, {id: person-sekou, name: Sekou}]
+  required_people:
+    - {key: dom, name_like: dom}
+  required_assertions:
+    - {subject: dom, predicate: preference, contains: vegan}
+    - {subject: dom, predicate: education, contains: university of michigan}
+    - {subject: dom, predicate: education, contains: computer science}
+    - {subject: dom, predicate: education, contains: policy, hedged: true}
+    - {subject: dom, predicate: interest, contains: philosophy}
+    - {subject: dom, predicate: relation, contains: leon}
+    - {subject: dom, predicate: trait, contains: social}
+  required_self_assertions:
+    - {predicate: education, contains: senior}    # "he's also a senior just like me"
+  required_hedges:
+    - "I think, computer science"
+  attribution_expectations:
+    - {subject: dom, contains: vegan, source_kind: firsthand}
+  forbidden:
+    - {kind: person_match, name_like: leon, match: new,
+       why: "Leon is an established contact — creating a duplicate fragments identity"}
+    - {kind: person_match, name_like: sekou, match: new}
+    - {kind: state_declaration,
+       why: "'his energy really matched mine' is tone, not a declaration (INV-24)"}
+
+- memo: futureforce
+  source: "mock_memos/transcripts/Futureforce Dinner.txt"
+  status: draft
+  required_people:
+    - {key: cj, name_like: cj}
+    - {key: grace, name_like: grace}
+    - {key: lake, name_like: lake}
+    - {key: lucas, name_like: lucas}
+  required_entities:
+    - {contains: future, kind: event_series}
+  required_ambiguities:
+    - {kind: self_collision, contains: abdul,
+       why: "the Abdul case must yield DISAMBIGUATE, never a guess (PIPE-7's named case)"}
+    - {kind: attendance, contains: lake}
+  required_hedges:
+    - "I believe"
+  forbidden:
+    - {kind: person_match, name_like: abdul, match: new,
+       why: "a namesake is a question first, a person second"}
+    - {kind: person_match, name_like: abdul, match: self,
+       why: "silently merging the namesake into the self is the worst outcome"}
+    - {kind: thread}
+    - {kind: state_declaration}

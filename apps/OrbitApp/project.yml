@@ -1,0 +1,103 @@
+# XcodeGen spec — the app project is GENERATED, never committed (D-10 spirit:
+# one source of truth; .xcodeproj drift can't happen if it doesn't exist).
+# CI runs `xcodegen generate` (see .github/workflows/app.yml).
+name: OrbitApp
+options:
+  bundleIdPrefix: dev.abdoul.orbit
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+packages:
+  Orbit:
+    path: ../..
+
+targets:
+  OrbitDesign:
+    type: framework
+    platform: iOS
+    sources: [Sources/OrbitDesign]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+
+  OrbitApp:
+    type: application
+    platform: iOS
+    sources: [Sources/OrbitApp]
+    # the whisper floor model bundles only when scripts/build-whisper.sh has
+    # vendored it — a copy-if-present phase, so CI (no artifacts) is unchanged
+    postBuildScripts:
+      - name: Bundle whisper floor model (if vendored)
+        basedOnDependencyAnalysis: false
+        script: |
+          MODEL="$SRCROOT/Vendor/models/ggml-base-q5_1.bin"
+          DEST="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
+          if [ -f "$MODEL" ] && [ -n "$DEST" ]; then
+            mkdir -p "$DEST" && cp "$MODEL" "$DEST/"
+          fi
+    dependencies:
+      - target: OrbitDesign
+      - package: Orbit
+        product: OrbitCore
+      - package: Orbit
+        product: OrbitSQLite
+      - package: Orbit
+        product: OrbitStore
+      - package: Orbit
+        product: OrbitWrite
+      - package: Orbit
+        product: OrbitPipeline
+      - package: Orbit
+        product: OrbitRecall
+      - package: Orbit
+        product: OrbitSearch
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: >-
+          Orbit records your voice memos on this device. Audio never leaves
+          your phone and is deleted once transcribed.
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: >-
+          Orbit turns your memos into text using on-device recognition only.
+          The recording never leaves your phone.
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        # device installs: ORBIT_TEAM=<your team id> xcodegen generate
+        # (CI never signs — CODE_SIGNING_ALLOWED=NO — so this stays inert there)
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ${ORBIT_TEAM}
+
+  OrbitAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests/OrbitAppTests]
+    dependencies:
+      - target: OrbitApp
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+
+  OrbitAppUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [Tests/OrbitAppUITests]
+    dependencies:
+      - target: OrbitApp
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+
+schemes:
+  OrbitApp:
+    build:
+      targets:
+        OrbitApp: all
+    test:
+      gatherCoverageData: false
+      targets:
+        - OrbitAppTests
+        - OrbitAppUITests

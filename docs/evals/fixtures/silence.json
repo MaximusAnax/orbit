@@ -1,0 +1,18 @@
+{
+ "model_id": "claude-fable-5(in-session)",
+ "prompt_version": "v1",
+ "source": "docs/evals/corpus/synthetic/silence.txt",
+ "payload": {
+  "people": [],
+  "entities": [],
+  "assertions": [],
+  "episodes": [],
+  "threads": [],
+  "thread_closures": [],
+  "loops": [],
+  "contact_points": [],
+  "state_declarations": [],
+  "corrections": [],
+  "ambiguities": []
+ }
+}

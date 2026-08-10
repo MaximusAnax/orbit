@@ -1,0 +1,40 @@
+name: core
+# L0 + L1 on Linux — the trust core. Cheap (1x minutes), runs on every push.
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+jobs:
+  core:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SWIFT_VERSION: 6.3.3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Swift toolchain
+        id: swift-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/swift-toolchain
+          key: swift-${{ env.SWIFT_VERSION }}-ubuntu24.04
+
+      - name: Install Swift
+        run: |
+          if [ ! -x "$HOME/swift-toolchain/usr/bin/swift" ]; then
+            mkdir -p "$HOME/swift-toolchain"
+            curl -fsSL "https://download.swift.org/swift-${SWIFT_VERSION}-release/ubuntu2404/swift-${SWIFT_VERSION}-RELEASE/swift-${SWIFT_VERSION}-RELEASE-ubuntu24.04.tar.gz" \
+              | tar xz -C "$HOME/swift-toolchain" --strip-components=1
+          fi
+          echo "$HOME/swift-toolchain/usr/bin" >> "$GITHUB_PATH"
+
+      - name: System deps
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libsqlite3-dev
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Check (lint + SQL fast-loop + build + tests + replay measurement)
+        run: ./scripts/check.sh

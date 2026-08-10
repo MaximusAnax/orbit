@@ -1,0 +1,18 @@
+{
+  "collected_at" : "2026-08-10T21:49:03Z",
+  "failures" : [
+
+  ],
+  "git_sha" : "d9c8aaa",
+  "label" : "k10-v8-newmemos",
+  "last_collected_at" : "2026-08-10T21:49:03Z",
+  "memos" : [
+    "plural-attribution",
+    "tag-discipline"
+  ],
+  "model" : "gpt-5.1",
+  "prompt_version" : "v8",
+  "runs" : 10,
+  "total_seconds" : 192.25185310840607,
+  "total_tokens" : 143959
+}

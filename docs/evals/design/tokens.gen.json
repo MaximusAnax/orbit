@@ -1,0 +1,36 @@
+{
+ "day": {
+  "room": "#f2efe9",
+  "paper": "#fffdf9",
+  "paper-edge": "#e7dfd2",
+  "note": "#f8eecb",
+  "note-edge": "#eadcae",
+  "ink": "#292520",
+  "ink-muted": "#6c655a",
+  "ink-faint": "#989083",
+  "ember": "#8a5f36",
+  "ember-wash": "#ecd9b4",
+  "ember-ink": "#fffdf9",
+  "note-ink": "#292520",
+  "portrait-bg": "#ddd3c2",
+  "pill-bg": "#fffdf9",
+  "pill-edge": "#e2d9c9"
+ },
+ "night": {
+  "room": "#101423",
+  "paper": "rgba(255,255,255,.042)",
+  "paper-edge": "rgba(160,175,215,.15)",
+  "note": "rgba(230,178,115,.09)",
+  "note-edge": "rgba(230,178,115,.28)",
+  "ink": "#dee3f0",
+  "ink-muted": "#8f9ab9",
+  "ink-faint": "#68749a",
+  "ember": "#e6b273",
+  "ember-wash": "rgba(230,178,115,.42)",
+  "ember-ink": "#201709",
+  "note-ink": "#dee3f0",
+  "portrait-bg": "#1e2540",
+  "pill-bg": "rgba(255,255,255,.05)",
+  "pill-edge": "rgba(160,175,215,.2)"
+ }
+}

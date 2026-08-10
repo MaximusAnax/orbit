@@ -1,0 +1,104 @@
+{
+ "model_id": "claude-fable-5(in-session)",
+ "prompt_version": "v1",
+ "source": "mock_memos/transcripts/Futureforce Dinner.txt",
+ "payload": {
+  "people": [
+   {
+    "ref": "p_cj",
+    "name_as_heard": "CJ",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": null,
+    "status": "active"
+   },
+   {
+    "ref": "p_grace",
+    "name_as_heard": "Grace",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": null,
+    "status": "active"
+   },
+   {
+    "ref": "p_abdul",
+    "name_as_heard": "Abdul",
+    "match": "self_collision",
+    "existing_person_id": null,
+    "match_rationale": "namesake of the owner — never merged silently (§7.7)",
+    "status": "active"
+   },
+   {
+    "ref": "p_lake",
+    "name_as_heard": "Lake",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": null,
+    "status": "active"
+   },
+   {
+    "ref": "p_lucas",
+    "name_as_heard": "Lucas",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": null,
+    "status": "active"
+   }
+  ],
+  "entities": [
+   {
+    "ref": "e_futureforce",
+    "name_as_heard": "Salesforce, Future Force, Tech Accelerator",
+    "kind": "event_series",
+    "existing_entity_id": null,
+    "part_of_ref": null,
+    "aliases": [
+     "Futureforce",
+     "Future Force",
+     "Salesforce Futureforce Tech Accelerator"
+    ]
+   }
+  ],
+  "assertions": [],
+  "episodes": [],
+  "threads": [],
+  "thread_closures": [],
+  "loops": [],
+  "contact_points": [],
+  "state_declarations": [],
+  "corrections": [],
+  "ambiguities": [
+   {
+    "question": "The memo lists “Abdul” among the dinner guests — a different person from you, or a mis-transcription of your own name?",
+    "candidate_refs": [
+     "p_abdul"
+    ],
+    "assertion": null,
+    "kind": "self_collision"
+   },
+   {
+    "question": "Did Lake join the bike ride back, or only the dinner?",
+    "candidate_refs": [
+     "p_lake"
+    ],
+    "assertion": {
+     "subject_ref": "p_lake",
+     "predicate": "life_event",
+     "object_entity_ref": null,
+     "object_person_ref": null,
+     "object_value": "joined the late-night bike ride",
+     "verbatim": "And also Lake, I believe",
+     "valid_from": null,
+     "valid_to": null,
+     "date_precision": "fuzzy",
+     "source_kind": "firsthand",
+     "attributed_to_ref": null,
+     "hedged": true,
+     "confidence": 0.5,
+     "thread_ref": null
+    },
+    "kind": "attendance"
+   }
+  ]
+ }
+}

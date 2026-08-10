@@ -1,0 +1,62 @@
+{
+ "model_id": "claude-fable-5(in-session)",
+ "prompt_version": "v1",
+ "source": "docs/evals/corpus/synthetic/correction.txt",
+ "payload": {
+  "people": [
+   {
+    "ref": "p_priya",
+    "name_as_heard": "Priya",
+    "match": "existing",
+    "existing_person_id": "person-priya",
+    "match_rationale": "matches known contact Priya",
+    "status": "active"
+   }
+  ],
+  "entities": [
+   {
+    "ref": "e_deepmind",
+    "name_as_heard": "DeepMind",
+    "kind": "organization",
+    "existing_entity_id": null,
+    "part_of_ref": null,
+    "aliases": []
+   }
+  ],
+  "assertions": [
+   {
+    "subject_ref": "p_priya",
+    "predicate": "employment",
+    "object_entity_ref": "e_deepmind",
+    "object_person_ref": null,
+    "object_value": "DeepMind",
+    "verbatim": "She was at DeepMind the whole time before her current thing",
+    "valid_from": null,
+    "valid_to": "2026-01",
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   }
+  ],
+  "episodes": [],
+  "threads": [],
+  "thread_closures": [],
+  "loops": [],
+  "contact_points": [],
+  "state_declarations": [],
+  "corrections": [
+   {
+    "subject_ref": "p_priya",
+    "predicate": "employment",
+    "object_like": "google",
+    "kind": "never_true",
+    "verbatim": "She never actually worked at Google, I must have mixed her up with someone else",
+    "valid_to": null
+   }
+  ],
+  "ambiguities": []
+ }
+}

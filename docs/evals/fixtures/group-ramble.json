@@ -1,0 +1,313 @@
+{
+ "model_id": "claude-fable-5(in-session)",
+ "prompt_version": "v1",
+ "source": "docs/evals/corpus/synthetic/group-ramble.txt",
+ "payload": {
+  "people": [
+   {
+    "ref": "p_tunde",
+    "name_as_heard": "Tunde",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": null,
+    "status": "active"
+   },
+   {
+    "ref": "p_ama",
+    "name_as_heard": "Ama",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": null,
+    "status": "active"
+   },
+   {
+    "ref": "p_marcus",
+    "name_as_heard": "Marcus",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": null,
+    "status": "active"
+   },
+   {
+    "ref": "p_jen",
+    "name_as_heard": "Jen",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": null,
+    "status": "active"
+   },
+   {
+    "ref": "p_kevin",
+    "name_as_heard": "Kevin",
+    "match": "existing",
+    "existing_person_id": "person-kevin",
+    "match_rationale": "“Kevin from my old job” — matches known contact",
+    "status": "active"
+   },
+   {
+    "ref": "p_deji",
+    "name_as_heard": "Deji",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": null,
+    "status": "active"
+   },
+   {
+    "ref": "p_unknown_49ers",
+    "name_as_heard": "(name not caught — 49ers jersey)",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": "name never captured; provisional row awaiting identification",
+    "status": "provisional"
+   },
+   {
+    "ref": "p_unknown_2",
+    "name_as_heard": "(name not caught — second guest)",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": "name never captured",
+    "status": "provisional"
+   }
+  ],
+  "entities": [
+   {
+    "ref": "e_oakland",
+    "name_as_heard": "Oakland",
+    "kind": "place",
+    "existing_entity_id": null,
+    "part_of_ref": null,
+    "aliases": []
+   },
+   {
+    "ref": "e_chicago",
+    "name_as_heard": "Chicago",
+    "kind": "place",
+    "existing_entity_id": null,
+    "part_of_ref": null,
+    "aliases": []
+   },
+   {
+    "ref": "e_berkeley",
+    "name_as_heard": "Berkeley",
+    "kind": "place",
+    "existing_entity_id": null,
+    "part_of_ref": null,
+    "aliases": []
+   }
+  ],
+  "assertions": [
+   {
+    "subject_ref": "p_tunde",
+    "predicate": "life_event",
+    "object_entity_ref": "e_oakland",
+    "object_person_ref": null,
+    "object_value": "moved to a new place in Oakland",
+    "verbatim": "it's his new place in Oakland",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_ama",
+    "predicate": "relation",
+    "object_entity_ref": null,
+    "object_person_ref": "p_tunde",
+    "object_value": null,
+    "verbatim": "His sister Ama was there",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_ama",
+    "predicate": "location",
+    "object_entity_ref": "e_chicago",
+    "object_person_ref": null,
+    "object_value": "Chicago",
+    "verbatim": "she flew in from Chicago",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_ama",
+    "predicate": "skill",
+    "object_entity_ref": null,
+    "object_person_ref": null,
+    "object_value": "public health — possibly epidemiology",
+    "verbatim": "she does something in public health, I want to say epidemiology",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": true,
+    "confidence": 0.5,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_jen",
+    "predicate": "relation",
+    "object_entity_ref": null,
+    "object_person_ref": "p_marcus",
+    "object_value": null,
+    "verbatim": "Marcus and his girlfriend Jen",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_jen",
+    "predicate": "employment",
+    "object_entity_ref": null,
+    "object_person_ref": null,
+    "object_value": "pottery studio founder",
+    "verbatim": "Jen just started a pottery studio in Berkeley",
+    "valid_from": "2026",
+    "valid_to": null,
+    "date_precision": "year",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_deji",
+    "predicate": "employment",
+    "object_entity_ref": null,
+    "object_person_ref": null,
+    "object_value": "drone engineering for a vineyard company",
+    "verbatim": "builds drones for a vineyard company",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": true,
+    "confidence": 0.6,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_kevin",
+    "predicate": "goal",
+    "object_entity_ref": null,
+    "object_person_ref": null,
+    "object_value": "leaving his job for full-time woodworking",
+    "verbatim": "he's finally leaving his job to do woodworking full time",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_tunde",
+    "predicate": "life_event",
+    "object_entity_ref": null,
+    "object_person_ref": null,
+    "object_value": "mother visiting",
+    "verbatim": "his mom is visiting next month",
+    "valid_from": "2026-08",
+    "valid_to": null,
+    "date_precision": "month",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_unknown_49ers",
+    "predicate": "employment",
+    "object_entity_ref": null,
+    "object_person_ref": null,
+    "object_value": "biotech",
+    "verbatim": "works in biotech I think",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": true,
+    "confidence": 0.4,
+    "thread_ref": null
+   }
+  ],
+  "episodes": [],
+  "threads": [
+   {
+    "ref": "t_kevin_wood",
+    "subject_ref": "p_kevin",
+    "title": "Leaving his job for woodworking",
+    "archetype": "decision",
+    "expected_resolution_at": null,
+    "expected_resolution_precision": null,
+    "evidence_verbatim": "Kevin said he's finally leaving his job to do woodworking full time, we'll see"
+   }
+  ],
+  "thread_closures": [],
+  "loops": [
+   {
+    "subject_ref": "p_tunde",
+    "direction": "abdoul_owes",
+    "description": "help cook the dinner for his mom's visit",
+    "due_at": "2026-08",
+    "due_precision": "month",
+    "verbatim": "he wants to host a dinner, I said I would help him cook it"
+   }
+  ],
+  "contact_points": [],
+  "state_declarations": [],
+  "corrections": [],
+  "ambiguities": [
+   {
+    "question": "Someone at the party used to play professional rugby — the biotech guest in the 49ers jersey, or the other guest you couldn't name?",
+    "candidate_refs": [
+     "p_unknown_49ers",
+     "p_unknown_2"
+    ],
+    "assertion": {
+     "subject_ref": "p_unknown_49ers",
+     "predicate": "life_event",
+     "object_entity_ref": null,
+     "object_person_ref": null,
+     "object_value": "former professional rugby player",
+     "verbatim": "used to play professional rugby, or maybe that was the other one",
+     "valid_from": null,
+     "valid_to": null,
+     "date_precision": "fuzzy",
+     "source_kind": "secondhand",
+     "attributed_to_ref": "p_tunde",
+     "hedged": true,
+     "confidence": 0.3,
+     "thread_ref": null
+    },
+    "kind": "subject"
+   }
+  ]
+ }
+}

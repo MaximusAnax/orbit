@@ -1,0 +1,119 @@
+{
+ "model_id": "claude-fable-5(in-session)",
+ "prompt_version": "v1",
+ "source": "docs/evals/corpus/synthetic/secondhand-chain.txt",
+ "payload": {
+  "people": [
+   {
+    "ref": "p_alex",
+    "name_as_heard": "Alex",
+    "match": "existing",
+    "existing_person_id": "person-alex",
+    "match_rationale": "known contact",
+    "status": "active"
+   },
+   {
+    "ref": "p_leon",
+    "name_as_heard": "Leon",
+    "match": "existing",
+    "existing_person_id": "person-leon",
+    "match_rationale": "known contact",
+    "status": "active"
+   },
+   {
+    "ref": "p_marcus",
+    "name_as_heard": "Marcus",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": "never met — Leon's roommate, heard about through Alex",
+    "status": "known_of"
+   }
+  ],
+  "entities": [
+   {
+    "ref": "e_shopify",
+    "name_as_heard": "Shopify",
+    "kind": "organization",
+    "existing_entity_id": null,
+    "part_of_ref": null,
+    "aliases": []
+   },
+   {
+    "ref": "e_atlanta",
+    "name_as_heard": "Atlanta",
+    "kind": "place",
+    "existing_entity_id": null,
+    "part_of_ref": null,
+    "aliases": []
+   }
+  ],
+  "assertions": [
+   {
+    "subject_ref": "p_marcus",
+    "predicate": "life_event",
+    "object_entity_ref": "e_shopify",
+    "object_person_ref": null,
+    "object_value": "sold his company to Shopify",
+    "verbatim": "apparently just sold his company to Shopify",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "secondhand",
+    "attributed_to_ref": "p_alex",
+    "hedged": true,
+    "confidence": 0.4,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_marcus",
+    "predicate": "relation",
+    "object_entity_ref": null,
+    "object_person_ref": "p_leon",
+    "object_value": null,
+    "verbatim": "Leon's roommate, I think his name is Marcus",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "secondhand",
+    "attributed_to_ref": "p_alex",
+    "hedged": true,
+    "confidence": 0.5,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_leon",
+    "predicate": "goal",
+    "object_entity_ref": "e_atlanta",
+    "object_person_ref": null,
+    "object_value": "moving back to Atlanta",
+    "verbatim": "Leon himself is thinking about moving back to Atlanta",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "secondhand",
+    "attributed_to_ref": "p_alex",
+    "hedged": true,
+    "confidence": 0.5,
+    "thread_ref": null
+   }
+  ],
+  "episodes": [],
+  "threads": [
+   {
+    "ref": "t_leon_atl",
+    "subject_ref": "p_leon",
+    "title": "Moving back to Atlanta?",
+    "archetype": "decision",
+    "expected_resolution_at": null,
+    "expected_resolution_precision": null,
+    "evidence_verbatim": "Leon himself is thinking about moving back to Atlanta"
+   }
+  ],
+  "thread_closures": [],
+  "loops": [],
+  "contact_points": [],
+  "state_declarations": [],
+  "corrections": [],
+  "ambiguities": []
+ }
+}

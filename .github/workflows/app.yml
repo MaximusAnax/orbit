@@ -1,0 +1,84 @@
+name: app
+# iOS app build + tests on macOS — lean and batched (BUILD.md).
+# Push gate: compile + hosted unit/view-model/journey-model tests.
+# UI journey tests (J-1/J-3/J-5 tap-level) are a separate dispatchable job:
+# they need a booted simulator per test and their runtime belongs to a
+# deliberate run, not every push.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'apps/**'
+      - 'Sources/**'
+      - 'Package.swift'
+      - '.github/workflows/app.yml'
+  workflow_dispatch:
+    inputs:
+      journeys:
+        description: 'Also run the UI journey suite'
+        type: boolean
+        default: false
+
+jobs:
+  app:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: apps/OrbitApp
+        run: xcodegen generate
+
+      - name: Build (iOS Simulator)
+        working-directory: apps/OrbitApp
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project OrbitApp.xcodeproj \
+            -scheme OrbitApp \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO | tail -200
+
+      - name: Unit + view-model + journey-model tests (hosted)
+        working-directory: apps/OrbitApp
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project OrbitApp.xcodeproj \
+            -scheme OrbitApp \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -only-testing:OrbitAppTests \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 120 \
+            CODE_SIGNING_ALLOWED=NO | tail -300
+
+  journeys:
+    if: github.event_name == 'workflow_dispatch' && inputs.journeys
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: apps/OrbitApp
+        run: xcodegen generate
+
+      - name: UI journey tests (J-1, J-3, J-5 tap-level + friction budgets)
+        working-directory: apps/OrbitApp
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project OrbitApp.xcodeproj \
+            -scheme OrbitApp \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -only-testing:OrbitAppUITests \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 300 \
+            CODE_SIGNING_ALLOWED=NO | tail -300

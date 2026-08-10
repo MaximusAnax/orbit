@@ -1,0 +1,82 @@
+# Compiled from eliah-portrait.md (GROUND TRUTH, ratified 2026-07-28).
+# The prose contract stays canonical; if this file and the .md diverge on any
+# required/forbidden item, the divergence is a finding (EVALS §0) and CI fails.
+memo: eliah
+source: mock_memos/transcripts/Eliah.txt
+status: ground_truth_compiled
+era_anchor: "we're going into our senior year right now → freshman year = 2023-24"
+
+subject_people:
+  - key: eliah
+    name_forms: [elia, ilya, aaliyah, alia, eliah]
+    max_person_entries: 1        # two+ subject-persons = Critical (identity fragmentation)
+
+required_people:
+  - {key: philly, name_like: philly}
+  - {key: roger, name_like: roger}
+
+required_assertions:
+  # subject facts (matched on subject + predicate + contains over object/entity/verbatim)
+  - {subject: eliah, predicate: education, contains: carnegie mellon}
+  - {subject: eliah, predicate: education, contains: tartan}
+  - {subject: eliah, predicate: location, contains: washington heights}
+  - {subject: eliah, predicate: interest, contains: anime}
+  - {subject: eliah, predicate: interest, contains: sports}
+  - {subject: eliah, predicate: interest, contains: video games}
+  - {subject: eliah, predicate: interest, contains: basketball}
+  - {subject: eliah, predicate: trait, contains: reserved}
+  - {subject: eliah, predicate: trait, contains: dominican}
+  - {subject: eliah, predicate: trait, contains: same age}
+  - {subject: eliah, predicate: trait, contains: immigrants}
+  - {subject: eliah, predicate: employment, contains: google, closed: true}   # per the SOURCE; Uber enters only as the human's edit
+  - {subject: eliah, predicate: life_event, contains: rooming together}
+  - {subject: eliah, predicate: life_event, contains: living separately}
+  - {subject: eliah, predicate: education, contains: "213"}
+  - {subject: eliah, predicate: life_event, contains: living together this upcoming year}
+
+required_self_assertions:        # §7.12 — was ungraded region 1, now graded
+  - {predicate: location, contains: bronx}
+  - {predicate: location, contains: 167th}
+  - {predicate: education, contains: carnegie mellon}
+  - {predicate: education, contains: tartan}
+  - {predicate: employment, contains: microsoft, closed: true}
+  - {predicate: trait, contains: all over the place}
+  - {predicate: interest, contains: anime}    # "we" splits produce the self half
+
+required_hedges:                 # PIPE-5: zero tolerance
+  - "I want to say"
+  - "I think it was actually maybe one"
+  - "I think I got a lot closer"
+
+required_episodes:               # PIPE-12: past occurrences only, era-relative resolution
+  - {id: EP-1, contains: met, era_contains: freshman, met: true, hedged: true}
+  - {id: EP-2, contains: japan, era_contains: sophomore}
+  - {id: EP-3, contains: colombia, era_contains: junior}
+episode_count_max: 3             # sub-moments stay inside their parents
+
+required_state_declarations:     # §7.13 — was ungraded region 2, now graded
+  - {subject: eliah, quote_contains: "inner, inner, inner circle", orbit: inner}
+state_declaration_count_max: 1   # "excited to grow closer" is intent color, never a second op
+
+required_ambiguities:
+  - {kind: attendance, contains: roger}
+
+attribution_expectations:        # PIPE-7
+  - {subject: eliah, contains: google, source_kind: firsthand}
+
+forbidden:
+  - {kind: assertion, subject: eliah, predicate: employment, contains: google, open: true,
+     why: "the tense trap — internship is a closed interval, never a current fact"}
+  - {kind: any_text, contains: uber,
+     why: "source/world divergence: audio says Google; extraction follows the source (P4)"}
+  - {kind: episode, contains: run it back,
+     why: "future arrangement — thread/interval, never a reconstructed event"}
+  - {kind: episode, contains: riverbank,
+     why: "the crossed-paths speculation is a joke, not a meeting"}
+  - {kind: person, name_like: abdoul,
+     why: "first-person facts target the self row — a new 'Abdoul' person = INV-22 fail"}
+
+expected_edits:                  # EVALS §3.1 edit-expectation entries
+  - {field: display_name, from_like: elia, to: "Eliah Tapia"}
+  - {op: edit, subject: eliah, predicate: employment, from_contains: google, to_contains: uber,
+     note: "the world enters through the human, nowhere else"}

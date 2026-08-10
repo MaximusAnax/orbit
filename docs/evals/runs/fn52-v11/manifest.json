@@ -1,0 +1,17 @@
+{
+  "collected_at" : "2026-08-10T22:46:09Z",
+  "failures" : [
+
+  ],
+  "git_sha" : "2c56eec",
+  "label" : "fn52-v11",
+  "last_collected_at" : "2026-08-10T22:46:09Z",
+  "memos" : [
+    "homonym"
+  ],
+  "model" : "gpt-5.1",
+  "prompt_version" : "v11",
+  "runs" : 10,
+  "total_seconds" : 65.034377455711365,
+  "total_tokens" : 66568
+}

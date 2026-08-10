@@ -1,0 +1,29 @@
+{
+  "collected_at" : "2026-08-10T22:05:56Z",
+  "failures" : [
+
+  ],
+  "git_sha" : "d9c8aaa",
+  "label" : "k10-v11",
+  "last_collected_at" : "2026-08-10T22:05:56Z",
+  "memos" : [
+    "contradiction",
+    "correction",
+    "dom",
+    "eliah",
+    "futureforce",
+    "group-ramble",
+    "hardship",
+    "homonym",
+    "nikos",
+    "plural-attribution",
+    "secondhand-chain",
+    "silence",
+    "tag-discipline"
+  ],
+  "model" : "gpt-5.1",
+  "prompt_version" : "v11",
+  "runs" : 10,
+  "total_seconds" : 1675.2511041164398,
+  "total_tokens" : 993980
+}

@@ -1,0 +1,93 @@
+{
+ "model_id": "claude-fable-5(in-session)",
+ "prompt_version": "v1",
+ "source": "docs/evals/corpus/synthetic/contradiction.txt",
+ "payload": {
+  "people": [
+   {
+    "ref": "p_james",
+    "name_as_heard": "James",
+    "match": "existing",
+    "existing_person_id": "person-james",
+    "match_rationale": "known contact",
+    "status": "active"
+   },
+   {
+    "ref": "p_omar",
+    "name_as_heard": "Omar",
+    "match": "new",
+    "existing_person_id": null,
+    "match_rationale": "“that guy Omar he always talks about” — never met",
+    "status": "known_of"
+   }
+  ],
+  "entities": [
+   {
+    "ref": "e_anthropic",
+    "name_as_heard": "Anthropic",
+    "kind": "organization",
+    "existing_entity_id": null,
+    "part_of_ref": null,
+    "aliases": []
+   }
+  ],
+  "assertions": [
+   {
+    "subject_ref": "p_james",
+    "predicate": "employment",
+    "object_entity_ref": "e_anthropic",
+    "object_person_ref": null,
+    "object_value": "Anthropic",
+    "verbatim": "he's at Anthropic now, started two weeks ago",
+    "valid_from": "2026-07",
+    "valid_to": null,
+    "date_precision": "month",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_james",
+    "predicate": "trait",
+    "object_entity_ref": null,
+    "object_person_ref": null,
+    "object_value": "energized by the new role",
+    "verbatim": "he seems really energized by it",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "firsthand",
+    "attributed_to_ref": null,
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   },
+   {
+    "subject_ref": "p_omar",
+    "predicate": "relation",
+    "object_entity_ref": null,
+    "object_person_ref": "p_james",
+    "object_value": null,
+    "verbatim": "Same team as that guy Omar he always talks about",
+    "valid_from": null,
+    "valid_to": null,
+    "date_precision": "fuzzy",
+    "source_kind": "secondhand",
+    "attributed_to_ref": "p_james",
+    "hedged": false,
+    "confidence": null,
+    "thread_ref": null
+   }
+  ],
+  "episodes": [],
+  "threads": [],
+  "thread_closures": [],
+  "loops": [],
+  "contact_points": [],
+  "state_declarations": [],
+  "corrections": [],
+  "ambiguities": []
+ }
+}

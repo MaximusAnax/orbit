@@ -1,0 +1,17 @@
+So I caught up with Priya yesterday, quick coffee. She's at Anthropic now — she's
+a member of technical staff there, started in March. Before that she was at
+Stripe doing payments infra for like three years.
+
+And she specifically she specializes in like finding, spotting patterns and data,
+collecting that data, interpreting it, and kind of helping teams essentially
+figure out how to better use evaluation systems for their models. And for their
+research too.
+
+She did her undergrad at Carnegie Mellon — she's an alumna now obviously, she
+finished in 2019. Actually she's doing a part-time master's at Georgia Tech at
+the moment, online one.
+
+She's originally from Pune, born and raised, but she's been in Oakland since she
+moved out for the Stripe job.
+
+Oh and she's really good friends with Dev, they met through the CMU thing.
