@@ -1670,7 +1670,7 @@ main → sans sub) matches, both rooms translate, and the three search shapes
 exist. The divergences were in the **signature moves** — the small things §5
 says carry the whole feeling.
 
-### FN-48 · A fact stated about a group lands on only one of them — **v10 measured and rejected; rule needs rewriting** · prompt
+### FN-48 · A fact stated about a group lands on only one of them — **v11 fixes it (60% → 100%); promotion is Abdoul's call** · prompt
 
 A device capture said, of two people met together, *"she goes to Harvard she
 both of them go to Harvard"*. Gladys carries the fact. Whether Catherine does is
@@ -1763,3 +1763,71 @@ And the run never tested the rule: `plural-attribution` was not collected,
 because live collection enumerates *fixtures*, not goldens (FN-49). So what is
 known is the cost. The benefit is still unmeasured, and cannot be measured until
 FN-49 is fixed.
+
+### FN-50 · The prompt file's developer notes are sent to the model as instructions — **open** · prompt
+
+`ExtractionPrompt.system()` returns the whole `.md` file. Every prompt therefore
+opens by telling gpt-5.1 about golden-run policy, which waivers Abdoul granted on
+which date, and what RATIFICATION §4.16 says — 189 words of it in v8, before the
+first actual instruction.
+
+It is not merely wasted context. It **confounds every prompt comparison**: v10's
+delta over v8 was 494 words, of which **142 were header prose** about the
+dilution experiment and `activeVersion`. The measurement that rejected v10 was
+grading a rule *plus* a paragraph of project bookkeeping, and could not separate
+them. v11 was built by holding the header byte-identical to v8 so the rule was
+the only variable — which is the workaround, not the fix.
+
+**Fix:** split the file. Everything above the existing `---` is for us;
+`system()` should send what is below it. One line in `system()`, and the header
+stops being an input. Do it *between* measurements, never during one, and treat
+the split itself as a prompt change needing its own comparison — removing 189
+words from the top of the system prompt is exactly the kind of edit the dilution
+experiment says can move the numbers.
+
+### FN-51 · Required-item hit rate cannot resolve a small prompt change at k=10 — **open** · evals
+
+Across the 89 required items present in all six k=10 collections (v6–v11):
+**24% swing ≥ 60 points, 39% swing ≥ 40 points**, median swing 20 points.
+
+The clean demonstration is `homonym:person:sarah_o` — 40 / 30 / 70 / 10 / 80 /
+10 for v6 / v7 / v8 / v9 / v10 / v11. **v10 contains v11's rule and 440 words
+more**, so no monotone cause explains v10 = 80% beside v11 = 10% beside v8 =
+70%. The item does not respond to the prompt.
+
+Consequence, stated plainly: **v10 and v11 produced the identical 15/26/48 split
+against the same baseline with entirely different items moving.** A 494-word
+edit and a 56-word edit cannot have the same effect size. That split is the
+noise signature of this comparison, and it has been read as a result twice.
+
+This does not say the metric is worthless — v9's halved prompt is legibly worse
+almost everywhere, and hedge items climb exactly when v7/v8 add hedge rules. It
+resolves large changes. It cannot resolve small ones, and every prompt bump from
+here is a small one.
+
+**What would fix it,** in rough order of cost: grade against a *targeted* golden
+collected for the change (as `plural-attribution` was here — 0/17 regressed,
+60% → 100% on the item under test, which is a legible result at k=10); raise k
+for the shared corpus, which trades money for resolution; or report per-item
+confidence intervals so a 15-vs-26 split is visibly inside them rather than
+looking like a finding.
+
+Related: FN-41 (round-trip gate was a lottery), FN-46 (judge κ = 0.14). Three
+independent measurements of this project's instruments have now come back
+saying the instrument is the limiting factor.
+
+**2026-08-10 (later) · v11 measured; the rule works.** v11 is v8 plus rule 38 in
+one sentence and one example — 56 words, header held byte-identical so the rule
+is the only variable (FN-50). Against a v8 baseline collected on the same two
+memos: `plural-attribution:theo/education` **60% → 100%**,
+`rania/education/mechanical` 40% → 70%, **0 of 17 items regressed**. The
+distributed half — the Harvard case — now lands every run.
+
+The shared-corpus comparison says nothing either way, and FN-51 explains why:
+v10 and v11 produced the identical 15/26/48 split with different items moving,
+which is the noise signature rather than a result. **The v10 entry's reasoning
+is retracted** — those regressions were never established as dilution.
+
+`activeVersion` still `v8`. Promoting v11 is a decision, not a derivation: the
+benefit is measured on a purpose-built golden, the cost is below the
+instrument's resolution, and 56 words is the smallest form the rule has taken.

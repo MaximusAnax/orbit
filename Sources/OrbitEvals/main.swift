@@ -266,9 +266,15 @@ func runHarvest(dbPath: String) throws {
 ///
 /// Checkpointed: an existing, parseable run file is never re-fetched, so a job
 /// killed at run 7 of 10 resumes rather than starting over.
-func runMeasureLive(runs: Int, concurrency: Int, outLabel: String?) async throws {
+func runMeasureLive(runs: Int, concurrency: Int, outLabel: String?,
+                    dryRun: Bool = false, only: [String] = []) async throws {
     let env = ProcessInfo.processInfo.environment
-    guard let key = env["OPENAI_API_KEY"], !key.isEmpty else {
+    let key = env["OPENAI_API_KEY"] ?? ""
+    // `--dry-run` needs no key because it makes no call: it exists so that a
+    // change to corpus discovery can be checked for free. FN-49 went unnoticed
+    // because the only way to see which memos a collection would run was to run
+    // one, at ~900k tokens a look.
+    guard dryRun || !key.isEmpty else {
         throw EvalFailure(description:
             "measure --live needs OPENAI_API_KEY (single provider, BUILD.md §1.3 rev. 2026-08-07)")
     }
@@ -313,7 +319,77 @@ func runMeasureLive(runs: Int, concurrency: Int, outLabel: String?) async throws
                           eventKind: (meta?["event_kind"] as? String) ?? "encounter",
                           seeds: fixtureCases().first { $0.memo == name }?.seedPeople ?? []))
     }
+
+    // FN-49: the corpus is the set of transcripts, not the set of fixtures.
+    // Enumerating fixtures to decide what to collect meant a golden authored
+    // ahead of its fixture could never be measured — while `measure.py` printed
+    // that a live run was exactly what would produce one. The queue named itself
+    // and nothing drained it: `tag-discipline` sat there from 2026-08-07, and
+    // the v10 measurement graded a rule's collateral damage across eleven memos
+    // without once running the memo the rule was written for.
+    //
+    // A transcript with no fixture is precisely what a collection exists to
+    // produce, so scan for those too. Deduped on the source path, which is what
+    // a fixture actually claims — so nothing here re-collects a memo that has
+    // one, and the eleven that were already collected are untouched.
+    let covered = Set(memos.map(\.source))
+    for dir in ["docs/evals/corpus/synthetic", "mock_memos/transcripts"] {
+        let dirURL = root.appendingPathComponent(dir)
+        let transcripts = ((try? FileManager.default.contentsOfDirectory(
+            at: dirURL, includingPropertiesForKeys: nil)) ?? [])
+            .filter { $0.fileNamePortable.hasSuffix(".txt") }
+            .sorted { $0.fileNamePortable < $1.fileNamePortable }
+        for file in transcripts {
+            let source = "\(dir)/\(file.fileNamePortable)"
+            guard !covered.contains(source),
+                  let transcript = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            let name = String(file.fileNamePortable.dropLast(4))
+                .lowercased().replacingOccurrences(of: " ", with: "-")
+            // `file` is the OUTPUT name inside the run directory, not a path —
+            // handing it a relative source would write into nested directories
+            // the aggregator never looks in.
+            memos.append(Memo(name: name,
+                              file: "\(name).json",
+                              source: source,
+                              transcript: transcript,
+                              eventKind: "encounter",
+                              seeds: fixtureCases().first { $0.memo == name }?.seedPeople ?? []))
+            print("  + \(name): transcript with no fixture — collecting it (FN-49)")
+        }
+    }
+    memos.sort { $0.name < $1.name }
+
+    // `--memos` collects a named subset. The use it exists for is a *baseline*:
+    // when discovery grows (FN-49 added two memos), the old collection has no
+    // arm for the new ones, and re-running the whole corpus to get two memos'
+    // worth of comparison costs an order of magnitude more than the answer.
+    // Filtering is refused rather than silently narrowed on an unknown name —
+    // a typo that quietly collects nothing is the FN-35 shape again.
+    if !only.isEmpty {
+        let known = Set(memos.map(\.name))
+        let unknown = only.filter { !known.contains($0) }.sorted()
+        guard unknown.isEmpty else {
+            throw EvalFailure(description:
+                "--memos names memos that are not in the corpus: \(unknown.joined(separator: ", "))"
+                + " · known: \(memos.map(\.name).joined(separator: ", "))")
+        }
+        memos = memos.filter { only.contains($0.name) }
+        print("   --memos: collecting \(memos.count) of \(known.count) — "
+              + memos.map(\.name).joined(separator: ", "))
+    }
     guard !memos.isEmpty else { throw EvalFailure(description: "no readable corpus memos") }
+
+    if dryRun {
+        print("== dry run · would collect \(runs) run(s) × \(memos.count) memos "
+              + "· prompt \(ExtractionPrompt.version) · no API calls ==")
+        for memo in memos {
+            let fixture = root.appendingPathComponent("docs/evals/fixtures/\(memo.name).json")
+            let mark = FileManager.default.fileExists(atPath: fixture.path) ? " " : "+"
+            print("  \(mark) \(memo.name)  ←  \(memo.source)")
+        }
+        print("   (+ = no fixture yet; this is the run that produces one)")
+        return
+    }
 
     let label = outLabel ?? {
         let f = DateFormatter()
@@ -492,7 +568,12 @@ do {
             }
             try await runMeasureLive(runs: intArg("--runs", 1),
                                      concurrency: max(1, intArg("--concurrency", 3)),
-                                     outLabel: strArg("--out"))
+                                     outLabel: strArg("--out"),
+                                     dryRun: args.contains("--dry-run"),
+                                     only: (strArg("--memos") ?? "")
+                                         .split(separator: ",")
+                                         .map { $0.trimmingCharacters(in: .whitespaces) }
+                                         .filter { !$0.isEmpty })
         } else if let i = args.firstIndex(of: "--fixtures"), args.count > i + 1 {
             try runMeasureReplay(fixturesSubdir: args[i + 1])
         } else {
@@ -505,7 +586,7 @@ do {
         print("""
         orbit-evals — Orbit evaluation harness (EVALS.md)
           measure --replay [--fixtures dir]\n                     fixtures → SyncEngine → round-trip checks (CI gate)
-          measure --live [--runs k] [--concurrency n] [--out label]\n                     collect k runs via OPENAI_API_KEY → docs/evals/runs/<label>/
+          measure --live [--runs k] [--concurrency n] [--out label] [--dry-run] [--memos a,b]\n                     collect k runs via OPENAI_API_KEY → docs/evals/runs/<label>/\n                     --dry-run lists the corpus it would collect, no key, no calls
           harvest <db>       review outcomes → JSONL eval labels (J-12)
         Payload-level contract grading (the PIPE table): scripts/dev/measure.py (T1 twin).
         """)

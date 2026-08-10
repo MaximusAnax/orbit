@@ -566,3 +566,42 @@ scripts/dev/overnight.sh 10 k10-v10`, then `compare.py k10-v8 k10-v10`.
 - **What the measurement is worth:** a real number for the cost of one rule, and
   a defect found in the instrument. Both are worth the 921k tokens; neither is
   the answer FN-48 wanted. The Harvard fix does not reach the device today.
+
+## 2026-08-10 (later) · The corpus that could not be reached, and the instrument that could not resolve
+
+Three things, in the order they had to happen.
+
+- **FN-49 fixed: collection discovers transcripts, not fixtures.**
+  `measure --live` enumerated `docs/evals/fixtures/*.json` and read each
+  fixture's `source`, so it collected exactly the memos that already had
+  fixtures — and a golden authored ahead of its fixture was unreachable forever,
+  while `measure.py` advertised a live run as the way to reach it. It now also
+  scans the corpus directories for transcripts no fixture covers: 11 memos → 13.
+  `tag-discipline` had been stranded since 08-07.
+  Two additions came with it. **`--dry-run`** lists the corpus for free, with no
+  key and no calls — FN-49 survived this long because the only way to see which
+  memos a collection would run was to buy a 900k-token look at it. **`--memos`**
+  collects a named subset and *refuses* an unknown name rather than quietly
+  narrowing to nothing; it saved ~900k tokens here by collecting a two-memo v8
+  baseline instead of re-running the whole corpus.
+- **FN-50 found while rewriting the rule: the prompt header is model input.**
+  `system()` returns the whole file, so 189 words of golden-run policy and waiver
+  history reach gpt-5.1 as instructions. v10's delta over v8 was 494 words, **142
+  of them header prose** — so the run that rejected v10 was grading a rule plus a
+  paragraph of bookkeeping. v11 holds the header byte-identical to v8; the diff
+  below line 1 is rule 38 and nothing else.
+- **v11 measured. The rule works, and the cost is unmeasurable.** Against a v8
+  baseline collected on the same memos: the distributed fact goes **60% → 100%**,
+  0 of 17 regressed. Against the shared corpus: 15 improved, 26 regressed,
+  p = 0.117 — **the identical split v10 produced**, with different items moving,
+  from an edit nine times smaller. That is FN-51: 24% of required items swing
+  ≥60 points between collections, and `homonym:person:sarah_o` reads 70 / 80 / 10
+  for v8 / v10 / v11 although v10 strictly contains v11's rule. The metric
+  resolves v9's halving; it cannot resolve 56 words.
+- **The v10 verdict's reasoning is retracted, its outcome stands.** "Rule 38
+  cost 2.8 points of recall" was never established — it was noise plus a header
+  confound of my own making. v10 stays unpromoted because v11 is strictly better
+  written, not because v10 was proven harmful.
+- **`activeVersion` unchanged at `v8`.** Promoting v11 is Abdoul's call and is
+  recorded as such: measured benefit on a purpose-built golden, cost below the
+  instrument's floor.
