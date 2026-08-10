@@ -1,0 +1,272 @@
+[
+  {
+    "memo": "contradiction",
+    "claim": "James \u2014 employment \u2014 [Anthropic]",
+    "verbatim": "he's at Anthropic now",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says James is at Anthropic now"
+    }
+  },
+  {
+    "memo": "contradiction",
+    "claim": "James \u2014 employment \u2014 [Anthropic]  (from 2026-07 to open)",
+    "verbatim": "started two weeks ago",
+    "judge": {
+      "supported": true,
+      "why": "Transcript directly states James is at Anthropic now"
+    }
+  },
+  {
+    "memo": "contradiction",
+    "claim": "James \u2014 trait \u2014 energized  (stated tentatively)",
+    "verbatim": "he seems really energized by it",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says James seems really energized"
+    }
+  },
+  {
+    "memo": "contradiction",
+    "claim": "James \u2014 relation \u2014 same team [Omar]",
+    "verbatim": "Same team as that guy Omar he always talks about",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says James is on same team as Omar"
+    }
+  },
+  {
+    "memo": "correction",
+    "claim": "Priya \u2014 employment \u2014 [DeepMind]",
+    "verbatim": "She was at DeepMind the whole time before her current thing.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says Priya was at DeepMind previously"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "Dom \u2014 life_event \u2014 attendee [Y Combinator Startup School]",
+    "verbatim": "at Y Combinator Startup School, I spent a lot of time with Dom",
+    "judge": {
+      "supported": false,
+      "why": "Transcript shows Dom present, not that he was an attendee"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "Dom \u2014 relation \u2014 friend of Leon [Leon]",
+    "verbatim": "Dom, Dominic, who was Leon's friend",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly calls Dom \u201cLeon\u2019s friend.\u201d"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "Leon \u2014 relation \u2014 roommate of Sekou [Sekou]",
+    "verbatim": "Leon is Sekou's roommate",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says \u201cLeon is Sekou\u2019s roommate.\u201d"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "Abdoul (the speaker) \u2014 life_event \u2014 attendee [Y Combinator Startup School]",
+    "verbatim": "at Y Combinator Startup School, I spent a lot of time with Dom",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says they were at Y Combinator Startup School"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "Abdoul (the speaker) \u2014 trait \u2014 very social",
+    "verbatim": "we were both very social, so it ended up going really well",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says they were both very social"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "Dom \u2014 trait \u2014 very social",
+    "verbatim": "we were both very social, so it ended up going really well",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says Dom and speaker were both very social"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "Dom \u2014 preference \u2014 [veganism]",
+    "verbatim": "He's vegan, so it was really interesting talking to him about the philosophical implications of why he made that decision.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says \u201cHe\u2019s vegan\u201d about Dom."
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "Dom \u2014 education \u2014 student [University of Michigan]",
+    "verbatim": "He goes to University of Michigan",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says Dom goes to University of Michigan"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "Dom \u2014 education \u2014 senior",
+    "verbatim": "he's also a senior just like me",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says Dom is a senior"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "Dom \u2014 education \u2014 [computer science]  (stated tentatively)",
+    "verbatim": "he's studying, like, I think, computer science and, like, policy or something like that, something along those lines. Definitely computer science, but, like, I ",
+    "judge": {
+      "supported": true,
+      "why": "Speaker clearly but tentatively states Dom studies computer science"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "Dom \u2014 interest \u2014 [philosophy]",
+    "verbatim": "We ended up talking about a lot of philosophy every once in a while",
+    "judge": {
+      "supported": true,
+      "why": "Speaker says they talked a lot of philosophy together"
+    }
+  },
+  {
+    "memo": "dom",
+    "claim": "Dom \u2014 concern \u2014 critical of inhumane methods [fish farms] [the person that Dom got upset at]",
+    "verbatim": "The person, the person that Dom got upset at was doing research into, like, essentially making, like, fish farms more efficient by, like, increasing their, like",
+    "judge": {
+      "supported": true,
+      "why": "He was upset at inhumane fish-farm efficiency research methods"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "Elia Tapia \u2014 relation \u2014 best friend [Abdoul (the speaker)]  (stated tentatively)",
+    "verbatim": "this guy is truly, I think, my best friend in the entire world.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly calls Elia his best friend"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "Elia Tapia \u2014 trait \u2014 super smart",
+    "verbatim": "he's, I mean, he's super smart.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly describes Elia Tapia as super smart"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "Elia Tapia \u2014 trait \u2014 funny",
+    "verbatim": "He's funny.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly describes Elia Tapia as funny"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "Elia Tapia \u2014 location \u2014 origin [New York City]",
+    "verbatim": "We're both from New York City.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says both are from New York City"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "Abdoul (the speaker) \u2014 location \u2014 origin [the Bronx]",
+    "verbatim": "I was from the Bronx",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says they were from the Bronx"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "Elia Tapia \u2014 location \u2014 origin [Washington Heights]",
+    "verbatim": "he was from Washington Heights.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says Elia was from Washington Heights."
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "Abdoul (the speaker) \u2014 location \u2014 residence [167th and Grand Concourse]",
+    "verbatim": "because I lived on 167th and Grand Concourse.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says they lived at 167th and Grand Concourse"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "Abdoul (the speaker) \u2014 education \u2014 undergrad [Carnegie Mellon]  (from 2022 to open)",
+    "verbatim": "we go to Carnegie Mellon",
+    "judge": {
+      "supported": false,
+      "why": "No enrollment dates mentioned; only that they attend CMU now."
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "Elia Tapia \u2014 education \u2014 undergrad [Carnegie Mellon]  (from 2022 to open)",
+    "verbatim": "we go to Carnegie Mellon",
+    "judge": {
+      "supported": false,
+      "why": "Years and undergrad-degree framing not stated in transcript"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "Abdoul (the speaker) \u2014 education \u2014 major [computer science]  (from 2022 to open)",
+    "verbatim": "we both study computer science.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says they both study computer science"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "Elia Tapia \u2014 education \u2014 major [computer science]  (from 2022 to open)",
+    "verbatim": "we both study computer science.",
+    "judge": {
+      "supported": false,
+      "why": "Speaker says Elia studies CS, not that it\u2019s his major"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "Abdoul (the speaker) \u2014 education \u2014 member [Tartan Scholars]  (stated tentatively; from 2022 to open)",
+    "verbatim": "we're both part of this program called Tartan Scholars.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says they are part of Tartan Scholars"
+    }
+  },
+  {
+    "memo": "eliah",
+    "claim": "Elia Tapia \u2014 education \u2014 member [Tartan Scholars]  (stated tentatively; from 2022 to open)",
+    "verbatim": "we're both part of this program called Tartan Scholars.",
+    "judge": {
+      "supported": true,
+      "why": "Speaker explicitly says Elia is part of Tartan Scholars"
+    }
+  }
+]

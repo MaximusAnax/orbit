@@ -148,3 +148,45 @@ missing column in minutes.
    disambiguation gets no card type; correcting an entity stays typing rather
    than asking. Revisit when you notice yourself typing the same expansion more
    than once or twice.
+20. **Three constitutional amendments, implemented outright** (your call,
+   2026-08-08, after the k=10 measurements). These change ORBIT.md §22 and §3 —
+   the first time the constitution has been amended rather than compiled from —
+   so each is recorded with the evidence that forced it. All three came from
+   numbers that did not exist when the constitution was written.
+
+   **P4 — "missing is recoverable" is only half true.** Ten runs of the same
+   transcript: 9 required facts appeared in one or two runs (genuinely
+   recoverable by re-extraction) and **5 appeared in none**. Re-running recovers
+   the first group and never the second. PIPE-3 now reports stable misses
+   separately and never averages them into the recoverable pool. A stable miss
+   is a defect with a deadline, not a deferral.
+
+   **P5 — confirmation is a decision, not a tap.** A portrait produces 56
+   proposals, a group event 39, and the Nikos memo — the one J-1 budgets at ≤12
+   taps — produces 16. One tap per claim made P5 and P3 (*capture should be
+   effortless*) contradict each other outright, and improving the extractor made
+   it worse. A confirmation is now one considered accept/reject/edit over content
+   Abdoul has **read**, covering one claim or a coherent group. Friction budgets
+   count decisions. INV-5b was added in the same change, because a granularity
+   amendment is exactly where a silent-write regression would hide: bulk accept
+   may only resolve proposals actually rendered on screen, no proposal may
+   default to accept, and anything uncertain — `ambiguous`, `self_collision`,
+   DISAMBIGUATE, hardship — leaves the bulk path and is asked individually.
+
+   **P7/§3 — invented and tidied quotes are not the same failure.** Across 979
+   quoted fields there were **zero fabrications** and 90.8% byte-exactness; the
+   gap was almost entirely dropped filler. Scoring a tidied "um" as Critical
+   alongside a manufactured memory reported PIPE-6 as FAIL for two days while
+   saying nothing. The promise splits: *the words must be the speaker's* stays
+   absolute, and *the stored form is the transcript's own slice* is now a
+   mechanical guarantee (`VerbatimSnapper`) rather than a request. Invented stays
+   Critical; tidied is Minor.
+
+   **What was deliberately not amended**, having been considered: never invent,
+   uncertainty stored rather than resolved, provenance total, relationships are
+   not scores, hardship never prompted. Those are the constraints that produced
+   these findings — the residence defect surfaced only because "never invent" was
+   a stated promise someone eventually built a denominator for. Loosening a
+   principle because it is inconvenient removes the instrument that made the
+   inconvenience visible.
+

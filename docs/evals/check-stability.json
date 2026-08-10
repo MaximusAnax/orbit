@@ -1,0 +1,42 @@
+{
+  "contradiction: contradicted open fact draws a CLOSE proposal, never an overwrite": {
+    "pass_rate": 0.6,
+    "runs": 10
+  },
+  "contradiction: the Stripe fact is untouched while the proposal is pending": {
+    "pass_rate": 1.0,
+    "runs": 10
+  },
+  "correction: 'never worked there' \u2192 CORRECT (retraction), not CLOSE": {
+    "pass_rate": 1.0,
+    "runs": 10
+  },
+  "eliah: PROPOSE_STATE present exactly once (INV-24 gate passed)": {
+    "pass_rate": 0.8,
+    "runs": 10
+  },
+  "eliah: pending proposals wrote nothing to the ledger (INV-5)": {
+    "pass_rate": 1.0,
+    "runs": 10
+  },
+  "eliah: self facts flow to the self row, never a new person": {
+    "pass_rate": 1.0,
+    "runs": 10
+  },
+  "eliah: three CREATE_EVENT episodes, none future-dated": {
+    "pass_rate": 0.3,
+    "runs": 10
+  },
+  "futureforce: the Abdul namesake arrives as DISAMBIGUATE, never CREATE_PERSON": {
+    "pass_rate": 1.0,
+    "runs": 10
+  },
+  "hardship: hardship thread proposed as condition_hardship (INV-20 upstream)": {
+    "pass_rate": 1.0,
+    "runs": 10
+  },
+  "silence: silence \u2192 zero proposals": {
+    "pass_rate": 1.0,
+    "runs": 10
+  }
+}

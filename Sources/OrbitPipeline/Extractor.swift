@@ -44,6 +44,11 @@ public struct ExtractionTelemetry: Sendable, Codable {
     /// here would be the same defect as the prompt-version allow-list (FN-35):
     /// a configuration that quietly differs from the one you asked for.
     public var decodeParamsRejected: [String]
+    /// How many quoted fields were exact, corrected to the transcript's own
+    /// slice, or dropped for having no anchor (FN-40). Recorded because a
+    /// rising `rejected` count is the signal that the model has started
+    /// inventing, and nothing else in the system would notice.
+    public var verbatim: VerbatimSnapper.Report
 
     enum CodingKeys: String, CodingKey {
         case promptTokens = "prompt_tokens"
@@ -53,12 +58,14 @@ public struct ExtractionTelemetry: Sendable, Codable {
         case attempts
         case decodeParams = "decode_params"
         case decodeParamsRejected = "decode_params_rejected"
+        case verbatim
     }
 
     public init(promptTokens: Int? = nil, completionTokens: Int? = nil,
                 totalTokens: Int? = nil, latencySeconds: Double = 0,
                 attempts: Int = 1, decodeParams: [String: String] = [:],
-                decodeParamsRejected: [String] = []) {
+                decodeParamsRejected: [String] = [],
+                verbatim: VerbatimSnapper.Report = .init()) {
         self.promptTokens = promptTokens
         self.completionTokens = completionTokens
         self.totalTokens = totalTokens
@@ -66,6 +73,7 @@ public struct ExtractionTelemetry: Sendable, Codable {
         self.attempts = attempts
         self.decodeParams = decodeParams
         self.decodeParamsRejected = decodeParamsRejected
+        self.verbatim = verbatim
     }
 }
 
@@ -173,24 +181,43 @@ enum ExtractionMessage {
 /// apart from the thing working. An unknown version now fails loudly, naming the
 /// resource it wanted.
 public enum ExtractionPrompt {
+    /// The prompt that ships. **Newest is not best** — v9 halved v8's word count
+    /// while keeping every requirement and lost 7 points of recall
+    /// (docs/evals/dilution-experiment.md), so deriving "active" from the
+    /// highest bundled file silently promoted the worse prompt the moment it
+    /// existed. Measurement decides this, not filename order.
+    ///
+    /// This is one constant, not a validation list: the FN-35 bug was an
+    /// allow-list that *substituted a different value* on a miss. A missing
+    /// resource here fails loudly in `system()`, naming the file it wanted.
+    public static let activeVersion = "v8"
+
     public static var version: String {
-        ProcessInfo.processInfo.environment["ORBIT_PROMPT_VERSION"] ?? Self.latestVersion
+        ProcessInfo.processInfo.environment["ORBIT_PROMPT_VERSION"] ?? Self.activeVersion
     }
 
-    /// Highest `extraction-prompt-vN.md` actually bundled — derived, so adding a
-    /// prompt is one file rather than a file plus a list to remember.
-    public static var latestVersion: String {
-        let prefix = "extraction-prompt-v"
-        let suffix = ".md"
-        let versions = (Bundle.module.urls(forResourcesWithExtension: "md",
-                                           subdirectory: "Resources") ?? [])
-            .compactMap { url -> Int? in
-                let name = url.fileNamePortable
-                guard name.hasPrefix(prefix), name.hasSuffix(suffix) else { return nil }
-                return Int(name.dropFirst(prefix.count).dropLast(suffix.count))
-            }
-        return "v\(versions.max() ?? 1)"
-    }
+    /// Highest `extraction-prompt-vN.md` bundled. **Reference only** — since v9
+    /// lost 7 points of recall to v8 (docs/evals/dilution-experiment.md),
+    /// promoting a prompt is a measurement result rather than a side effect of
+    /// creating a file, and `activeVersion` above decides what ships.
+    ///
+    /// Probed by lookup rather than by listing the bundle: `Bundle.urls(for…)`
+    /// vends `[NSURL]` on Linux and `[URL]` on Darwin, so every way of reading a
+    /// name off those elements diverges (FIELD-NOTES FN-38). `url(forResource:)`
+    /// returns `URL?` on both, and asking for a specific name is the same
+    /// question anyway. Computed once — the answer cannot change at runtime.
+    public static let latestVersion: String = {
+        // Scans past a gap rather than stopping at the first miss, so a deleted
+        // intermediate version can't silently pin the default to an older prompt.
+        let ceiling = 64
+        var highest = 1
+        for n in 1...ceiling where Bundle.module.url(forResource: "extraction-prompt-v\(n)",
+                                                     withExtension: "md",
+                                                     subdirectory: "Resources") != nil {
+            highest = n
+        }
+        return "v\(highest)"
+    }()
 
     public static func system() throws -> String {
         guard let url = Bundle.module.url(forResource: "extraction-prompt-\(version)",
@@ -367,7 +394,12 @@ public struct OpenAIExtractor: Extractor {
                 guard let text = message["content"] as? String else {
                     throw ExtractorError.badResponse("no message content in response")
                 }
-                let payload = try JSONDecoder().decode(ExtractionPayload.self, from: Data(text.utf8))
+                let decoded = try JSONDecoder().decode(ExtractionPayload.self, from: Data(text.utf8))
+                // PIPE-6 by construction, not by inspection: every quoted field
+                // becomes the transcript's own slice, and a claim whose quote
+                // cannot be found is dropped before it can be rendered to the
+                // owner as something they said (FN-40).
+                let (payload, snapReport) = VerbatimSnapper.snap(decoded, to: transcript)
                 let usage = top["usage"] as? [String: Any]
                 let telemetry = ExtractionTelemetry(
                     promptTokens: usage?["prompt_tokens"] as? Int,
@@ -376,7 +408,8 @@ public struct OpenAIExtractor: Extractor {
                     latencySeconds: Date().timeIntervalSince(started),
                     attempts: attempt,
                     decodeParams: recorded,
-                    decodeParamsRejected: dropped.sorted())
+                    decodeParamsRejected: dropped.sorted(),
+                    verbatim: snapReport)
                 return ExtractionResult(payload: payload, modelID: model,
                                         promptVersion: ExtractionPrompt.version,
                                         telemetry: telemetry)

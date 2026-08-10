@@ -22,7 +22,7 @@ fi
 # `lastPathComponent` and `pathExtension` are String on Darwin and String? on
 # Linux. Each spelling compiles on macOS and fails the Linux core workflow, and
 # the app workflow cannot catch it because it only builds on macOS. That cost
-# three red core runs (FIELD-NOTES FN-37). Everything under Sources/ and Tests/
+# four red core runs (FIELD-NOTES FN-38). Everything under Sources/ and Tests/
 # is compiled by Linux CI, so all three are banned there. `URL.path` is String
 # on both platforms — use it, via the `fileNamePortable` shim.
 hits=$(grep -rnE "\.(deletingPathExtension|lastPathComponent|pathExtension)\b" \
@@ -31,6 +31,20 @@ hits=$(grep -rnE "\.(deletingPathExtension|lastPathComponent|pathExtension)\b" \
 if [[ -n "$hits" ]]; then
   echo "PORTABILITY VIOLATION: URL path accessor diverges Darwin/Linux."
   echo "Use url.path string work (see fileNamePortable) instead:"
+  echo "$hits"
+  fail=1
+fi
+
+# Same class, different API: the Bundle resource-*listing* calls vend [NSURL] on
+# Linux and [URL] on Darwin, so anything read off an element fails to compile on
+# one side. `url(forResource:withExtension:)` returns URL? on both — ask for the
+# name you want instead of listing and filtering.
+hits=$(grep -rnE "\.(urls\(forResourcesWithExtension|paths\(forResourcesOfType)" \
+  Sources Tests --include='*.swift' \
+  | grep -v '^[^:]*:[0-9]*: *//' || true)
+if [[ -n "$hits" ]]; then
+  echo "PORTABILITY VIOLATION: Bundle resource listing vends NSURL on Linux."
+  echo "Use Bundle.url(forResource:withExtension:) instead:"
   echo "$hits"
   fail=1
 fi

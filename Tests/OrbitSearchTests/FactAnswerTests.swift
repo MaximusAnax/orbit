@@ -200,4 +200,129 @@ final class FactAnswerTests: XCTestCase {
             XCTAssertEqual(a.factAnswer, "intern", "\(query) asks for the role")
         }
     }
+
+    /// The same gap on the other predicate, found by sweeping the sibling cues
+    /// rather than waiting for it to be reported. `entitySeekingCues` learned
+    /// "what university" and "which college" while `predicateKeywords` never
+    /// did, so those questions could not reach a fact lookup at all — the cue
+    /// that would have chosen the school never ran.
+    func testSchoolPhrasingsReachTheFactLookup() throws {
+        let eliah = try edits.createPerson(displayName: "Eliah")
+        try entity("e_cmu", "Carnegie Mellon")
+        try fact(subject: eliah, predicate: "education", value: "undergrad",
+                 entity: "e_cmu", verbatim: "she did her undergrad at CMU")
+
+        for query in ["what university did Eliah go to?",
+                      "which college did Eliah go to?",
+                      "what school did Eliah go to?"] {
+            let answer = try Searcher(reader: store.reader).search(query)
+            guard case .answer(let a) = answer else {
+                return XCTFail("expected an answer band for \(query), got \(answer)")
+            }
+            XCTAssertEqual(a.factAnswer, "Carnegie Mellon",
+                           "\(query) asks for the school; 'undergrad' is a qualifier")
+        }
+    }
+
+    /// Cues are words, not runs of letters. Under substring matching "position"
+    /// hides in "disposition", "title" in "entitled", "company" in "accompany"
+    /// and "org" in the name Morgan — so a plain question about a person routed
+    /// itself into an employment lookup and answered with a fact nobody asked
+    /// about. Every case here is a *non*-answer: the query must fall through to
+    /// the generic search, which is what "no fact answer" looks like.
+    func testALetterRunInsideAWordIsNotACue() throws {
+        let morgan = try edits.createPerson(displayName: "Morgan")
+        try entity("e_google", "Google")
+        try fact(subject: morgan, predicate: "employment", value: "intern",
+                 entity: "e_google", verbatim: "she interned at Google")
+
+        for query in ["what is Morgan's disposition?",
+                      "what is Morgan entitled to?",
+                      "who did Morgan accompany?"] {
+            let answer = try Searcher(reader: store.reader).search(query)
+            if case .answer(let a) = answer, a.factAnswer != nil {
+                XCTFail("\(query) is not an employment question; answered \(a.factAnswer!)")
+            }
+        }
+
+        // The control: the same person, asked properly, still answers.
+        let asked = try Searcher(reader: store.reader).search("where does Morgan work?")
+        guard case .answer(let a) = asked else {
+            return XCTFail("expected an answer band, got \(asked)")
+        }
+        XCTAssertEqual(a.factAnswer, "Google")
+    }
+
+    /// Keyword tokens are dropped before person matching because the matcher is
+    /// fuzzy — but some of that vocabulary is also a name. Job is a name; so is
+    /// a contact called City or Org. Dropping their tokens outright meant the
+    /// one person whose name is a keyword could never be asked about, and every
+    /// token in "where does Job work?" is a keyword.
+    func testAPersonWhoseNameIsAKeywordIsStillFound() throws {
+        let job = try edits.createPerson(displayName: "Job")
+        try entity("e_google", "Google")
+        try fact(subject: job, predicate: "employment", value: "intern",
+                 entity: "e_google", verbatim: "he interned at Google")
+
+        let answer = try Searcher(reader: store.reader).search("where does Job work?")
+        guard case .answer(let a) = answer else {
+            return XCTFail("expected an answer band, got \(answer)")
+        }
+        XCTAssertEqual(a.factAnswer, "Google",
+                       "every token here is a predicate keyword, including the name")
+    }
+
+    /// The precedence the fallback must not disturb: when a real name is
+    /// present, it wins outright. "city" is within edit distance 2 of "Cindy",
+    /// so trying vocabulary as a name first would answer about the wrong
+    /// person — which is why the strict pass runs first and the fallback only
+    /// runs when it found nobody.
+    func testVocabularyNeverOutranksARealName() throws {
+        let cindy = try edits.createPerson(displayName: "Cindy")
+        try entity("e_sf", "San Francisco", kind: "place")
+        try fact(subject: cindy, predicate: "location", value: "residence",
+                 entity: "e_sf", verbatim: "she's been in San Francisco ever since")
+
+        let answer = try Searcher(reader: store.reader).search("what city is Cindy based in?")
+        guard case .answer(let a) = answer else {
+            return XCTFail("expected an answer band, got \(answer)")
+        }
+        XCTAssertEqual(a.factAnswer, "San Francisco")
+        XCTAssertEqual(a.firsthand.first?.name, "Cindy")
+    }
+
+    /// Guard one on that rescue: it runs only when *every* meaningful token is
+    /// vocabulary. A query that named someone — "he" — and merely failed to
+    /// resolve them must fall through to the generic search rather than latch
+    /// onto the word "city" and answer about a contact who happens to be
+    /// called that.
+    func testAnUnresolvedNameIsNotReplacedByVocabulary() throws {
+        let city = try edits.createPerson(displayName: "City")
+        try entity("e_sf", "San Francisco", kind: "place")
+        try fact(subject: city, predicate: "location", value: "residence",
+                 entity: "e_sf", verbatim: "she's been in San Francisco ever since")
+
+        let answer = try Searcher(reader: store.reader).search("where does he live in the city?")
+        guard case .answer(let a) = answer else {
+            return XCTFail("expected an answer band, got \(answer)")
+        }
+        XCTAssertNil(a.factAnswer, "'he' named someone; the fact is not City's to answer")
+    }
+
+    /// Guard two: the rescue matches exact/prefix only. At the usual edit
+    /// distance ≤ 2, "role" is one character from Rose and "city" two from
+    /// Cindy — so a fuzzy rescue turns a no-answer into a confident answer
+    /// about a real person who was never mentioned.
+    func testVocabularyIsNeverFuzzyMatchedToAName() throws {
+        let rose = try edits.createPerson(displayName: "Rose")
+        try entity("e_google", "Google")
+        try fact(subject: rose, predicate: "employment", value: "intern",
+                 entity: "e_google", verbatim: "she interned at Google")
+
+        let answer = try Searcher(reader: store.reader).search("what is the role?")
+        guard case .answer(let a) = answer else {
+            return XCTFail("expected an answer band, got \(answer)")
+        }
+        XCTAssertNil(a.factAnswer, "'role' is one edit from Rose and still not her name")
+    }
 }

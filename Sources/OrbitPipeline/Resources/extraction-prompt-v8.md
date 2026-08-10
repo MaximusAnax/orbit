@@ -1,4 +1,4 @@
-# Orbit extraction prompt — v7
+# Orbit extraction prompt — v8
 
 Versioned artifact. Changes require a golden run attached to the same commit
 (BUILD.md §1.3). **v3 is the active prompt, promoted without that run** —
@@ -268,11 +268,21 @@ across ten runs, because a rule that cannot be checked next run is a wish.
       fact this extractor produces
     - anywhere an event happened (rule 20)
 
+    **These ARE residences, and must still be extracted.** The rule above is
+    about places with no stated relationship to the person; it is not a reason
+    to distrust a plain statement of where someone lives:
+    - "I lived on 167th and Grand Concourse", "his new place in Oakland",
+      "she's in Berlin now", "we moved to Denver last year"
+    - a first-person statement of the speaker's own address or neighbourhood is
+      as much a residence as anyone else's — more so, since they would know
+
     Where someone lives is load-bearing in this product: it decides who is
     nearby, what a reunion means, whether "when are you next in town" makes
     sense. Guessing it from a mention of travel is a false memory of the most
-    ordinary and most damaging kind. When the transcript names a place but not
-    the relationship to it, emit nothing.
+    ordinary and most damaging kind — and dropping a residence the speaker
+    stated outright is the opposite failure, losing a fact they gave you.
+    When the transcript names a place but not the relationship to it, emit
+    nothing.
 
 36. **The hedge must be INSIDE the verbatim you choose.** Rule 21 says a hedged
     span sets `hedged: true`; the failure in practice is upstream of that — the

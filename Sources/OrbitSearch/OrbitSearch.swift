@@ -91,7 +91,12 @@ public struct Searcher {
     // MARK: name shape
 
     /// Direct name search — exact, prefix, and misspelled (distance ≤ 2).
-    func peopleMatching(nameQuery: String) throws -> [PersonHit] {
+    ///
+    /// `fuzzy: false` drops the misspelling tolerance and accepts only an exact
+    /// or prefix hit. Callers that are guessing whether a word is a name at all
+    /// want that: at distance ≤ 2 the word "role" matches a contact named Rose,
+    /// and answering about Rose is worse than not answering.
+    func peopleMatching(nameQuery: String, fuzzy: Bool = true) throws -> [PersonHit] {
         let tokens = terms(of: nameQuery)
         guard !tokens.isEmpty, tokens.count <= 3 else { return [] }
         let people = try reader.db.query(
@@ -111,7 +116,7 @@ public struct Searcher {
                     if candidate.hasPrefix(q) { return 0 }
                     return editDistance(q, candidate)
                 }.min() ?? Int.max
-                if best > 2 { matched = false; break }
+                if best > (fuzzy ? 2 : 0) { matched = false; break }
                 total += best
             }
             if matched {
@@ -215,11 +220,41 @@ public struct Searcher {
         return Answer(firsthand: firsthand, maybe: maybe, factAnswer: nil)
     }
 
+    /// Which predicate a question is about — and, before that, whether the
+    /// question reaches a fact lookup at all. A query matching nothing here
+    /// falls through to the generic banded search and answers no fact, so this
+    /// list is a gate as much as a router: every phrasing recognised by
+    /// `entitySeekingCues` below has to be admitted here first, or the cue that
+    /// chooses the half of the fact never runs. "What is Eliah's role?" was
+    /// exactly that — recognised as a role question, never let through the
+    /// door (FIELD-NOTES FN-38's lesson: sweep the siblings, so "university"
+    /// and "college" are here too rather than waiting to be reported).
     static let predicateKeywords: [(keys: [String], predicate: String)] = [
-        (["work", "works", "working", "job", "company"], "employment"),
-        (["live", "lives", "living", "based", "from"], "location"),
-        (["study", "studied", "studying", "school", "degree"], "education"),
+        (["work", "works", "working", "job", "company", "employer",
+          "role", "title", "position", "org"], "employment"),
+        (["live", "lives", "living", "based", "from", "city"], "location"),
+        (["study", "studied", "studying", "school", "degree",
+          "university", "college"], "education"),
     ]
+
+    /// Does this text *mention* one of these cues, as a word rather than as a
+    /// run of letters?
+    ///
+    /// These lists are matched against free English, and the naked `contains`
+    /// they used to be matched with reads "position" inside "disposition",
+    /// "title" inside "entitled", "company" inside "accompany" and "org" inside
+    /// "Morgan" — each one routing a query into a fact lookup it has nothing to
+    /// do with, and the last one triggered by an ordinary person's name. Adding
+    /// vocabulary made the collisions likelier, so the matcher is fixed rather
+    /// than the vocabulary trimmed around it.
+    ///
+    /// Single words match whole tokens; multi-word cues stay substring, which is
+    /// safe because a phrase cannot hide inside a longer word.
+    static func mentions(_ cues: [String], in lower: String) -> Bool {
+        let tokens = Set(lower.components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { $0.count >= 2 })
+        return cues.contains { $0.contains(" ") ? lower.contains($0) : tokens.contains($0) }
+    }
 
     /// "Where does James work?" → the current fact, with its evidence.
     /// Controlled qualifiers: values that describe the *shape* of a fact rather
@@ -252,17 +287,13 @@ public struct Searcher {
         "based in", "based out of",
     ]
 
-    /// Phrasings that ask for the literal beside the object — the role, the
-    /// status. Checked only when nothing above matched, so "what is his job at
-    /// the company" still reads as a role question.
-    static let literalSeekingCues: [String] = [
-        "job", "role", "title", "position", "what does", "what is he", "what is she",
-    ]
-
+    /// Entity cues win outright; everything else is a question about the
+    /// literal. There is deliberately no second list of role phrasings — the
+    /// role words are predicate keywords above, where they let the question in
+    /// the door, and a second list that only ever returned the default would
+    /// have looked like it was deciding something.
     static func wantsEntity(_ lower: String) -> Bool {
-        if entitySeekingCues.contains(where: { lower.contains($0) }) { return true }
-        if literalSeekingCues.contains(where: { lower.contains($0) }) { return false }
-        return false
+        mentions(entitySeekingCues, in: lower)
     }
 
     static func factAnswer(_ row: Row, asksWhere: Bool) -> String? {
@@ -278,16 +309,43 @@ public struct Searcher {
     }
 
     func factLookup(lower: String, query: String) throws -> Answer? {
-        guard let predicate = Self.predicateKeywords.first(where: { pk in
-            pk.keys.contains { lower.contains($0) }
+        guard let predicate = Self.predicateKeywords.first(where: {
+            Self.mentions($0.keys, in: lower)
         })?.predicate else { return nil }
-        // find the person named in the query
-        let nameTokens = terms(of: lower)
-            .filter { !Self.stopwords.contains($0) }
-            .filter { !Self.predicateKeywords.flatMap(\.keys).contains($0) }
+        // Find the person named in the query. Predicate keywords are dropped
+        // first because `peopleMatching` is fuzzy — "city" is within edit
+        // distance 2 of "Cindy", so a vocabulary word tried as a name can beat
+        // the actual name standing next to it.
+        //
+        // But some of that vocabulary is also a name: Job is a name, and a
+        // contact could be called City. Dropping their tokens outright means
+        // the one person whose name is a keyword can never be asked about.
+        //
+        // The rescue is deliberately narrow, because "guess that a vocabulary
+        // word is a name" is how you answer confidently about the wrong person.
+        // Two guards. It runs only when *every* meaningful token is a keyword —
+        // so a query that named someone and simply failed to resolve them falls
+        // through to the generic search rather than latching onto a word. And
+        // it matches exact/prefix only: at the usual distance ≤ 2, "role" finds
+        // a contact named Rose and "city" finds Cindy, which would turn a
+        // no-answer into a wrong answer about a real person.
+        let meaningful = terms(of: lower).filter { !Self.stopwords.contains($0) }
+        let keywords = Set(Self.predicateKeywords.flatMap(\.keys))
+        let (vocabulary, names) = (meaningful.filter { keywords.contains($0) },
+                                   meaningful.filter { !keywords.contains($0) })
         var found: PersonHit?
-        for token in nameTokens {
+        for token in names {
             if let hit = try peopleMatching(nameQuery: token).first { found = hit; break }
+        }
+        // No `found == nil` here: when there are no name tokens the loop above
+        // ran zero times, so the emptiness check already implies it.
+        if names.isEmpty {
+            for token in vocabulary {
+                if let hit = try peopleMatching(nameQuery: token, fuzzy: false).first {
+                    found = hit
+                    break
+                }
+            }
         }
         guard let person = found else { return nil }
         let rows = try reader.db.query(

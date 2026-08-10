@@ -222,6 +222,18 @@ final class AppModel: ObservableObject {
     /// inference (FIELD-NOTES FN-5). Until this existed the only signal was a
     /// notice that needs three consecutive failures before it says anything, so
     /// "is the model here, and what is waiting on it" had no answer.
+    /// Recordings the model is actually holding. `upgradeRetainedAudio` only
+    /// re-hears `confirmed` events, so a memo still in transcript review is
+    /// waiting on Abdoul, not on the download — counting it here would report
+    /// the same memo twice under two incompatible explanations, once in this
+    /// line and once in the "N memos waiting" footer, and only one would be
+    /// true. This is the set the re-listen pass will act on, nothing wider.
+    private var awaitingReListen: Int {
+        Int((try? store.db.scalar(
+            "SELECT COUNT(*) FROM event "
+            + "WHERE lifecycle='confirmed' AND raw_audio_ref IS NOT NULL").intValue) ?? 0)
+    }
+
     var modelStatusLine: String {
         let models = whisperTranscriber?.models ?? ModelManager()
         // Counted once, before either branch: the model arriving does not empty
@@ -229,8 +241,7 @@ final class AppModel: ObservableObject {
         // `upgradeRetainedAudio` re-hears them, so reporting "nothing waiting"
         // on `ceilingURL != nil` alone re-introduced exactly the inference this
         // line exists to replace.
-        let retained = Int((try? store.db.scalar(
-            "SELECT COUNT(*) FROM event WHERE raw_audio_ref IS NOT NULL").intValue) ?? 0)
+        let retained = awaitingReListen
         if models.ceilingURL != nil {
             return retained > 0 ? Copy.modelPresentCatchingUp(retained) : Copy.modelPresent
         }
@@ -650,9 +661,7 @@ final class AppModel: ObservableObject {
     /// needed the model stays quiet (P10).
     func noteStalledModelDownload(_ models: ModelManager) {
         guard models.ceilingURL == nil, models.consecutiveDownloadFailures >= 3 else { return }
-        let retained = Int((try? store.db.scalar(
-            "SELECT COUNT(*) FROM event WHERE raw_audio_ref IS NOT NULL").intValue) ?? 0)
-        guard retained > 0 else { return }
+        guard awaitingReListen > 0 else { return }
         captureNotice = Copy.modelDownloadStalled
     }
 

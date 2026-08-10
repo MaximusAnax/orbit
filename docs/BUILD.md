@@ -68,13 +68,18 @@ The four ratified documents say what Orbit is, what its data means, what it look
     `ORBIT_PROMPT_VERSION=v1` still runs the originally-measured prompt for
     comparison, and the ratification packet's provisional PIPE numbers remain
     v1-measured until the first `swift run orbit-evals measure --live`.
-  - **The default is derived, not named** — `ExtractionPrompt.latestVersion`
-    resolves to the highest bundled `extraction-prompt-vN.md`, so *adding a
-    prompt file promotes it*. This paragraph named v3 as the default while the
-    build had long since resolved v6; the version is now stated in one place
-    (the resource directory) rather than two that can disagree. **Currently
-    v7.** Its golden run is owed, not waived: the `plural-attribution` golden is
-    authored and `measure.py` reports it as awaiting a fixture on every run.
+  - **The active prompt is named, not derived — `ExtractionPrompt.activeVersion`,
+    currently `v8`.** It was derived from the highest bundled file until
+    2026-08-08, which meant *creating* a prompt promoted it; the dilution
+    experiment ended that by measuring v9 losing 7 points of recall to v8 for
+    half the words. Newest is not best, so promotion is now a measurement result
+    and a one-constant edit. This paragraph said "v3 is the default" while the
+    build resolved v6, and then v8 — a version named in prose beside a version
+    resolved in code is a second place to be wrong, so the prose now points at
+    the constant instead of restating it.
+  - **Bundled but not active: `v10`** (v8 + rule 38, group facts distribute to
+    each named member — FN-48). Unmeasured by construction; promoting it means
+    a paired comparison against v8, not a point estimate.
 
 ### 1.4 Verification tiers
 

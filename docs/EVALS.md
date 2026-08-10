@@ -47,6 +47,7 @@ Property-based tests and schema lints. Each is small, fast, and absolute. Number
 ### Nothing is final without confirmation (P5)
 
 - **INV-5** No code path writes an assertion, closes a thread, changes a profile, or creates a person except through an accepted Proposal or an explicit user action. *(Static check: the write API is only reachable from the proposal-resolution and user-edit modules.)*
+- **INV-5b** *(added 2026-08-08 with P5's batching amendment, because a granularity change is exactly where a silent-write regression would hide.)* A bulk accept resolves only proposals that were **rendered on screen** in the group it names; it may never resolve one that was collapsed, virtualised out, or filtered from view. No proposal may carry a default of accept, and any proposal flagged uncertain — `ambiguous`, `self_collision`, a DISAMBIGUATE, or a hardship thread — is excluded from bulk resolution and must be answered individually.
 - **INV-6** Re-extraction (any `extraction_version` > 1) produces only new pending proposals; it can never mutate accepted rows.
 - **INV-7** A rejected proposal is never re-proposed **from the same source evidence**: re-running extraction (any version) over a transcript must not resurrect what Abdoul rejected from that transcript. **New evidence may legitimately re-propose** — facts become true later, and a rejection is a verdict on a claim *at a time from a source*, not on the claim forever (P11: things change). A new-evidence re-proposal must disclose its history: *"you passed on something like this before — mentioned again at Tuesday's dinner."* Silent re-proposal of previously rejected content without new evidence is the failure (PIPE-8).
 
@@ -116,10 +117,10 @@ Thresholds are **provisional until first measured** (marked ◊), then become ra
 | PIPE-1 | Transcription proper-noun recall, **measured after the name-match pass** | ◊ ≥ 95% | Names are the product. Rescoped 2026-07-28: prompt priming is inert beyond the first decode window on long audio (`-mc 0`, required for stability, confines it) — the name-match pass is the correctness mechanism, so it is measured post-pass |
 | PIPE-1b | Within-transcript name-form consistency | **1 rendering per referent** | Found via the Eliah portrait: one person rendered four ways in one transcript. Post name-match pass, a single referent resolves to a single form; violations are identity-fragmentation risks |
 | PIPE-2 | Transcription WER, conversational | ◊ ≤ 12% | Secondary to PIPE-1 |
-| PIPE-3 | Extraction fact recall | ◊ ≥ 90% | Missed facts are recoverable later (re-extraction); recall matters but is not critical |
+| PIPE-3 | Extraction fact recall | ◊ ≥ 90% | **Split by stability (P4, amended 2026-08-08).** A fact the extractor produces in *some* runs is recoverable by re-extraction and is not critical. A fact it produces in **none** of k runs is a **stable miss** — re-running recovers nothing, so it is a defect with a deadline, reported separately and never averaged into the recoverable pool |
 | PIPE-4 | Extraction precision (no invented facts) | ◊ ≥ 97% | **Asymmetric by design (P4): inventing is far worse than missing.** A hallucinated fact that survives to a proposal is a Critical failure regardless of aggregate score |
 | PIPE-5 | Hedge preservation | **100%** | Every "I think / probably / maybe" in source survives into the proposal's confidence framing. Binary and cheap to check — zero tolerance |
-| PIPE-6 | Verbatim fidelity | **100%** | Every `verbatim` field is an exact substring of the transcript. Purely mechanical |
+| PIPE-6 | Verbatim fidelity | **100%** stored | **Guaranteed by construction, not measured (amended 2026-08-08).** `VerbatimSnapper` locates each quote in the transcript and stores *that* slice, dropping any quote it cannot find — so what is stored is exact by definition. What is still measured is the raw model output, split by kind: an **invented** quote (no match in the transcript) stays Critical; a **tidied** one (filler dropped, words otherwise the speaker's) is Minor. Grading them identically reported 979 fields as failing for two days while describing dropped "um"s |
 | PIPE-7 | Attribution: false-attribution count | **0** | A fact assigned to the wrong person, or hearsay marked firsthand, is Critical. The Abdul case must yield DISAMBIGUATE — this exact memo is in the golden set |
 | PIPE-8 | Same-source re-proposal of rejected content | **0** | Scoped per §3.2; new-evidence re-proposals are legitimate and must disclose history |
 | PIPE-9 | DISAMBIGUATE recall on planted ambiguities | ◊ ≥ 90% | Synthetic memos plant known ambiguities; the extractor must ask |
@@ -163,7 +164,7 @@ Each journey is an executable UI test: scripted steps → asserted **end-state i
 
 | ID | Journey | Key end-state assertions | Friction budget ◊ |
 | --- | --- | --- | --- |
-| J-1 | Capture → transcript → review → sync, single person (Nikos memo) | Event confirmed; audio deleted **only after** full-model transcript confirmed; N accepted assertions with provenance | ≤ 12 taps |
+| J-1 | Capture → transcript → review → sync, single person (Nikos memo) | Event confirmed; audio deleted **only after** full-model transcript confirmed; N accepted assertions with provenance | ≤ 12 **decisions** |
 | J-2 | Group event with ambiguity (Futureforce memo) | Abdul DISAMBIGUATE resolved or deferred; per-person grouping rendered; partial resolution persists correctly | ≤ 20 taps |
 | J-3 | Defer everything | Event sits half-reviewed indefinitely; **zero** badges/counters/nags anywhere afterward (assert absence) | ≤ 3 taps |
 | J-4 | Transcript edit + name fix | Edit persists as the transcript; name correction propagates to all of that person's proposals |  |
@@ -177,6 +178,16 @@ Each journey is an executable UI test: scripted steps → asserted **end-state i
 | J-12 | Review-outcome export | Every accept/reject/edit lands in the eval-harvest log (feeds §3.2) |  |
 
 Friction budgets are ◊ provisional: measure the built flow once, ratify the number, then ratchet.
+
+**Budgets count decisions, not taps (P5, amended 2026-08-08).** The Nikos memo
+produces 16 proposals against a 12-tap budget, and a portrait produces 56 — read
+as one tap per claim, the friction budgets were unsatisfiable the moment the
+extractor started working. A *decision* is one considered accept/reject/edit over
+content Abdoul has read, whether it covers one claim or a coherent group of them.
+Batching the tap is permitted; batching the reading is not, and these journeys
+assert the difference: no default may be accept, no timer or scroll may stand in
+for a decision, and any proposal the system is unsure of leaves the bulk path and
+is asked individually.
 
 ### 4.2 Design-law lint
 
@@ -233,7 +244,7 @@ What automation cannot reach, structured so it still produces signal. Weekly dur
 
 | Severity | Definition | Examples | Policy |
 | --- | --- | --- | --- |
-| **Critical** | A constitutional promise broken | False memory created (invented fact, wrong attribution); silent write without confirmation; audio egress; INV-20 violation; history rewritten | Ship-blocking. Fix before any other work. Postmortem note in the PR. |
+| **Critical** | A constitutional promise broken | False memory created (**invented** quote or fact, wrong attribution); silent write without confirmation; audio egress; INV-20 violation; history rewritten. *A quote whose words are the speaker's but whose filler was tidied is Minor, not Critical (amended 2026-08-08)* | Ship-blocking. Fix before any other work. Postmortem note in the PR. |
 | **Major** | Quality regression below threshold | PIPE metric under threshold; journey broken; design-law violation; budget blown | Ship-blocking for the affected surface. |
 | **Minor** | Polish deviation | Copy tone, sub-threshold latency drift, lint warnings | Fix-forward, tracked. |
 
@@ -250,10 +261,10 @@ Every constitutional principle maps to its enforcing checks. A PR touching a pri
 | P1 Human authority | INV-5, INV-6, J-2, J-9 |
 | P2 Never rewrite history | INV-1..4, INV-21, J-10 |
 | P3 Effortless capture | J-1/J-3/J-5 friction budgets, PERF-3/4 |
-| P4 Accuracy > automation | PIPE-4/5/7/9, INV-8/10, rubric #4 |
-| P5 Nothing final without confirmation | INV-5/6/7, J-3, J-11 |
+| P4 Accuracy > automation | PIPE-4/5/7/9, INV-8/10, rubric #4, **PIPE-3 stable-miss split** |
+| P5 Nothing final without confirmation | INV-5/6/7, J-3, J-11, **J-1 decision budget** |
 | P6 Not scores | INV-15/16, D-9 |
-| P7 Small details matter | PIPE-5/6, D-3/D-7, rubric #1 |
+| P7 Small details matter | PIPE-5/6 (**invented vs tidied split**), D-3/D-7, rubric #1 |
 | P8 Show up better | anti-metrics (§8), INV-16, rubric #5 |
 | P9 Context before contact | PIPE-14, "Today"-zone reason-required (type-level: suggestion objects have non-null reason) |
 | P10 Memory, not administration | D-2/D-8/D-11, J-3, rubric #2/#5 |

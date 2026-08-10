@@ -404,83 +404,133 @@ unnoticed even without a live run.
   Swift compiled in this environment and Actions has still not picked up a job
   since 07-31, so the Swift halves are unbuilt until his Mac runs them.
 
-## 2026-08-08 · An edited date that was written, then quietly overwritten
+## 2026-08-08 · Session 5 · Review threads, and one portability class paid for four times
 
-Found by hand on device: correcting the date on a review card did nothing. The
-card went on showing "around July 2026", and the ledger kept the day the
-extractor had guessed.
+Two strands, both driven by what CI and Bugbot flagged rather than by a plan.
 
-- **The Edit sheet's correction lived in one stack frame.** `acceptEdited` passed
-  the corrected payload straight to `resolve` and kept no copy. That is fine
-  when the write lands — and silently lossy when it doesn't. A CREATE_EVENT
-  whose participant hasn't been accepted yet throws `pendingDependency` by
-  design, so review can settle cards in any order; the card parks in
-  `dependencyWaiters` and is retried after the next successful settle. The retry
-  called `accept(card)` on the **captured, unedited** card, and `accept` folded
-  in only *renames*. So the correction was made, shown to have been made, and
-  then replaced by the extractor's original — which is exactly the shape of
-  defect P5 exists to prevent: the review is supposed to decide.
-- **Fix, in the shape the rename path already had.** Edit-sheet payloads are now
-  held on the view model (`payloadEdits`, keyed by card id) exactly as renames
-  are held keyed by ref, and `editedPayload` composes both — the rename applies
-  *on top of* the edited payload, so a card that gets one does not lose the
-  other. `accept` is the single place that resolves with `.acceptEdited`, so
-  every path through it (first tap, accept-all, dependency retry) carries every
-  correction.
-- **The retry now reads the live card, not a snapshot.** `dependencyWaiters`
-  holds ids; a card edited while it sits waiting is re-submitted as it now is.
-  This was the second half of the bug and would have survived a fix to the first.
-- **The card re-renders.** `whenLine` is display derived from the payload and was
-  never recomputed, so even a *successful* edit left the old date on screen.
-  `rebuildDisplay` now derives it alongside `mappedFact`.
-- **Verified by reverting.** `ReviewEditTests` (4 cases: edit-then-block,
-  block-then-edit, render, rename+edit composition) pass on the fix and all four
-  fail without it, each on the assertion that names the defect. Full app suite
-  26/26 on iPhone 17; `swift build` clean.
-- **Gate is not green at HEAD, and this change is not why.**
-  `FactAnswerTests.testRolePhrasingsStillAnswerTheRole` fails on a clean tree at
-  751abe2 — "what is Eliah's role?" and "what is Eliah's title?" both answer nil
-  where they should answer "intern". The app target is not part of the SPM
-  package, so nothing here touches it. Untouched, and owed a fix of its own.
+**Eight review threads, all confirmed, all fixed.** Six landed earlier
+(`e6e02f8`): export omitting `person_retirement` and `person_alias` (a PRIV-5
+archive restored on a fresh database lost who was retired), search answering
+qualifiers instead of places, merge-blind last-seen and nondeterministic
+first-met, job-vs-company query routing, the FN-5 status line hiding its own
+backlog, `measure.py` ignoring golden forbidden kinds, resume overwriting
+manifest failures, and missing fixtures skewing recall by moving the
+denominator. Two more arrived on the fixes themselves (`3087aba`): the status
+line counted every retained recording while the re-listen pass only touches
+`confirmed` rows — so a memo in review was reported as waiting on the model in
+one place and waiting on Abdoul in another — and the manifest merge read
+`total_seconds` through `as? Double` alone, which JSON's single number type
+turns into nil, silently restarting the cumulative clock the resume fix existed
+to protect.
 
-## 2026-08-08 · A fact about two people, saved against one
+**Five of the ten were introduced by the previous round's fix.** That is the
+number worth keeping. Each was a correct fix to the reported defect that moved
+the defect one layer over, and none would have been caught by re-reading the
+change — only by something adversarial reading it fresh.
 
-Reported from device as "still saving pieces of my transcript rather than the
-concise facts" — from *"both of them go to Harvard"*, Gladys should be recorded
-as going to Harvard.
+**FN-38 (renumbered from a collision with FN-37) cost four red `core` runs for
+one finding.** Foundation's URL path accessors and its bundle resource listings
+are different types on Darwin and Linux; three consecutive fixes each replaced
+the spelling that had just been reported with another Darwin-only one. Closed
+by asking a different question — `ExtractionPrompt.latestVersion` now probes
+`Bundle.url(forResource:)` rather than listing and filtering — plus one shim in
+OrbitCore for the accessor uses, and a lint guard covering all five APIs rather
+than the one last reported. The lesson is cheap and was available every time:
+sweep for the siblings of a reported failure before pushing.
+
+**A third strand, opened by the first test failure since the build compiled
+again.** Search recognised "what is Eliah's role?" as a role question and never
+admitted it to a fact lookup — one list gates, the other chooses, and only one
+had learned the new vocabulary. Fixing that surfaced three more layers over as
+many rounds: a matcher reading words as runs of letters ("org" inside *Morgan*),
+keyword tokens stripped so a contact named Job could never be asked about, and a
+rescue for that which could fuzzy-match "role" to a contact named **Rose** and
+answer confidently about someone never mentioned. Written up as FN-39; the
+through-line is that guessing a word is a name is how you name the wrong person.
+
+**One thing added rather than fixed.** `overnight.sh` has two stages, and only
+the expensive one was unreachable from here: collection needs an API key,
+grading needs nothing. Grading also had no coverage, so a defect in it would
+have surfaced at the end of a paid ten-run collection — the worst possible
+moment. `scripts/dev/aggregate_selftest.py` now builds a synthetic collection
+from the canonical fixtures with two deliberate holes (an ordinary memo, and the
+`expect_empty` golden where an absent fixture *is* a passing payload), grades it,
+and asserts the denominator stays fixed across runs. Its negative control —
+restoring the pre-fix skip behaviour — reproduces exactly what review reported:
+a run missing five required items scoring 100% recall. In the gate now.
+
+**Tier honesty:** T1 rigs and all three negative controls are green here; the Swift
+halves are verified by CI, and nothing on this branch has run on a device.
+`scripts/dev/overnight.sh` is still owed — both hosts it needs are blocked by
+this session's egress policy, so the live PIPE numbers remain provisional and
+must come from Abdoul's Mac.
+
+## 2026-08-08 · Two device findings, merged onto the measurement branch
+
+Hand testing on the phone, on a branch cut from 751abe2 and merged into
+`feature/initial_build` after session 5 landed. Both entries below predate the
+merge; where the merge changed what is true, it says so.
+
+### An edited date that was written, then quietly overwritten
+
+Correcting the date on a review card did nothing: the card kept showing the
+extractor's guess, and so did the ledger.
+
+- **The Edit sheet's payload lived in a single stack frame.** `acceptEdited`
+  handed it to `resolve` and kept no copy — fine when the write lands, silently
+  lossy when it doesn't. A CREATE_EVENT whose participant isn't accepted yet
+  throws `pendingDependency` by design so review can settle in any order; the
+  card parks in `dependencyWaiters` and is retried after the next successful
+  settle. That retry re-accepted the **captured, unedited** card, and `accept`
+  folded in only *renames*. The correction was made, shown as made, and then
+  replaced by the extractor's original — the shape of defect P5 exists to
+  prevent.
+- **Fixed in the shape the rename path already had.** Edit payloads are held on
+  the view model keyed by card id, exactly as renames are held keyed by ref, and
+  `editedPayload` composes both so one correction never costs the other.
+  `accept` is now the single place that resolves with `.acceptEdited`, so first
+  tap, accept-all and dependency retry all carry every correction. This matters
+  more after session 5 than before it: P5's batched confirmation routes bulk
+  accepts through the same `accept`, so the composition is what keeps a
+  correction alive through an "all yes".
+- **The retry reads the live card, not a snapshot.** `dependencyWaiters` holds
+  ids. A card edited while it sits waiting is re-submitted as it now is — the
+  second half of the bug, which would have outlived a fix to the first.
+- **The card re-renders.** `whenLine` is display derived from the payload and
+  was recomputed nowhere, so even a *successful* edit left the old date on
+  screen. `rebuildDisplay` now derives it alongside `mappedFact`.
+- **Verified by reverting:** `ReviewEditTests` (4 cases) pass on the fix and all
+  four fail without it, each on the assertion that names the defect. App suite
+  26/26 before the merge.
+
+### A fact about two people, saved against one
+
+From *"both of them go to Harvard"*, only one of the two carried the school.
 
 - **The screen it was reported from cannot show that defect.** The Desk's
   `claim` is `verbatim` (`OrbitRecall.swift:25`), and DESIGN §12 specifies a
-  *serif* claim for both the hero row and Worth having back — the memory voice,
-  his own words, deliberately. So the Desk reads like raw transcript no matter
-  what `object_value` holds. Checked before changing anything, because FN-1 was
-  exactly this: a display that hides a field produces confident bug reports
-  about the layer underneath. v6 already carries hard tag rules (16: never a
-  clause; 28: at most six words) and PIPE-17 measured 0 violations live on
-  08-07. **Tag discipline is not what this capture proves is broken.**
-- **What is genuinely missing: plural distribution.** Grepping v6 for
-  `both|plural|group|they both` returns nothing. Rule 8 has always handled the
-  speaker's own "we both…" — two assertions, subject and self — and nothing
-  generalised it to two other people. v7 rule 35 does, with the three boundaries
-  that stop distribution turning into invention (neighbouring facts don't
-  spread; unnamed members aren't invented; a shared occasion is one episode with
-  N participants, not N assertions). Logged as FN-38.
-- **Golden authored first, and it is reported.** `plural-attribution` requires
-  *both* named people to carry the school and the origin, matched by `entity:`
-  rather than `contains:` — containment would pass on verbatim mentioning the
-  school, which is the very failure being graded. Four `forbidden` entries cover
-  the boundaries. `measure.py` lists it under "Goldens awaiting a fixture"
-  alongside `tag-discipline`; the harness treats an unanswerable golden as a
-  named gap, never a skip.
-- **v7 is the default as of this commit, and its golden run is owed.**
-  `ExtractionPrompt.latestVersion` resolves the highest bundled prompt, so
-  *adding the file promoted it* — verified by probe: `RESOLVED_PROMPT_VERSION=v7`.
-  This is not the §1.3 waiver being invoked a third time; it is the gate
-  outstanding, discharged by `orbit-evals measure --live` on a machine with the
-  key. `ORBIT_PROMPT_VERSION=v6` pins back.
-- **Doc drift fixed on the way past.** BUILD.md §1.3 stated "**v3 is the
-  default**" while the build had been resolving v6 for some time — a doc naming
-  a version the code derives is a second place to be wrong. §1.3 now says the
-  default is derived and names where it comes from.
-- **Unchanged and still red:** `FactAnswerTests.testRolePhrasingsStillAnswerTheRole`,
-  pre-existing at 751abe2 and untouched here.
+  *serif* claim for the hero row and Worth having back both — the memory voice,
+  deliberately. So the Desk reads like raw transcript no matter what
+  `object_value` holds. Checked before changing anything, because FN-1 was this
+  same trap. Tag discipline is not what this capture proves is broken.
+- **What is genuinely missing: plural distribution.** No prompt through v9
+  mentions it. Rule 8 has always handled the speaker's own "we both…" — two
+  assertions, subject and self — and nothing generalised it. **v10 rule 38**
+  does, with the boundaries that stop distribution turning into invention.
+- **v10 is v8 + rule 38, not v7 + rule 35.** The branch this came from added the
+  rule as a v7 built on v6, under the old regime where `latestVersion` derived
+  the active prompt and adding a file promoted it. Session 5 replaced that with
+  an explicit `activeVersion` constant after the dilution experiment showed v9
+  losing 7 points of recall to v8 — so the merge rebuilt the rule onto v8, the
+  prompt that won, and **`activeVersion` stays `v8`**. Nothing ships until a
+  paired comparison says it should. The pre-merge branch also edited BUILD.md
+  §1.3 to describe the derived default; that edit was dropped, because session 5
+  made it false.
+- **Golden authored ahead of its fixture.** `plural-attribution` requires both
+  named people to carry the school by `entity:` rather than `contains:` —
+  containment would pass on a verbatim that merely says the word, which is the
+  failure being graded. `measure.py` lists it under "Goldens awaiting a fixture"
+  alongside `tag-discipline`; an unanswerable golden is a named gap, never a
+  skip.
+- **`FactAnswerTests.testRolePhrasingsStillAnswerTheRole` was red on the source
+  branch and is green here** — session 5's `10144fa` fixed it independently.

@@ -1,9 +1,22 @@
-# Orbit extraction prompt — v7
+# Orbit extraction prompt — v10
 
 Versioned artifact. Changes require a golden run attached to the same commit
-(BUILD.md §1.3). **v3 is the active prompt, promoted without that run** —
-Abdoul waived the gate explicitly on 2026-08-06 and again for v3's location
-qualifier on 2026-08-07 (WORKLOG; RATIFICATION §4.16, §4.18).
+(BUILD.md §1.3). **v8 is the active prompt** — `ExtractionPrompt.activeVersion`
+names it, and v9 is why: it halved v8's word count while keeping every
+requirement and lost 7 points of recall (docs/evals/dilution-experiment.md).
+Newest is not best, so this file being highest promotes nothing.
+
+**v10 is v8 plus one rule and is unmeasured.** It is v8's text verbatim with
+rule 38 appended — a fact stated about a group belongs to each named member —
+after a device capture recorded "both of them go to Harvard" against one of the
+two people. Rule 8 has covered the speaker's own "we both…" since v1; 38 is that
+same instruction with the speaker taken out of it. Built on v8 rather than on
+v9 deliberately: v9's lineage is the one measurement rejected.
+
+Promoting it means measuring it against v8 — the paired comparison in
+docs/evals/, not a point estimate — and then moving `activeVersion`. The
+`plural-attribution` golden encodes the contract and is reported as awaiting a
+fixture on every `measure.py` run until a live extraction answers it.
 
 What the waiver costs, stated plainly: every provisional PIPE number in the
 ratification packet was measured against fixtures produced by v1, so those
@@ -268,11 +281,21 @@ across ten runs, because a rule that cannot be checked next run is a wish.
       fact this extractor produces
     - anywhere an event happened (rule 20)
 
+    **These ARE residences, and must still be extracted.** The rule above is
+    about places with no stated relationship to the person; it is not a reason
+    to distrust a plain statement of where someone lives:
+    - "I lived on 167th and Grand Concourse", "his new place in Oakland",
+      "she's in Berlin now", "we moved to Denver last year"
+    - a first-person statement of the speaker's own address or neighbourhood is
+      as much a residence as anyone else's — more so, since they would know
+
     Where someone lives is load-bearing in this product: it decides who is
     nearby, what a reunion means, whether "when are you next in town" makes
     sense. Guessing it from a mention of travel is a false memory of the most
-    ordinary and most damaging kind. When the transcript names a place but not
-    the relationship to it, emit nothing.
+    ordinary and most damaging kind — and dropping a residence the speaker
+    stated outright is the opposite failure, losing a fact they gave you.
+    When the transcript names a place but not the relationship to it, emit
+    nothing.
 
 36. **The hedge must be INSIDE the verbatim you choose.** Rule 21 says a hedged
     span sets `hedged: true`; the failure in practice is upstream of that — the
@@ -293,3 +316,37 @@ across ten runs, because a rule that cannot be checked next run is a wish.
     24), which needs an explicit self-characterisation of the *current* standing
     — a trajectory is an ordinary fact about the past, and it is often the most
     human thing in the memo.
+
+---
+
+## Rule added in v10, from device testing
+
+38. **A fact stated about a group belongs to each named member.** "They both go
+    to Northeastern", "the two of them are from Montreal", "all three of us
+    worked at Stripe" state a fact about *every* person named in that group —
+    emit one assertion per person, each with the same entity ref, each with the
+    plural sentence as its `verbatim`. The plural is a convenience of speech,
+    not a hedge and not a group entity; a fact left on only one of the two
+    people is half the memory, and the half that goes missing is invisible
+    afterwards because nothing records that it was ever said. This is **rule 8
+    with the speaker taken out of it** — "we both went to CMU" has always
+    produced two assertions, and "they both went to CMU" is the same sentence
+    about two other people.
+    - **`object_value` still never carries the plural.** "both of them go to
+      Harvard" is `education` + the school as the entity ref, twice. A tag
+      reading "both of them go to Harvard" is rule 16's clause-in-the-tag
+      failure wearing a plural shirt.
+    - **Distribute only what the group sentence actually says.** If the speaker
+      says both are from Montreal and then details one person's current city,
+      the current city belongs to that person alone. Distribution spreads the
+      stated fact across the named people; it never spreads a *neighbouring*
+      fact, and it never invents a person to distribute to. Rule 35 still
+      governs `residence` — distribution never manufactures one.
+    - **Only to people who are named.** "a few of us from the lab" names nobody
+      — that is an `ambiguities` entry, not a set of assertions. Rule 19 already
+      forbids inventing a person from a pointer; this forbids inventing several.
+    - **A shared occasion is not a shared fact.** "the three of us got dinner"
+      is one episode with three participants, not a `life_event` assertion on
+      each of them. Ask whether the sentence says something that stays true
+      about each person (distribute) or describes one thing that happened
+      (one episode, many participants).
