@@ -126,10 +126,16 @@ class Grader:
     # paragraph. Measured max on the ratified corpus was 7 words.
     TAG_WORD_CEILING = 12
 
+    def names_of(self, ref):
+        """Every spelling of the person behind one ref — the name as heard plus
+        its aliases. Empty when the ref names nobody in this payload."""
+        for m in self.p.get("people", []):
+            if m.get("ref") == ref:
+                return {norm(m.get("name_as_heard"))} | {
+                    norm(a) for a in (m.get("aliases") or [])} - {""}
+        return set()
+
     def grade_tag_discipline(self):
-        people = {norm(m.get("name_as_heard")) for m in self.p.get("people", [])}
-        people |= {norm(a) for m in self.p.get("people", []) for a in (m.get("aliases") or [])}
-        people.discard("")
         for a in self.p.get("assertions", []):
             value = a.get("object_value")
             if not value:
@@ -140,10 +146,20 @@ class Grader:
                     "PIPE-17",
                     f"{a['predicate']} object_value is a clause, not a tag "
                     f"({words} words): {value[:60]!r}"))
-            # FN-14: a name the ref already carries must not be repeated in the
-            # tag — it becomes a second place to be wrong, and renaming the ref
-            # cannot reach it.
-            for name in people:
+            # FN-14: a name **this assertion's own refs already carry** must not
+            # be repeated in the tag — it becomes a second place to be wrong, and
+            # renaming the ref cannot reach it.
+            #
+            # Scoped to this assertion's refs on purpose. It used to compare
+            # against every person in the payload, which fired on
+            # `life_event object_value: "visiting Tunde next month"` held by a
+            # *different* subject — where the name is the only record of who is
+            # meant, not a duplicate of a ref. That was 8 of 25 firings (32%)
+            # across the k10-v11 collection: a check reporting a defect the
+            # payload does not have, in a project that has now been burned three
+            # times by trusting an instrument (FN-46, FN-49, FN-51).
+            carried = self.names_of(a.get("subject_ref")) | self.names_of(a.get("object_person_ref"))
+            for name in carried:
                 if len(name) > 2 and name in norm(value):
                     self.criticals.append((
                         "PIPE-17",

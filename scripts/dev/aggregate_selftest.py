@@ -47,7 +47,15 @@ def build(collection: pathlib.Path) -> list[str]:
             payload = json.loads(memo.read_text())
             payload["run_index"] = index
             payload.setdefault("model_id", "selftest")
-            payload.setdefault("prompt_version", "v0")
+            # Assignment, not setdefault: the source fixtures carry their own
+            # `prompt_version` ("v1"), so setdefault left the synthetic runs
+            # stamped v1 while the manifest below declared v0 — a collection
+            # whose label contradicted its contents. Harmless while nothing read
+            # the stamp; FN-44's guard reads it, and caught this on first
+            # contact. The self-test's collection has to be well-formed for the
+            # things it actually tests (gaps, flicker, round-trip) to mean
+            # anything.
+            payload["prompt_version"] = "v0"
             payload["telemetry"] = {"totalTokens": 1000, "latencySeconds": 1.0}
             (run_dir / memo.name).write_text(json.dumps(payload, sort_keys=True))
     (collection / "manifest.json").write_text(json.dumps({

@@ -134,18 +134,7 @@
     "total_seconds": 1675.2511041164398,
     "total_tokens": 993980
   },
-  "roundtrip": [
-    "round-trip: 8 passed, 0 failed, 2 known-flaky",
-    "round-trip: 8 passed, 0 failed, 2 known-flaky",
-    "round-trip: 9 passed, 0 failed, 1 known-flaky",
-    "round-trip: 9 passed, 0 failed, 1 known-flaky",
-    "round-trip: 9 passed, 0 failed, 1 known-flaky",
-    "round-trip: 8 passed, 1 failed, 1 known-flaky",
-    "round-trip: 9 passed, 0 failed, 1 known-flaky",
-    "round-trip: 9 passed, 0 failed, 1 known-flaky",
-    "round-trip: 8 passed, 1 failed, 1 known-flaky",
-    "round-trip: 7 passed, 0 failed, 3 known-flaky"
-  ],
+  "roundtrip": [],
   "runs": [
     {
       "by_check": {
@@ -172,7 +161,7 @@
         "PIPE-10": 4,
         "PIPE-11": 1,
         "PIPE-12": 1,
-        "PIPE-17": 6,
+        "PIPE-17": 2,
         "PIPE-5": 1,
         "episode:EP-1": 1,
         "episode:EP-2": 1,
@@ -181,7 +170,7 @@
         "forbidden:loop": 1,
         "forbidden:person_match": 2
       },
-      "criticals": 22,
+      "criticals": 18,
       "missing": [],
       "name": "run-02",
       "recall": 0.7476635514018691,
@@ -192,7 +181,7 @@
       "by_check": {
         "PIPE-10": 2,
         "PIPE-12": 1,
-        "PIPE-17": 3,
+        "PIPE-17": 2,
         "PIPE-5": 3,
         "PIPE-7": 1,
         "forbidden:any_text": 2,
@@ -200,7 +189,7 @@
         "forbidden:loop": 1,
         "forbidden:person_match": 2
       },
-      "criticals": 16,
+      "criticals": 15,
       "missing": [],
       "name": "run-03",
       "recall": 0.7850467289719626,
@@ -254,7 +243,7 @@
         "PIPE-10": 3,
         "PIPE-11": 1,
         "PIPE-12": 1,
-        "PIPE-17": 3,
+        "PIPE-17": 2,
         "PIPE-5": 1,
         "episode:EP-1": 1,
         "episode:EP-2": 1,
@@ -264,7 +253,7 @@
         "forbidden:person_match": 2,
         "forbidden:thread_archetype_for": 1
       },
-      "criticals": 19,
+      "criticals": 18,
       "missing": [],
       "name": "run-06",
       "recall": 0.7570093457943925,
@@ -315,7 +304,7 @@
         "PIPE-10": 2,
         "PIPE-11": 3,
         "PIPE-12": 1,
-        "PIPE-17": 6,
+        "PIPE-17": 5,
         "PIPE-5": 2,
         "episode:EP-2": 1,
         "forbidden:any_text": 2,
@@ -324,7 +313,7 @@
         "forbidden:person_match": 2,
         "forbidden:thread_archetype_for": 1
       },
-      "criticals": 23,
+      "criticals": 22,
       "missing": [],
       "name": "run-09",
       "recall": 0.7289719626168224,
@@ -337,7 +326,7 @@
         "PIPE-10": 4,
         "PIPE-11": 1,
         "PIPE-12": 1,
-        "PIPE-17": 4,
+        "PIPE-17": 3,
         "PIPE-5": 2,
         "episode:EP-2": 1,
         "forbidden:any_text": 2,
@@ -345,7 +334,7 @@
         "forbidden:loop": 1,
         "forbidden:person_match": 2
       },
-      "criticals": 21,
+      "criticals": 20,
       "missing": [],
       "name": "run-10",
       "recall": 0.7383177570093458,

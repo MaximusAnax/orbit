@@ -280,7 +280,7 @@ a real change to how sync sequences). If yes, guard 1 needs the ref case handled
 too. Testable at T1 with a two-contradicting-facts fixture through the replay
 harness — no device needed.
 
-### FN-10 · `object_value` is absorbing whole transcript spans — **fix written, golden run owed** · prompt
+### FN-10 · `object_value` is absorbing whole transcript spans — **closed 2026-08-10 (measured, k=10)** · prompt
 
 `skill` on a Bob capture came back as the entire clause: *"specializes in like
 finding spotting patterns and data, collecting that data, interpreting it and
@@ -346,7 +346,7 @@ better *asked* than typed, and `Ambiguity.kind` is `subject | self_collision |
 attendance` — all person-shaped. **Entity disambiguation has no card type**, so
 that question cannot be asked at all. Decide whether it deserves its own kind.
 
-### FN-12 · Education has no way to say undergrad / grad / alumni — **fix written (option 1), golden run owed** · design
+### FN-12 · Education has no way to say undergrad / grad / alumni — **closed 2026-08-10 (option 1 holds at k=10)** · design
 
 Raised during review: "He was also a CMU alumni" — the school is the object, and
 *alumni* is a status. Where does the status live?
@@ -409,7 +409,7 @@ alongside an amendment row so the change is auditable like every other
 correction; then surface both it and `renamePerson` somewhere — the Desk is the
 natural home, not the review screen.
 
-### FN-14 · A name inside `object_value` cannot be corrected by renaming — **fix written, golden run owed**
+### FN-14 · A name inside `object_value` cannot be corrected by renaming — **open · rescoped 2026-08-10, its premise falsified**
 
 `relation · Amaad — really good friends with Ahmad`. Correcting the person fixed
 the first half and left the second, because a name lives in up to three places
@@ -1099,7 +1099,7 @@ bad" reading. Neither is a model failure; each made a correct answer
 what the measurement told the model first. Two of the five original failures
 were the harness contradicting itself.*
 
-### FN-37 · One run is not a measurement — open · blocks every ◊ number
+### FN-37 · One run is not a measurement — **closed 2026-08-10 (harness built and in use)** · evals
 
 Two consecutive runs of the **identical** prompt, same corpus, same model,
 nothing changed:
@@ -1236,7 +1236,7 @@ Worth noting who found what. (1) came from CI; (2)–(4) came from review, each
 one a defect in the fix posted minutes earlier, and none of them surfaced by
 re-reading my own change.
 
-### FN-40 · The verbatim promise is enforced nowhere in the product — open
+### FN-40 · The verbatim promise is enforced nowhere in the product — **closed 2026-08-10 (snap-to-source shipped)**
 
 `ExtractionPayload.swift:112` says it plainly: `verbatim` is an *"exact substring
 of the transcript (PIPE-6)"*. Nothing checks that. Not the schema, not the
@@ -1407,7 +1407,7 @@ Concourse" is a residence by any reading and v7 now drops it nine times in ten
 distinguish the good ones. Rule 35 needs a clause admitting first-person
 "I lived at X" before this closes.
 
-### FN-43 · The hardship thread degraded from an unrelated prompt edit — open · watch
+### FN-43 · The hardship thread degraded from an unrelated prompt edit — **closed 2026-08-10 (recovered to 100%)**
 
 v7 changed three rules, all about residence, hedge spans, and closeness. None
 touches hardship. `condition_hardship` threads on the hardship memo nonetheless
@@ -1437,7 +1437,7 @@ appended to will eventually regress something every time it is improved, and
 single-run evaluation cannot see it happening. This one was visible only because
 two ten-run collections were compared item by item.*
 
-### FN-44 · A running measurement can be switched onto a different prompt by an unrelated edit — open
+### FN-44 · A running measurement can be switched onto a different prompt by an unrelated edit — **closed 2026-08-10**
 
 `ExtractionPrompt.latestVersion` resolves from the bundled resources **at
 runtime**, on every call. That is the fix from FN-35 and it is the right design —
@@ -1713,7 +1713,7 @@ a verbatim that merely says "Northeastern" is not a fact linking to it.
 (`ReviewViewModel.mappedFact`), so the next capture answers it on screen. There
 is no ledger export in the app, which is why this needed asking at all.
 
-### FN-49 · A golden authored before its fixture can never be measured — **open** · harness
+### FN-49 · A golden authored before its fixture can never be measured — **closed 2026-08-10**
 
 `measure.py` prints, for every golden without a fixture:
 
@@ -1764,7 +1764,7 @@ because live collection enumerates *fixtures*, not goldens (FN-49). So what is
 known is the cost. The benefit is still unmeasured, and cannot be measured until
 FN-49 is fixed.
 
-### FN-50 · The prompt file's developer notes are sent to the model as instructions — **open** · prompt
+### FN-50 · The prompt file's developer notes are sent to the model as instructions — **closed 2026-08-10 (opt-in marker)** · prompt
 
 `ExtractionPrompt.system()` returns the whole `.md` file. Every prompt therefore
 opens by telling gpt-5.1 about golden-run policy, which waivers Abdoul granted on
@@ -1785,7 +1785,7 @@ the split itself as a prompt change needing its own comparison — removing 189
 words from the top of the system prompt is exactly the kind of edit the dilution
 experiment says can move the numbers.
 
-### FN-51 · Required-item hit rate cannot resolve a small prompt change at k=10 — **open** · evals
+### FN-51 · Required-item hit rate cannot resolve a small prompt change at k=10 — **open · floor now reported; raising k still owed** · evals
 
 Across the 89 required items present in all six k=10 collections (v6–v11):
 **24% swing ≥ 60 points, 39% swing ≥ 40 points**, median swing 20 points.
@@ -1845,3 +1845,138 @@ One consequence to respect: v11's header still reads "v3 is the active prompt,
 promoted without that run", inherited byte-identical from v8 so that rule 38 was
 the only variable. That text is model input (FN-50). **Correcting it edits the
 shipped prompt and voids this measurement** — it waits for FN-50's `---` split.
+
+---
+
+## Resolution pass — 2026-08-10
+
+Every open note settled or given an owner. What made it possible was FN-49: with
+the corpus reachable, `tag-discipline` and `plural-attribution` finally ran, and
+three notes that had waited on "a golden run" had their evidence in one k=10
+collection. Dispositions below; each closed note carries its evidence in place.
+
+**FN-10 — closed.** Across k10-v11, **zero** `object_value`-is-a-clause
+violations in 10 runs (the >12-word ceiling never fires), and the memo authored
+to catch it scores **7/7 required items at 100%** — including
+`priya/employment → entity(anthropic)`, the case where the org used to arrive as
+prose. The 2026-08-07 note read "0 violations" from a run that never included
+this memo; it is now true for the reason it claimed to be.
+
+**FN-12 — closed, option 1 holds.** `priya/education → entity(cmu)` lands
+**100% of 10 runs** with the status in `object_value`. The deeper ambiguity the
+note raised — an open interval cannot distinguish "currently enrolled" from
+"we never learned when it ended" — is real and unresolved, but option 1 was
+what closing asked for and it holds. Option 2 (controlled vocabulary) remains
+available if that ambiguity ever bites.
+
+**FN-14 — open, and its premise is falsified.** It predicted it would "close
+with FN-10". FN-10 is closed and FN-14 fires **20 times across 10 runs** — about
+two per run — in `relation object_value: "lived with Philly and Roger"`,
+`preference: "enjoyed hanging out with Nikos"`. Fixing the clause problem did
+not remove the name problem, so it needs its own rule, and a v12 written for it
+should be graded against a golden built for it (FN-51's lesson) rather than the
+shared corpus.
+
+Found while measuring it: **PIPE-17's name check was over-firing by ~20%.** It
+compared `object_value` against *every* person in the payload rather than the
+refs the assertion itself carries, so `life_event: "visiting Tunde next month"`
+held by a different subject counted as a duplicate — where the name is the only
+record of who is meant. Now scoped to the assertion's own subject/object refs:
+25 firings become 20, and the 20 are real. A check that reports defects the
+payload does not have is the fourth instrument problem this month (FN-46,
+FN-49, FN-51).
+
+**FN-37 — closed.** Everything it asked for exists and is in daily use:
+`measure --live --runs k`, distributions rather than points (`recall, median
+(min–max)`), and per-check flicker classification (`stable-fail` / `FLICKER`).
+Six k=10 collections are on disk and the last three decisions were made from
+them. The remaining half of its ask — re-baselining every ◊ against those
+distributions — is real work, but it is a *ratification* task and belongs to
+RATIFICATION plus FN-51, not to a note about single-run measurement.
+
+**FN-40 — closed.** `VerbatimSnapper.snap(decoded, to: transcript)` runs on
+every extraction (`Extractor.swift:414`), the snap outcome is recorded per
+fixture (`ExtractionTelemetry.verbatim`: exact / corrected / dropped), and
+PIPE-6 verbatim fidelity reads **100%**. The note's own fix — "do not trust the
+model's copy, find the span in the source" — is what shipped.
+
+**FN-43 — closed.** The watch item recovered and then some:
+`hardship:thread:parkinson` reads **v7 60% → v8 80% → v11 100%**, its best ever.
+The general worry it raised — that an append-only prompt eventually regresses
+something every time it improves — is a real and live concern, but it now has a
+better home in FN-51, which quantifies the noise band that hid it.
+
+**FN-44 — closed.** `aggregate.py` now refuses to grade a collection whose
+fixtures do not all carry one prompt version, and refuses one whose fixtures
+contradict the manifest. Verified by planting a violation: a single `v8`-stamped
+fixture among 25 `v11` ones is rejected by name and location. A clean collection
+prints `prompt-version check: all 130 fixtures stamped v11 ✓`. This is the check
+whose absence the note called "the only evidence, which nothing currently
+checks" — and which I performed by hand twice before writing it down.
+
+**FN-49 — closed.** Collection discovers transcripts, not fixtures: 11 memos
+became 13, `tag-discipline` unstranded after three days, and three other notes
+closed on evidence it unblocked. `--dry-run` lists the corpus for free, which is
+the affordance whose absence let this survive — the only way to see what a
+collection would run was to buy a 900k-token look at it.
+
+**FN-50 — closed.** `system()` splits on an opt-in `<!-- PROMPT BEGINS -->`
+marker: a file carrying it sends only what follows, a file without it is sent
+whole. Opt-in **because measurements are attached to prompts** — stripping
+unconditionally would change what v1–v11 send and quietly void every number
+attached to them, including the one v11 was promoted on. `PromptContractTests`
+guards all of it: measured prompts still go whole, the marker strips, an unknown
+version throws rather than substituting (FN-35).
+
+**FN-51 — open, but no longer invisible.** `compare.py` now prints a resolution
+floor beside the split, with **per-item** 95% bands (Agresti–Coull, so intervals
+stay finite at 0% and 100%) rather than one worst-case number — because variance
+collapses at the ends, and 60% → 100% is resolvable at k=10 where 40% → 70% is
+not. The v8-vs-v11 comparison now reads "**7 of 41 moved items clear their own
+band** — the rest are inside the noise and must not be read as effects", which
+is the sentence whose absence let the same 15/26/48 split be read as a result
+twice. Still owed: raising k for the shared corpus, which trades money for
+resolution. The cheap half — grade against a golden written for the change — is
+now established practice (`plural-attribution`).
+
+**FN-5, FN-45, FN-46 — open, and each is Abdoul's, not the harness's.**
+FN-5 needs a device observation nobody else can make (does a 547MB download
+complete on a normal connection, and what does it cost a first run). FN-45's
+three permanent misses were diagnosed and deliberately left; that decision has
+not changed. FN-46's judge disagrees with Abdoul at κ = 0.14, and no amount of
+harness work fixes a judge whose rubric its author does not share — it needs an
+adjudication session, and until then every precision number is provisional.
+These are routed, not resolved, and saying so is the honest disposition.
+
+### FN-52 · Homonym identity is bimodal across collections, and no prompt explains it — **open · watch, highest stakes**
+
+Surfaced by FN-51's new per-item bands, which is the point of having them.
+
+| item | v6 | v7 | v8 | v9 | v10 | v11 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `homonym:person:sarah_o` | 40% | 30% | **70%** | 10% | **80%** | 10% |
+| `…sarah_o/employment/ucsf` | 20% | 20% | **60%** | 10% | **50%** | 0% |
+
+The homonym memo says "Not Sarah Chen" explicitly; creating Sarah Okafor as a
+distinct person is the single identity test in the corpus, and EVALS calls
+merging two people the worst failure the ledger cannot undo by adding evidence.
+
+**The v8 → v11 drop clears its own 95% band**, so it is not ordinary noise. And
+**no prompt hypothesis explains it**: v10 strictly contains v11's rule plus 440
+more words and sits at 80%, while v9 and v11 sit at 10%. High, low, high, low,
+against monotone edits. Whatever moves this item is not the rule.
+
+That leaves something unmodelled — collection-level drift, an endpoint-side
+change between collections, or a genuine bistability in how the model resolves
+the two Sarahs. It is not answerable from the aggregates on disk.
+
+**To close:** re-collect the homonym memo alone under v8 and v11 back to back —
+`--memos homonym`, two labels, ~30k tokens the pair, which `--memos` makes
+affordable. If v11 reproduces low against a fresh v8 high, the promotion is
+implicated and should be reconsidered on identity grounds alone. If both come
+back mid, the item is bistable and the corpus needs a second identity fixture so
+one coin flip cannot carry the whole check.
+
+**Live risk, stated plainly:** v11 is the promoted prompt as of today. If this
+is real rather than drift, the shipping prompt is worse at the one thing the
+product must never get wrong.

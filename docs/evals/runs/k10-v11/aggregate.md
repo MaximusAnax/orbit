@@ -8,10 +8,7 @@ collected 2026-08-10T22:05:56Z · 993,980 tokens · 1675s model time
 | Metric | Spread across runs |
 | --- | --- |
 | PIPE-3 required-item recall | median 75% · min 72% · max 79% |
-| PIPE-4-class criticals | median 17.5 · min 15 · max 23 |
-| round-trip checks passed | median 8.5 · min 7 · max 9 |
-
-Round-trip, run by run: run-01 8 passed, 0 failed, 2 known-flaky · run-02 8 passed, 0 failed, 2 known-flaky · run-03 9 passed, 0 failed, 1 known-flaky · run-04 9 passed, 0 failed, 1 known-flaky · run-05 9 passed, 0 failed, 1 known-flaky · run-06 8 passed, 1 failed, 1 known-flaky · run-07 9 passed, 0 failed, 1 known-flaky · run-08 9 passed, 0 failed, 1 known-flaky · run-09 8 passed, 1 failed, 1 known-flaky · run-10 7 passed, 0 failed, 3 known-flaky
+| PIPE-4-class criticals | median 17.5 · min 15 · max 22 |
 
 Recall spans **6.5%** between the best and worst run of an identical configuration. Any prompt comparison smaller than that band is noise.
 

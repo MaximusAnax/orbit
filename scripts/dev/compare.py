@@ -143,6 +143,45 @@ def main():
           + ("  — the difference is not distinguishable from noise"
              if p > 0.05 else "  — unlikely to be noise"))
 
+    # FN-51: the resolution floor, printed beside the split rather than left to
+    # be worked out. A per-item hit rate is a proportion over k runs, so the
+    # smallest difference this design can even see is set by k — at k=10 the
+    # worst-case 95% band on a difference of two proportions is ±44 points. Two
+    # separate prompt comparisons (v10 and v11 vs v8) each produced 15/26/48
+    # from edits nine times apart in length, with different items moving. That
+    # is what noise looks like here, and it was read as a result twice before
+    # this line existed.
+    k = min(A["runs"], B["runs"]) or 1
+    worst = 1.96 * math.sqrt(0.5 / k) * 100      # p=0.5 both sides: the widest band
+
+    def clears(ra, rb):
+        """Does this item's move exceed its own 95% band?
+
+        Per item rather than worst-case, because variance collapses at the ends:
+        60% -> 100% is resolvable at k=10 while 40% -> 70% is not, and a single
+        worst-case floor calls both noise. Agresti-Coull (+2 successes, +4 trials)
+        keeps the interval finite at 0% and 100%, where Wald reports zero."""
+        def ac(r):
+            ph = (r * k + 2) / (k + 4)
+            return ph, math.sqrt(ph * (1 - ph) / (k + 4))
+        pa, sa = ac(ra)
+        pb, sb = ac(rb)
+        return abs(rb - ra) > 1.96 * math.sqrt(sa * sa + sb * sb)
+
+    resolved = [m for m in moves if clears(m[2], m[3])]
+    print(f"- **resolution floor: ±{worst:.0f} points** at k={k} (95%, worst case; "
+          f"narrower for items near 0% or 100%). **{len(resolved)} of {len(moves)} "
+          f"moved items clear their own band** — the rest are inside the noise and "
+          f"must not be read as effects.")
+    if moves and not resolved:
+        print("- **No item moved further than its own noise.** A split alone is not a "
+              "finding at this k (FN-51): grade against a golden written for the "
+              "change, or raise k.")
+    elif resolved:
+        print("  - clearing the band: "
+              + ", ".join(f"`{kk}` {ra:.0%}→{rb:.0%}" for _, kk, ra, rb in
+                          sorted(resolved, key=lambda m: -abs(m[0]))[:5]))
+
     moves.sort()
     if moves:
         print("\n| Δ | required item | A | B |")

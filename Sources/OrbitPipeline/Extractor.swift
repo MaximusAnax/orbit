@@ -231,6 +231,22 @@ public enum ExtractionPrompt {
         return "v\(highest)"
     }()
 
+    /// The marker that separates notes for us from instructions for the model.
+    ///
+    /// FN-50: this returned the whole file, so every prompt opened by telling
+    /// the model about golden-run policy and which waivers were granted on which
+    /// date — 189 words of it in v8, before the first real instruction. That is
+    /// not merely wasted context: it silently confounded prompt comparisons,
+    /// because v10's 494-word delta over v8 was 142 words of *header prose*, and
+    /// the measurement that rejected v10 could not separate the two.
+    ///
+    /// Opt-in by marker, deliberately. Stripping unconditionally would change
+    /// what v1–v11 send and void every measurement attached to them — including
+    /// the one v11 was promoted on. A prompt without the marker is returned
+    /// whole, exactly as before; a prompt with it sends only what follows.
+    /// New prompts carry the marker (BUILD.md §1.3).
+    public static let promptMarker = "<!-- PROMPT BEGINS -->"
+
     public static func system() throws -> String {
         guard let url = Bundle.module.url(forResource: "extraction-prompt-\(version)",
                                           withExtension: "md", subdirectory: "Resources"),
@@ -239,7 +255,8 @@ public enum ExtractionPrompt {
                 "no bundled prompt for ORBIT_PROMPT_VERSION=\(version) "
                 + "(expected Resources/extraction-prompt-\(version).md)")
         }
-        return text
+        guard let r = text.range(of: promptMarker) else { return text }
+        return String(text[r.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 

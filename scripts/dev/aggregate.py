@@ -79,6 +79,42 @@ def main():
     if not run_dirs:
         sys.exit(f"no run-* directories in {coll}")
 
+    # FN-44: refuse to grade a collection that is not all one prompt.
+    #
+    # `swift run` rebuilds on any source change, and overnight.sh's grading stage
+    # shells into it — so writing a new prompt file, or editing any Swift, part
+    # way through a job could hand the second half of the corpus a different
+    # prompt. The collection would finish, report cleanly, and average two
+    # prompts under one label, with the per-fixture stamp as the only evidence
+    # and nothing reading it. This reads it.
+    #
+    # Same family as FN-35 and FN-49: a configuration that changes underneath
+    # you, produces plausible output, and cannot be told apart from the thing
+    # working. Averaging two prompts is not a measurement of either.
+    declared = manifest.get("prompt_version")
+    stamps = {}
+    for rd in run_dirs:
+        for f in sorted(rd.glob("*.json")):
+            try:
+                v = json.loads(f.read_text()).get("prompt_version")
+            except Exception:
+                continue
+            if v:
+                stamps.setdefault(v, []).append(f"{rd.name}/{f.name}")
+    if len(stamps) > 1:
+        detail = "; ".join(f"{v}: {len(fs)} fixture(s) e.g. {fs[0]}"
+                           for v, fs in sorted(stamps.items()))
+        sys.exit(f"REFUSING TO GRADE {coll.name}: fixtures carry more than one "
+                 f"prompt version — {detail}. This collection averages two "
+                 f"prompts under one label (FN-44); re-collect, do not grade it.")
+    if declared and stamps and declared not in stamps:
+        sys.exit(f"REFUSING TO GRADE {coll.name}: manifest declares prompt "
+                 f"{declared!r} but every fixture is stamped "
+                 f"{sorted(stamps)[0]!r} (FN-44).")
+    if stamps:
+        print(f"   prompt-version check: all {sum(len(f) for f in stamps.values())} "
+              f"fixtures stamped {sorted(stamps)[0]} ✓")
+
     m = load_grader()
     goldens = m.load_goldens()
 
