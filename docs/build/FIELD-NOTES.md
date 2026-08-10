@@ -1980,3 +1980,31 @@ one coin flip cannot carry the whole check.
 **Live risk, stated plainly:** v11 is the promoted prompt as of today. If this
 is real rather than drift, the shipping prompt is worse at the one thing the
 product must never get wrong.
+
+**2026-08-10 · FN-52 answered: it reproduces, and v11 is the cause.** Homonym
+alone, ten runs each, back to back in one session (`fn52-v8`, `fn52-v11`):
+
+| item | fresh v8 | fresh v11 |
+| --- | --- | --- |
+| `homonym:person:sarah_o` | **70%** | **20%** |
+| `…sarah_o/employment/ucsf` | 50% | 20% |
+| `…sarah_o/life_event/nursing boards` | 40% | 20% |
+
+v8 reproduced its k10 value exactly (70%); v11 reproduced low. All three items
+move together, and 70% → 20% clears its 95% band (±35 points). Drift is
+excluded — the two arms ran minutes apart against the same endpoint.
+
+So rule 38 costs the identity test. The mechanism is plausible in hindsight: a
+rule that says *a fact stated about a group belongs to each named member* pushes
+toward spreading facts across the people in view, and the homonym memo's whole
+difficulty is that two people who share a name must be held **apart**. v10 not
+showing it is unexplained and no longer load-bearing — what matters is that the
+promoted prompt reproducibly loses the one test the product cannot afford.
+
+**Recommendation: roll `activeVersion` back to `v8`.** EVALS calls merging two
+people the worst failure the ledger cannot undo by adding evidence; distributing
+group facts is a recall gain. Trading the first for the second is the wrong side
+of that trade. A v12 should carry rule 38 with an explicit clause that
+distribution never crosses people the transcript distinguishes, and be graded on
+homonym *and* plural-attribution before promotion — both goldens now exist and
+`--memos` makes the pair cost ~30k tokens.
