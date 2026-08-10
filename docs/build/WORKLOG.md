@@ -534,3 +534,35 @@ From *"both of them go to Harvard"*, only one of the two carried the school.
   skip.
 - **`FactAnswerTests.testRolePhrasingsStillAnswerTheRole` was red on the source
   branch and is green here** — session 5's `10144fa` fixed it independently.
+
+## 2026-08-10 · v10 measured and rejected, and the queue that drains into nothing
+
+Ran the paired comparison FN-48 owed: `ORBIT_PROMPT_VERSION=v10
+scripts/dev/overnight.sh 10 k10-v10`, then `compare.py k10-v8 k10-v10`.
+921k tokens, 23 minutes, gpt-5.1.
+
+- **v10 is not promoted; `activeVersion` stays `v8`.** Recall 72.8% → 70.0%
+  median, criticals 15 → 19, 26 required items regressed against 15 improved,
+  sign test p = 0.117. The p-value is not a defence — it says the drop is not
+  distinguishable from noise, and "indistinguishable from v8" is not a reason to
+  ship a prompt when the point estimate points down.
+- **The prompt pin held, and was verified two ways** before the credits were
+  spent: the harness's own banner (`model gpt-5.1 · prompt v10 · concurrency 3`)
+  and every collected fixture stamped `prompt_version: v10`, 110/110. This is
+  the check FN-44 says nothing performs; performing it by hand is cheap and it
+  is the only evidence that a collection is what its label claims.
+- **The regressions are not near the rule** — `dom:preference/vegan` 60% → 10%,
+  `dom:trait/social` 90% → 40%, `group-ramble:loop/cook` 60% → 10%. Dilution,
+  not interaction. Rule 38 was ~30 lines of sub-bullets on the longest prompt
+  this project has run; the retry should be one sentence and one example.
+- **The run measured the cost and never the benefit.** `plural-attribution` was
+  not among the eleven memos collected — and could not have been. **FN-49:**
+  `measure --live` builds its corpus by enumerating `docs/evals/fixtures/*.json`
+  and reading each fixture's `source`, so it collects exactly the memos that
+  already have fixtures. A golden authored ahead of its fixture is unreachable,
+  while `measure.py` prints that a live run is what will reach it. `tag-discipline`
+  has been listed as "awaiting a fixture" since 08-07 for the same reason.
+  Goldens-first is a practice the harness does not currently support.
+- **What the measurement is worth:** a real number for the cost of one rule, and
+  a defect found in the instrument. Both are worth the 921k tokens; neither is
+  the answer FN-48 wanted. The Harvard fix does not reach the device today.

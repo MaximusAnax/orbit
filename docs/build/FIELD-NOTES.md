@@ -1670,7 +1670,7 @@ main → sans sub) matches, both rooms translate, and the three search shapes
 exist. The divergences were in the **signature moves** — the small things §5
 says carry the whole feeling.
 
-### FN-48 · A fact stated about a group lands on only one of them — **rule written (v10), measurement owed** · prompt
+### FN-48 · A fact stated about a group lands on only one of them — **v10 measured and rejected; rule needs rewriting** · prompt
 
 A device capture said, of two people met together, *"she goes to Harvard she
 both of them go to Harvard"*. Gladys carries the fact. Whether Catherine does is
@@ -1712,3 +1712,54 @@ a verbatim that merely says "Northeastern" is not a fact linking to it.
 `object_value` was in fact clean. A review card shows the mapped fact
 (`ReviewViewModel.mappedFact`), so the next capture answers it on screen. There
 is no ledger export in the app, which is why this needed asking at all.
+
+### FN-49 · A golden authored before its fixture can never be measured — **open** · harness
+
+`measure.py` prints, for every golden without a fixture:
+
+> **Goldens awaiting a fixture** (authored first, measured once a live
+> extraction produces one — `orbit-evals measure --live`)
+
+That sentence is false, and it has been since goldens-first was adopted.
+`measure --live` builds its corpus by enumerating `docs/evals/fixtures/*.json`
+and reading each fixture's `source` (`Sources/OrbitEvals/main.swift:277-316`) —
+so **the memos it collects are exactly the memos that already have fixtures**.
+The run cannot produce the fixture the message says it will produce. The queue
+names itself and nothing drains it.
+
+Cost, concretely: the v10 measurement (2026-08-10, 921k tokens, 23 min) graded
+rule 38's collateral damage across eleven memos and never once ran the memo the
+rule was written for. `tag-discipline` has been in the same state since
+2026-08-07 — authored to grade FN-10, never measured.
+
+This is the FN-35/FN-44 family again: **a configuration that looks like it is
+working, produces plausible output, and gives you no way to tell from the
+result.** The report is green, the golden is listed, and the listing is the
+thing that makes it look handled.
+
+**Fix (two parts, both small):**
+1. Collection should discover memos from the **goldens**, not from the fixtures
+   — a golden carries `source:` already, which is all the collector reads. A
+   golden with no fixture is then a memo to collect, which is the intent.
+2. Failing that, `measure.py`'s message must stop naming `measure --live` as the
+   remedy and say what actually produces one, or the message is the defect.
+
+Until then, a golden is only real if a fixture exists beside it, and
+"goldens-first" is a practice the harness does not support.
+
+**2026-08-10 · v10 measured, and not promoted.** k=10 paired against v8
+(docs/evals/measurements/2026-08-10-v10-paired.md): recall 72.8% → 70.0% median,
+criticals 15 → 19, 26 required items regressed against 15 improved, sign test
+p = 0.117. `activeVersion` stays `v8`, so **the Harvard fix does not ship.**
+
+The regressions sit nowhere near the rule — `dom:preference/vegan` 60% → 10%,
+`dom:trait/social` 90% → 40%, `group-ramble:loop/cook` 60% → 10%. That reads as
+dilution, not interaction: rule 38 is ~30 lines of sub-bullets on the longest
+prompt this project has had. The next attempt should be one sentence and a
+single example, not four sub-bullets — and it should be measured against v8
+alone, so the length change is the only variable.
+
+And the run never tested the rule: `plural-attribution` was not collected,
+because live collection enumerates *fixtures*, not goldens (FN-49). So what is
+known is the cost. The benefit is still unmeasured, and cannot be measured until
+FN-49 is fixed.
