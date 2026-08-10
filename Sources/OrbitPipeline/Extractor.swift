@@ -191,7 +191,23 @@ public enum ExtractionPrompt {
     /// allow-list that *substituted a different value* on a miss. A missing
     /// resource here fails loudly in `system()`, naming the file it wanted.
     ///
-    /// **v11 promoted 2026-08-10 (Abdoul), and what that rests on is asymmetric.**
+    /// **v11 promoted 2026-08-10 and rolled back the same day (Abdoul).** It
+    /// reproducibly loses the identity test: homonym alone, ten runs each, back
+    /// to back — creating Sarah Okafor as a person distinct from Sarah Chen
+    /// scores **70% on v8 and 20% on v11**, with both dependent assertions
+    /// moving with it, a difference that clears its 95% band. v8 reproduced its
+    /// k10 value exactly, so this is the prompt and not drift (FN-52).
+    ///
+    /// Rule 38 spreads a stated fact across the named people in view; the
+    /// homonym memo's whole difficulty is holding two same-named people apart.
+    /// EVALS calls merging two people the worst failure the ledger cannot undo
+    /// by adding evidence, and distributing group facts is a recall gain — that
+    /// is the wrong side of the trade, so `v8` ships and rule 38 waits for a
+    /// v12 that bounds distribution explicitly and is graded on homonym *and*
+    /// plural-attribution before promotion.
+    ///
+    /// Kept as a record rather than deleted, because the promotion looked
+    /// well-founded on the evidence available at the time:
     /// v11 is v8 plus rule 38 — a fact stated about a group belongs to each
     /// named member — in 56 words, with the file header held byte-identical to
     /// v8 so the rule is the only variable (FN-50). Benefit is measured on a
@@ -202,7 +218,7 @@ public enum ExtractionPrompt {
     /// identical 15/26/48 split from edits nine times apart in length (FN-51).
     /// So this promotion is a judgement on a measured benefit against an
     /// unmeasurable cost, not a number clearing a bar.
-    public static let activeVersion = "v11"
+    public static let activeVersion = "v8"
 
     public static var version: String {
         ProcessInfo.processInfo.environment["ORBIT_PROMPT_VERSION"] ?? Self.activeVersion

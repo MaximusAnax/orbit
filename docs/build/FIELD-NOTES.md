@@ -1670,7 +1670,7 @@ main → sans sub) matches, both rooms translate, and the three search shapes
 exist. The divergences were in the **signature moves** — the small things §5
 says carry the whole feeling.
 
-### FN-48 · A fact stated about a group lands on only one of them — **closed 2026-08-10 (v11 promoted)** · prompt
+### FN-48 · A fact stated about a group lands on only one of them — **open · fix measured and works, but cannot ship as written (FN-52)** · prompt
 
 A device capture said, of two people met together, *"she goes to Harvard she
 both of them go to Harvard"*. Gladys carries the fact. Whether Catherine does is
@@ -1948,7 +1948,7 @@ harness work fixes a judge whose rubric its author does not share — it needs a
 adjudication session, and until then every precision number is provisional.
 These are routed, not resolved, and saying so is the honest disposition.
 
-### FN-52 · Homonym identity is bimodal across collections, and no prompt explains it — **open · watch, highest stakes**
+### FN-52 · Rule 38 costs the identity test — **closed 2026-08-10 (v11 rolled back)** · prompt
 
 Surfaced by FN-51's new per-item bands, which is the point of having them.
 

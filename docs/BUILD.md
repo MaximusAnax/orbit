@@ -69,7 +69,7 @@ The four ratified documents say what Orbit is, what its data means, what it look
     comparison, and the ratification packet's provisional PIPE numbers remain
     v1-measured until the first `swift run orbit-evals measure --live`.
   - **The active prompt is named, not derived — `ExtractionPrompt.activeVersion`,
-    currently `v11`.** It was derived from the highest bundled file until
+    currently `v8`.** It was derived from the highest bundled file until
     2026-08-08, which meant *creating* a prompt promoted it; the dilution
     experiment ended that by measuring v9 losing 7 points of recall to v8 for
     half the words. Newest is not best, so promotion is now a measurement result
@@ -77,8 +77,15 @@ The four ratified documents say what Orbit is, what its data means, what it look
     build resolved v6, and then v8 — a version named in prose beside a version
     resolved in code is a second place to be wrong, so the prose now points at
     the constant instead of restating it.
-  - **v11 promoted 2026-08-10 (Abdoul), on an asymmetric basis that is worth
-    stating.** v11 is v8 + rule 38 in 56 words (FN-48). Its *benefit* is measured
+  - **v11 was promoted and rolled back the same day (Abdoul, FN-52)** — it
+    reproducibly loses the identity test (70% → 20% on holding two same-named
+    people apart, back-to-back ten-run collections). Kept bundled, not active.
+    The promotion itself was well-founded on the evidence available; what was
+    missing was a *targeted* golden for the failure mode a rule might damage,
+    not just for the one it fixes. That is the lesson worth carrying: measure
+    the thing the change could break, not only the thing it was written to fix.
+    The original basis is recorded below.
+  - **The superseded v11 rationale, kept for the record.** v11 is v8 + rule 38 in 56 words (FN-48). Its *benefit* is measured
     against a golden collected for it — the distributed fact 60% → 100%, 0 of 17
     regressed. Its *cost* is not measured and cannot be at this size: 24% of
     required items swing ≥60 points between collections, and v10 and v11 produced
